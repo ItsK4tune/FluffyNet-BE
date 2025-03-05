@@ -1,9 +1,10 @@
 import { Injectable, Logger, BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../user/entities/user.entity';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { AuthenDTO } from './dto/authen.dto';
 
 @Injectable()
 export class AuthenService {
@@ -14,41 +15,34 @@ export class AuthenService {
         private readonly jwtService: JwtService,
     ) {}
 
-    async createUser (username: string, password: string): Promise<any> {
-        if (!username || !password) {
-            this.logger.warn('createUser: Username and password are required');
-            throw new BadRequestException({ message: 'Username and password are required' });
-        }
+    async findByUsername(username: string) {
+      return await this.repo.findOne({ where: { username } });
+    }
 
-        const isExist: User | null = await this.repo.findOne({ where: { username } });
+    async createUser ({ username, password } : AuthenDTO) {
+        if (!username || !password) throw new BadRequestException({ message: 'Username and password are required' });
 
-        if (isExist) {
-            this.logger.warn('createUser: Username already exist');
-            throw new ConflictException({ message: 'Username already exists' });
-        }
+        const findUser = await this.repo.findOne({ where: { username } });
+        if (findUser) throw new ConflictException({ message: 'Username already exists' });
 
         const ecryptPassword = await bcrypt.hash(password, 12)
 
         const user = this.repo.create({ username, password: ecryptPassword });
         await this.repo.save(user);
 
-        this.logger.log(`createUser: User '${username}' created successfully`);
         return { message: 'User created successfully' };
     }
 
-    async validateUser(username: string, password: string): Promise<any> {
-        const user = await this.repo.findOne({ where: { username } });
-    
-        if (user && (await bcrypt.compare(password, user.password))) {
-          return user;
-        }
-        throw new UnauthorizedException('Invalid credentials');
-    }
-    
-    async login(username: string, password: string): Promise<any> {
-        const user = await this.validateUser(username, password);
+    async validateUser ({ username, password } : AuthenDTO) {
+        const findUser = await this.repo.findOne({ where: { username } });
 
-        const payload = { username: user.username, sub: user.id };
-        return { accessToken: this.jwtService.sign(payload) };
+        if (!findUser)  return null;
+
+        if (await bcrypt.compare(password, findUser.password)) {
+            const { password, ...user } = findUser;
+            return this.jwtService.sign(user);
+        }
+
+        return null;
     }
 }
