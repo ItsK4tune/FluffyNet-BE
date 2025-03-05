@@ -3,10 +3,10 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { env } from 'src/config';
 import { JwtService } from '@nestjs/jwt';
-import { FindUser } from '../findUser.service';
+import { FindUser } from '../modules/authen/findUser.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserAccount } from '../entities/user-account.entity';
+import { UserAccount } from '../modules/authen/entities/user-account.entity';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {

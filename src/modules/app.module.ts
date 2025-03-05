@@ -6,6 +6,7 @@ import { RedisModule } from '@nestjs-modules/ioredis';
 import dataSource from 'src/libs/typeorm.config';
 import { env } from 'src/config';
 import { AuthenModule } from './authen/authen.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { AuthenModule } from './authen/authen.module';
     //   options: {},
     // }),
     AuthenModule,
+    ProfileModule,
   ],
 })
 export class AppModule {}

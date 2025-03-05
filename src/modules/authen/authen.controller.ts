@@ -2,10 +2,9 @@ import { Body, Controller, BadRequestException, Post, UseGuards, Get, Req, Query
 import { ApiBody, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuthenService } from './authen.service';
 import { AuthenDTO } from './dtos/authen.dto';
-import { JwtAuthGuard } from './guards/jwt.guard';
-import { GoogleAuthGuard } from './guards/google.guard';
+import { GoogleAuthGuard } from '../../guards/google.guard';
 
-@ApiTags('authen')
+@ApiTags('Authentication')
 @Controller('authen')
 export class AuthenController {
     constructor (
@@ -43,7 +42,7 @@ export class AuthenController {
     async login(@Body() authenDTO: AuthenDTO) {
         const user = await this.authenService.validateUser(authenDTO);
         if (!user) throw new BadRequestException('Wrong username or password');
-        return user;
+        return { message: "Login successfully", token: user };
     }
 
     @Get('google')
