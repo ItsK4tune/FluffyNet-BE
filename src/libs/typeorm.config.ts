@@ -6,7 +6,7 @@ const dataSource = new DataSource({
   type: 'mysql',
   url: env.mysql.url,
   entities: [join(__dirname, '..', '**', '*.entity.{ts,js}')],
-  synchronize: false,
+  synchronize: true,
 });
 
 export default dataSource;

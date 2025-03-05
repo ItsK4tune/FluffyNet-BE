@@ -1,10 +1,9 @@
-import { Body, Controller, BadRequestException, Post, UseGuards, Get, Req } from '@nestjs/common';
+import { Body, Controller, BadRequestException, Post, UseGuards, Get, Req, Query } from '@nestjs/common';
 import { ApiBody, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuthenService } from './authen.service';
-import { AuthenDTO } from './dto/authen.dto';
-import { AuthGuard } from '@nestjs/passport';
-import { JwtAuthGuard } from './guard/jwt.guard';
-import { GoogleAuthGuard } from './guard/google.guard';
+import { AuthenDTO } from './dtos/authen.dto';
+import { JwtAuthGuard } from './guards/jwt.guard';
+import { GoogleAuthGuard } from './guards/google.guard';
 
 @ApiTags('authen')
 @Controller('authen')
@@ -48,12 +47,44 @@ export class AuthenController {
     }
 
     @Get('google')
+    @ApiOperation({ summary: 'User login via Google Oauth', description: 'Authenticate user and return JWT token.' })
     @UseGuards(GoogleAuthGuard)
     async googleAuth() {}
 
     @Get('google/callback')
+    @ApiOperation({ summary: 'Callback url for Google Oauth' })
     @UseGuards(GoogleAuthGuard)
     async googleAuthRedirect(@Req() req) {
         return req.user;
+    }
+
+    @Post('forgot-password')
+    @ApiOperation({ summary: 'User forgot password', description: 'Send a password reset email.' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+            email: { type: 'string', example: 'user@example.com' },
+            },
+            required: ['email'],
+        },
+    })
+    async forgotPassword(@Body('email') email: string) {
+        return await this.authenService.forgotPassword(email);
+    }
+
+    @Post('reset-password')
+    @ApiOperation({ summary: 'User reset password', description: 'Reset password using a token.' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                newPassword: { type: 'string', example: 'newStrongPassword123!' },
+            },
+            required: ['newPassword'],
+        },
+    })
+    async resetPassword(@Query('token') token: string, @Body('newPassword') newPassword: string) {
+        return await this.authenService.resetPassword(token, newPassword);
     }
 }

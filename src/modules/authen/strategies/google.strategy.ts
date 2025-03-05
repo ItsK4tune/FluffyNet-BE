@@ -2,13 +2,17 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { env } from 'src/config';
-import { AuthenService } from '../authen.service';
 import { JwtService } from '@nestjs/jwt';
+import { FindUser } from '../findUser.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UserAccount } from '../entities/user-account.entity';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     constructor(
-        private readonly authenService: AuthenService,
+        @InjectRepository(UserAccount) private readonly repo: Repository<UserAccount>,
+        private readonly findUser: FindUser,
         private readonly jwtService: JwtService,
     ) {
         super({
@@ -28,11 +32,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
         const email = emails[0].value;
 
-        let user = await this.authenService.findByUsername(email);
+        let user = await this.findUser.findByEmail(email);
 
         if (!user) {
-            await this.authenService.createUser({ username: email, password: 'default-password' });
-            user = await this.authenService.findByUsername(email);
+            const newUser = this.repo.create({ email, password: 'default-password' })
+            await this.repo.save(newUser);
+            user = await this.findUser.findByEmail(email);
         }
 
         const jwtPayload = {

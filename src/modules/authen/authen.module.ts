@@ -2,16 +2,18 @@ import { Module } from '@nestjs/common';
 import { AuthenController } from './authen.controller';
 import { AuthenService } from './authen.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from '../user/entities/user.entity';
+import { UserAccount } from './entities/user-account.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { env } from 'src/config';
-import { JwtStrategy } from './strategy/jwt.strategy';
-import { GoogleStrategy } from './strategy/google.strategy';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { FindUser } from './findUser.service';
+import { MailService } from './mail.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([UserAccount]),
     PassportModule,
     JwtModule.register({
       secret: env.jwt.secret, // Bí mật JWT
@@ -19,7 +21,7 @@ import { GoogleStrategy } from './strategy/google.strategy';
     }),
   ],
   controllers: [AuthenController],
-  providers: [AuthenService, JwtStrategy, GoogleStrategy],
+  providers: [AuthenService, MailService, FindUser, JwtStrategy, GoogleStrategy],
 })
 
 export class AuthenModule {}
