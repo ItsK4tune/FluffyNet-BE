@@ -3,23 +3,24 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { env } from 'src/config';
 import { JwtService } from '@nestjs/jwt';
-import { FindUser } from '../modules/authen/findUser.service';
+import { UserAccountUtil } from 'src/utils/user-account.util';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserAccount } from '../modules/authen/entities/user-account.entity';
+import * as bcrypt from "bcrypt";
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     constructor(
         @InjectRepository(UserAccount) private readonly repo: Repository<UserAccount>,
-        private readonly findUser: FindUser,
+        private readonly userAccountUtil: UserAccountUtil,
         private readonly jwtService: JwtService,
     ) {
         super({
-        clientID: env.google.id,
-        clientSecret: env.google.secret, 
-        callbackURL: env.google.url,
-        scope: ['email', 'profile'],
+            clientID: env.google.id,
+            clientSecret: env.google.secret, 
+            callbackURL: env.google.url,
+            scope: ['email', 'profile'],
         });
     }
 
@@ -32,20 +33,22 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
         const email = emails[0].value;
 
-        let user = await this.findUser.findByEmail(email);
+        let user = await this.userAccountUtil.findByEmail(email);
 
         if (!user) {
-            const newUser = this.repo.create({ email, password: 'default-password' })
+            const newUser = this.repo.create({ email, password: await bcrypt.hash('default-password', 12) })
             await this.repo.save(newUser);
-            user = await this.findUser.findByEmail(email);
+            user = await this.userAccountUtil.findByEmail(email);
         }
-
+        
         const jwtPayload = {
             id: user.id,
             username: user.username,
+            email: email,
+            role: user.role
         };
         const token = this.jwtService.sign(jwtPayload);
 
-        done(null, { ...jwtPayload, token });
+        return done(null, { ...jwtPayload, token });
     }
 }
