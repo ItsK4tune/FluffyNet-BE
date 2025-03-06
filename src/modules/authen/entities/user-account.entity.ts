@@ -1,25 +1,24 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { UserProfile } from 'src/modules/profile/entities/user-profile.entity';
+import { Entity, Column, PrimaryGeneratedColumn, OneToOne, JoinColumn } from 'typeorm';
 
 @Entity('User Account')
 export class UserAccount {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true, default: null })
+  @Column({ unique: true, nullable: true })
   username: string;
 
-  @Column()
+  @Column({ nullable: false })
   password: string;
 
-  @Column({ unique: true, default: null })
+  @Column({ unique: true, nullable: true })
   email: string;
 
-  // @Column({ default: '' })
-  // avatar: string;
+  @Column({ default: 'user' })
+  role: string;
 
-  // @CreateDateColumn()
-  // createdAt: Date;
-
-  // @UpdateDateColumn()
-  // updatedAt: Date;
+  @OneToOne(() => UserProfile, profile => profile.user, { cascade: true }) 
+  // @JoinColumn({ name: 'username' })
+  profile: UserProfile;
 }

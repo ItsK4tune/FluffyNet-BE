@@ -1,11 +1,11 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserAccount } from './entities/user-account.entity';
-import { Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { AuthenDTO } from './dtos/authen.dto';
-import { FindUser } from './findUser.service';
+import { UserAccountUtil } from 'src/utils/user-account.util';
 import { MailService } from './mail.service';
 import { env } from 'src/config';
 
@@ -15,7 +15,7 @@ export class AuthenService {
         @InjectRepository(UserAccount) private readonly repo: Repository<UserAccount>,
         private readonly jwtService: JwtService,
         private readonly mailService: MailService,
-        private readonly findUser: FindUser,
+        private readonly userAccountUtil: UserAccountUtil,
     ) {}
 
     async createUser ({ username, password } : AuthenDTO) {
@@ -32,10 +32,12 @@ export class AuthenService {
         return { message: 'User created successfully' };
     }
 
-    async validateUser ({ username, password } : AuthenDTO) {
-        const findUser = await this.findUser.findByUsername(username);
+    async validateUser ({ username, email, password } : AuthenDTO) {
+        const findUser = await this.userAccountUtil.findByUsernameOrEmail(username, email);
 
         if (!findUser)  return null;
+
+        console.log(await bcrypt.compare(password, findUser.password));
 
         if (await bcrypt.compare(password, findUser.password)) {
             const { password, ...user } = findUser;
@@ -46,8 +48,8 @@ export class AuthenService {
     }
 
     async forgotPassword(email: string) {
-        const user = await this.findUser.findByEmail(email);
-        if (!user) throw new BadRequestException('Account not exist');
+        const user = await this.userAccountUtil.findByEmail(email);
+        if (!user) throw new BadRequestException({message: 'Account not exist'});
 
         const payload = { email };
         const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
@@ -76,16 +78,14 @@ export class AuthenService {
             const decoded = this.jwtService.verify(token);
             const email = decoded.email;
         
-            const user = await this.findUser.findByEmail(email);
-            if (!user) throw new BadRequestException('Token không hợp lệ');
+            const user = await this.userAccountUtil.findByEmail(email);
+            if (!user) throw new BadRequestException('Wrong token');
         
-            const hashedPassword = await bcrypt.hash(newPassword, 12);
-        
-            await this.findUser.updatePassword(email, hashedPassword);
+            await this.userAccountUtil.updatePassword(user, newPassword);
         
             return { message: 'New password set' };
         } catch (error) {
-            throw new BadRequestException('Token invalid/expired');
+            throw new BadRequestException({ message: 'Token invalid/expired' });
         }
     }
 }

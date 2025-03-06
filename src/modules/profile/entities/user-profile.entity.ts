@@ -1,9 +1,9 @@
 import { Entity, Column, PrimaryColumn, OneToOne, JoinColumn } from 'typeorm';
 import { UserAccount } from 'src/modules/authen/entities/user-account.entity';
 
-@Entity('UserProfile')
+@Entity('User Profile')
 export class UserProfile {
-  @PrimaryColumn() // Vừa là PK vừa là FK
+  @PrimaryColumn()
   username: string;
 
   @Column({ nullable: true })
@@ -30,7 +30,7 @@ export class UserProfile {
   @Column({ nullable: true })
   socialLink: string;
 
-  @OneToOne(() => UserAccount, { onDelete: 'CASCADE' }) 
+  @OneToOne(() => UserAccount, account => account.profile, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'username' }) 
   user: UserAccount;
 }

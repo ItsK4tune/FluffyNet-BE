@@ -7,6 +7,7 @@ import dataSource from 'src/libs/typeorm.config';
 import { env } from 'src/config';
 import { AuthenModule } from './authen/authen.module';
 import { ProfileModule } from './profile/profile.module';
+import { HealthcheckModule } from './healthcheck/healthcheck.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ProfileModule } from './profile/profile.module';
     // }),
     AuthenModule,
     ProfileModule,
+    HealthcheckModule,
   ],
 })
 export class AppModule {}

@@ -7,7 +7,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { env } from 'src/config';
 import { GoogleStrategy } from '../../strategies/google.strategy';
-import { FindUser } from './findUser.service';
+import { UserAccountUtil } from 'src/utils/user-account.util';
 import { MailService } from './mail.service';
 
 @Module({
@@ -20,7 +20,7 @@ import { MailService } from './mail.service';
     }),
   ],
   controllers: [AuthenController],
-  providers: [AuthenService, MailService, FindUser, GoogleStrategy],
+  providers: [AuthenService, MailService, UserAccountUtil, GoogleStrategy],
 })
 
 export class AuthenModule {}
