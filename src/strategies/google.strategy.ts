@@ -42,7 +42,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         }
         
         const jwtPayload = {
-            id: user.id,
             username: user.username,
             email: email,
             role: user.role

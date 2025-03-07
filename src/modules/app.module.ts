@@ -18,9 +18,9 @@ import { HealthcheckModule } from './healthcheck/healthcheck.module';
     //   url: env.redis.url,
     //   options: {},
     // }),
+    HealthcheckModule,
     AuthenModule,
     ProfileModule,
-    HealthcheckModule,
   ],
 })
 export class AppModule {}

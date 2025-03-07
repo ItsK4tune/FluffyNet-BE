@@ -37,10 +37,8 @@ export class AuthenService {
 
         if (!findUser)  return null;
 
-        console.log(await bcrypt.compare(password, findUser.password));
-
         if (await bcrypt.compare(password, findUser.password)) {
-            const { password, ...user } = findUser;
+            const { password, profile, ...user } = findUser;
             return this.jwtService.sign(user);
         }
 

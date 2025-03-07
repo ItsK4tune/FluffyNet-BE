@@ -31,6 +31,6 @@ export class UserProfile {
   socialLink: string;
 
   @OneToOne(() => UserAccount, account => account.profile, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'username' }) 
+  @JoinColumn({ name: 'username' })
   user: UserAccount;
 }

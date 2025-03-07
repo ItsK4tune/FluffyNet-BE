@@ -18,4 +18,18 @@ export class UserProfileUtil{
     async save (userProfile: UserProfile) {
         await this.repo.save(userProfile);
     }
+
+    create (username: string, email: string) {
+        return this.repo.create({
+            username: username ?? null,
+            email: email ?? null,
+            name: null,
+            age: null,
+            gender: null,
+            avatar: null,
+            phoneNumber: null,
+            hobby: null,
+            socialLink: null
+        });
+    }
 }

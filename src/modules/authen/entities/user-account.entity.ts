@@ -1,12 +1,9 @@
 import { UserProfile } from 'src/modules/profile/entities/user-profile.entity';
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, OneToOne } from 'typeorm';
 
 @Entity('User Account')
 export class UserAccount {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ unique: true, nullable: true })
+  @PrimaryColumn()
   username: string;
 
   @Column({ nullable: false })
@@ -19,6 +16,5 @@ export class UserAccount {
   role: string;
 
   @OneToOne(() => UserProfile, profile => profile.user, { cascade: true }) 
-  // @JoinColumn({ name: 'username' })
   profile: UserProfile;
 }

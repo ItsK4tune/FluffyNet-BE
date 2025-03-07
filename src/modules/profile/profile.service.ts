@@ -20,10 +20,7 @@ export class ProfileService {
         let userProfile = await this.userProfileUtil.getProfileByUsernameOrEmail(username, email);
 
         if (!userProfile) {
-            userProfile = new UserProfile();
-            userProfile.username = user.username;
-            userProfile.email = user.email;
-
+            userProfile = this.userProfileUtil.create(username, email);
             await this.userProfileUtil.save(userProfile);
         }
 
@@ -32,8 +29,6 @@ export class ProfileService {
 
     async editProfile ({ username, email }: ViewProfileDto, editData: EditProfileDto) {
         let userProfile = await this.userProfileUtil.getProfileByUsernameOrEmail(username, email);
-
-        console.log(userProfile);
 
         if (!userProfile) {
             throw new NotFoundException('User profile not found');
