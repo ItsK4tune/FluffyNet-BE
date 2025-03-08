@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { AuthenDTO } from './dtos/authen.dto';
-import { UserAccountUtil } from 'src/utils/user-account.util';
+import { UserAccountUtil } from 'src/utils/queries/user-account.util';
 import { MailService } from './mail.service';
 import { env } from 'src/config';
 import { UserProfile } from '../profile/entities/user-profile.entity';

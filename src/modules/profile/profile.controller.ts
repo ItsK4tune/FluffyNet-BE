@@ -21,7 +21,7 @@ export class ProfileController {
         const profile = await this.profileService.getProfile(user);
 
         if (!profile)   throw new BadRequestException({ message: 'User not found'});
-        return { message: `Fetch successfully from ${(req.user.username === null) ? req.user.email : req.user.username}`, profile: profile };
+        return { message: `Fetch successfully from ${(req.user.user_id === null) ? req.user.email : req.user.user_id}`, profile: profile };
     }
 
     @ApiOperation({ summary: `Edit user's profile`, description: `Authenticate user, check authorize (only user can edit their's profile).` })

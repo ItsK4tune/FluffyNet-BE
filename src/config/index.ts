@@ -21,7 +21,9 @@ const envSchema = z.object({
   MAIL_TIME: z.string().default('1h'),
 
   MYSQL_URL: z.string(),
+
   REDIS_URL: z.string(),
+  REDIS_TTL: z.string().default('1h'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -57,5 +59,6 @@ export const env = {
   },
   redis: {
     url: envVars.REDIS_URL,
+    ttl: envVars.REDIS_TTL,
   },
 };
