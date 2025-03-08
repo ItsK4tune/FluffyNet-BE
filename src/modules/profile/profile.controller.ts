@@ -16,7 +16,8 @@ export class ProfileController {
     @Roles('admin', 'user')
     @ApiBearerAuth() 
     async viewProfile(@Request() req) {
-        const user: number = req.user_id;
+        const user: number = req.user.user_id;
+        
         const profile = await this.profileService.getProfile(user);
 
         if (!profile)   throw new BadRequestException({ message: 'User not found'});
@@ -46,7 +47,7 @@ export class ProfileController {
     @Roles('admin', 'user')
     @ApiBearerAuth() 
     async editProfile(@Request() req, @Body() body: ProfileDto) {
-        const user: number = req.user_id
+        const user: number = req.user.user_id
         return await this.profileService.editProfile(user, body);
     }
 }

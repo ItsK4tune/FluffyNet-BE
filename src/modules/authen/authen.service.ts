@@ -51,15 +51,62 @@ export class AuthenService {
         if (!findUser)  return null;
 
         if (await bcrypt.compare(password, findUser.password)) {
-            const { password, profile, ...user } = findUser;
+            const { password, profile, verifyEmail, created_at, updated_at, ...user } = findUser;
             return this.jwtService.sign(user);
         }
 
         return null;
     }
 
-    async forgotPassword(email: string) {
+    async verifyEmail(email: string) {
         const user = await this.userAccountUtil.findByEmail(email);
+        
+        if (!user) throw new BadRequestException({message: 'Account not exist'});
+
+        if (user.verifyEmail)   throw new BadRequestException({message: 'Email has been verified'});
+
+        const payload = { email };
+        const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
+
+        const verifyLink = `${env.dns}/verify?token=${token}`;
+        await this.mailService.sendMail({
+            to: email,
+            subject: 'Verify email',
+            text: `Dear user,\n\nWe received a request to verify your email...`, 
+            html: `
+                <h1>Dear user,</h1>
+                <p>We received a request to verify your email. If you did not make this request, please ignore this email.</p>
+                <p>To verify your email, click the link below:</p>
+                <p><a href="${verifyLink}">${verifyLink}</a></p>
+                <p>This link will expire in <strong>${env.mailer.time}</strong> for security reasons.</p>
+                <p>If you have any issues, please contact our support team.</p>
+                <p>Best regards,<br>Your Website Team</p>
+            `,
+        });
+
+        return { message: 'Reset link sent' };
+    }
+
+    async verify(token: string) {
+        try {
+            const decoded = this.jwtService.verify(token);
+            const email = decoded.email;
+        
+            const user = await this.userAccountUtil.findByEmail(email);
+            if (!user) throw new BadRequestException('Wrong token');
+        
+            await this.userAccountUtil.updateVerifyEmail(user);
+        
+            return { message: 'Verified' };
+        } catch (error) {
+            throw new BadRequestException({ message: 'Token invalid/expired' });
+        }
+    }
+
+    async forgotPassword(email: string) {
+        console.log(email);
+        const user = await this.userAccountUtil.findByEmail(email);
+        console.log(user);
         if (!user) throw new BadRequestException({message: 'Account not exist'});
 
         const payload = { email };

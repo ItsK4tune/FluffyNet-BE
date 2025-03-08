@@ -3,6 +3,7 @@ import { ApiBody, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuthenService } from './authen.service';
 import { AuthenDTO } from './dtos/authen.dto';
 import { GoogleAuthGuard } from '../../guards/google.guard';
+import { query } from 'express';
 
 @ApiTags('Authentication')
 @Controller('authen')
@@ -90,5 +91,26 @@ export class AuthenController {
     @Post('reset-password')
     async resetPassword(@Query('token') token: string, @Body('newPassword') newPassword: string) {
         return await this.authenService.resetPassword(token, newPassword);
+    }
+
+    @ApiOperation({ summary: 'User verify email', description: 'Check email and send url to verify email.' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+            email: { type: 'string', example: 'user@example.com' },
+            },
+            required: ['email'],
+        },
+    })
+    @Post('verify-email')
+    async verifyEmail(@Body('email') email: string){
+        return await this.authenService.verifyEmail(email);
+    }
+
+    @ApiOperation({ summary: 'User verify email', description: 'Verify email using a token.' })
+    @Get('verify')
+    async acceptVerifyEmail(@Query('token') token: string){
+        return await this.authenService.verify(token);
     }
 }

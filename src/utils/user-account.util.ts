@@ -10,6 +10,10 @@ export class UserAccountUtil{
         @InjectRepository(UserAccount) private readonly repo: Repository<UserAccount>,
     ) {}
 
+    async findByUserID(user_id: number) {
+        return await this.repo.findOne({ where: { user_id } });
+    }
+
     async findByUsername(username: string) {
         return await this.repo.findOne({ where: { username } });
     }
@@ -33,5 +37,15 @@ export class UserAccountUtil{
         user.password = await bcrypt.hash(newPassword, 12);
         await this.repo.save(user);
         return;
+    }
+
+    async updateVerifyEmail(userAccount: UserAccount) {
+        userAccount.verifyEmail = true;
+        await this.repo.save(userAccount);
+        return;
+    }
+
+    async save (userAccount: UserAccount) {
+        await this.repo.save(userAccount);
     }
 }
