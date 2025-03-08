@@ -9,10 +9,12 @@ import { env } from 'src/config';
 import { GoogleStrategy } from '../../strategies/google.strategy';
 import { UserAccountUtil } from 'src/utils/user-account.util';
 import { MailService } from './mail.service';
+import { UserProfileUtil } from 'src/utils/user-profile.util';
+import { UserProfile } from '../profile/entities/user-profile.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserAccount]),
+    TypeOrmModule.forFeature([UserAccount, UserProfile]),
     PassportModule,
     JwtModule.register({
       secret: env.jwt.secret, 
@@ -20,7 +22,7 @@ import { MailService } from './mail.service';
     }),
   ],
   controllers: [AuthenController],
-  providers: [AuthenService, MailService, UserAccountUtil, GoogleStrategy],
+  providers: [AuthenService, MailService, UserAccountUtil, UserProfileUtil, GoogleStrategy],
 })
 
 export class AuthenModule {}

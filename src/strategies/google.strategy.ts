@@ -3,17 +3,17 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { env } from 'src/config';
 import { JwtService } from '@nestjs/jwt';
-import { UserAccountUtil } from 'src/utils/user-account.util';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserAccount } from '../modules/authen/entities/user-account.entity';
 import * as bcrypt from "bcrypt";
+import { UserProfile } from 'src/modules/profile/entities/user-profile.entity';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     constructor(
-        @InjectRepository(UserAccount) private readonly repo: Repository<UserAccount>,
-        private readonly userAccountUtil: UserAccountUtil,
+        @InjectRepository(UserAccount) private readonly userAccountRepo: Repository<UserAccount>,
+        @InjectRepository(UserProfile) private readonly userProfileRepo: Repository<UserProfile>,
         private readonly jwtService: JwtService,
     ) {
         super({
@@ -25,7 +25,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     }
 
     async validate(accessToken: string, refreshToken: string, profile: any, done: VerifyCallback): Promise<any> {
-        const { name, emails, photos } = profile;
+        const { displayName, emails, photos } = profile;
 
         if (!emails || !emails.length || !emails[0].value) {
             throw new BadRequestException('Email unavailable');
@@ -33,15 +33,26 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
         const email = emails[0].value;
 
-        let user = await this.userAccountUtil.findByEmail(email);
+        let user = await this.userAccountRepo.findOne({ where: { email } });
 
         if (!user) {
-            const newUser = this.repo.create({ email, password: await bcrypt.hash('default-password', 12) })
-            await this.repo.save(newUser);
-            user = await this.userAccountUtil.findByEmail(email);
+            const newUser = this.userAccountRepo.create({ email, password: await bcrypt.hash('default-password', 12), verifyEmail: true })
+
+            await this.userAccountRepo.save(newUser);
+
+            const newProfile = this.userProfileRepo.create({
+                name: displayName,
+                avatar: photos[0].value,
+                user: newUser
+            });
+
+            await this.userProfileRepo.save(newProfile);
+
+            user = await this.userAccountRepo.findOne({ where: { email } });
         }
         
         const jwtPayload = {
+            user_id: user.user_id,
             username: user.username,
             email: email,
             role: user.role

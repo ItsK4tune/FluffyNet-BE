@@ -1,9 +1,13 @@
 import { IsEmail, IsOptional, IsString, IsInt, Min, Max, IsUrl } from 'class-validator';
 
-export class EditProfileDto {
+export class ProfileDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  bio?: string;
 
   @IsOptional()
   @IsInt()
@@ -18,6 +22,10 @@ export class EditProfileDto {
   @IsOptional()
   @IsUrl()
   avatar?: string;
+
+  @IsOptional()
+  @IsUrl()
+  background?: string;
 
   @IsOptional()
   @IsEmail()

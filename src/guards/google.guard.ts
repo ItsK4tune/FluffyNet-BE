@@ -9,8 +9,6 @@ export class GoogleAuthGuard extends AuthGuard('google') {
   ): Promise<boolean> {
     const isValid = await super.canActivate(context); 
     if (!isValid) return false;
-
-    const request = context.switchToHttp().getRequest();
     return true;
   }
 }

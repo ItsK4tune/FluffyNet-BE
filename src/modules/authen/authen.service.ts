@@ -8,6 +8,7 @@ import { AuthenDTO } from './dtos/authen.dto';
 import { UserAccountUtil } from 'src/utils/user-account.util';
 import { MailService } from './mail.service';
 import { env } from 'src/config';
+import { UserProfile } from '../profile/entities/user-profile.entity';
 
 @Injectable()
 export class AuthenService {
@@ -26,14 +27,26 @@ export class AuthenService {
 
         const ecryptPassword = await bcrypt.hash(password, 12)
 
-        const user = this.repo.create({ username, password: ecryptPassword });
+        const user = this.repo.create({ username, password: ecryptPassword, profile: new UserProfile() });
         await this.repo.save(user);
 
         return { message: 'User created successfully' };
     }
 
     async validateUser ({ username, email, password } : AuthenDTO) {
-        const findUser = await this.userAccountUtil.findByUsernameOrEmail(username, email);
+        if (username && email) return null;
+
+        let findUser: UserAccount;
+        if (username) {
+            findUser = await this.userAccountUtil.findByUsername(username);
+        }
+        
+        if (!findUser && email) {
+            const userByEmail = await this.userAccountUtil.findByEmail(email);
+            if (userByEmail?.verifyEmail) {
+                findUser = userByEmail;
+            }
+        }
 
         if (!findUser)  return null;
 

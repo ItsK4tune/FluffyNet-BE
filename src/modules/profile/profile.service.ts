@@ -1,34 +1,23 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ViewProfileDto } from './dtos/view-profile.dto';
-import { UserAccountUtil } from 'src/utils/user-account.util';
 import { UserProfileUtil } from 'src/utils/user-profile.util';
-import { EditProfileDto } from './dtos/edit-profile.dto';
-import { UserProfile } from './entities/user-profile.entity';
+import { ProfileDto } from './dtos/edit-profile.dto';
 
 @Injectable()
 export class ProfileService {
     constructor (
-        private readonly userAccountUtil: UserAccountUtil,
         private readonly userProfileUtil: UserProfileUtil,
     ) {}
 
-    async getProfile ({ username, email }: ViewProfileDto) {
-        const user = await this.userAccountUtil.findByUsername(username) ?? await this.userAccountUtil.findByEmail(email);
+    async getProfile (user_id: number) {
+        const user = await this.userProfileUtil.getProfileByUserId(user_id);
 
         if (!user) return null;
 
-        let userProfile = await this.userProfileUtil.getProfileByUsernameOrEmail(username, email);
-
-        if (!userProfile) {
-            userProfile = this.userProfileUtil.create(username, email);
-            await this.userProfileUtil.save(userProfile);
-        }
-
-        return userProfile;
+        return user;
     }   
 
-    async editProfile ({ username, email }: ViewProfileDto, editData: EditProfileDto) {
-        let userProfile = await this.userProfileUtil.getProfileByUsernameOrEmail(username, email);
+    async editProfile (user_id: number, editData: ProfileDto) {
+        let userProfile = await this.userProfileUtil.getProfileByUserId(user_id);
 
         if (!userProfile) {
             throw new NotFoundException('User profile not found');

@@ -9,27 +9,13 @@ export class UserProfileUtil{
         @InjectRepository(UserProfile) private readonly repo: Repository<UserProfile>,
     ) {}
 
-    getProfileByUsernameOrEmail (username: string, email: string) {
+    getProfileByUserId (user_id: number) {
         return this.repo.findOne({ 
-            where: [{ username }, { email }] 
+            where: {user_id} 
         });
     }
 
     async save (userProfile: UserProfile) {
         await this.repo.save(userProfile);
-    }
-
-    create (username: string, email: string) {
-        return this.repo.create({
-            username: username ?? null,
-            email: email ?? null,
-            name: null,
-            age: null,
-            gender: null,
-            avatar: null,
-            phoneNumber: null,
-            hobby: null,
-            socialLink: null
-        });
     }
 }
