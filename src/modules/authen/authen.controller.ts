@@ -6,7 +6,7 @@ import { GoogleAuthGuard } from '../../guards/google.guard';
 import { query } from 'express';
 
 @ApiTags('Authentication')
-@Controller('authen')
+@Controller('auth')
 export class AuthenController {
     constructor (
         private readonly authenService: AuthenService,

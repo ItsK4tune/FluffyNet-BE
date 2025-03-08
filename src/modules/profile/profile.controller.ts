@@ -1,27 +1,22 @@
-import { Controller, Get, Put, Body, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Put, Body, UseGuards, Request, BadRequestException, Query } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { ProfileService } from './profile.service';
 import { RolesGuard } from 'src/guards/roles.guard';
 import { Roles } from 'src/decorators/role.decorator';
-import { ApiBody, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ProfileDto } from './dtos/edit-profile.dto';
 
-@Controller('Profile')
+@ApiTags('Profile')
+@Controller('profile')
 export class ProfileController {
     constructor(private readonly profileService: ProfileService) {}
 
-    @ApiOperation({ summary: `Get user's profile`, description: `Authenticate user, check authorize and return user's profile.` })
+    @ApiOperation({ summary: `Get user's profile`, description: `Return user's profile.` })
     @Get('view-profile')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'user')
-    @ApiBearerAuth() 
-    async viewProfile(@Request() req) {
-        const user: number = req.user.user_id;
-        
-        const profile = await this.profileService.getProfile(user);
-
+    async viewProfile(@Query('user_id') user_id: number) {     
+        const profile = await this.profileService.getProfile(user_id);
         if (!profile)   throw new BadRequestException({ message: 'User not found'});
-        return { message: `Fetch successfully from ${(req.user.user_id === null) ? req.user.email : req.user.user_id}`, profile: profile };
+        return { message: `Fetch successfully from user_id: ${user_id}`, profile: profile };
     }
 
     @ApiOperation({ summary: `Edit user's profile`, description: `Authenticate user, check authorize (only user can edit their's profile).` })
