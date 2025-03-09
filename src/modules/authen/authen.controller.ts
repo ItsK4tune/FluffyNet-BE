@@ -62,9 +62,10 @@ export class AuthenController {
 
     @ApiOperation({ summary: 'Callback url for Google Oauth' })
     @UseGuards(GoogleAuthGuard)
+    @ApiResponse({ status: 200, description: `jwt token` })
     @Get('google/callback')
     async googleAuthRedirect(@Req() req) {
-        return req.user;
+        return { token: req.user.token, statusCode: 200 };
     }
 
     @ApiOperation({ summary: 'User forgot password', description: 'Send a password reset email.' })
