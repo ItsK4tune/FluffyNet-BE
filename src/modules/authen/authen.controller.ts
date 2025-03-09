@@ -1,9 +1,8 @@
 import { Body, Controller, BadRequestException, Post, UseGuards, Get, Req, Query } from '@nestjs/common';
-import { ApiBody, ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiBody, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthenService } from './authen.service';
 import { AuthenDTO } from './dtos/authen.dto';
 import { GoogleAuthGuard } from '../../guards/google.guard';
-import { query } from 'express';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -23,6 +22,9 @@ export class AuthenController {
             required: ['username', 'password'], 
         },
     })
+    @ApiResponse({ status: 200, description: 'User created successfully' })
+    @ApiResponse({ status: 400, description: 'Username and password are required' })
+    @ApiResponse({ status: 409, description: 'Username already exists' })
     @Post('register')
     async register(@Body() authenDTO: AuthenDTO) {
         return await this.authenService.createUser(authenDTO);
@@ -44,21 +46,23 @@ export class AuthenController {
             ],
         },
     })
+    @ApiResponse({ status: 200, description: `User created successfully + user's jwt token` })
+    @ApiResponse({ status: 400, description: 'Wrong username/email or password' })
     @Post('login')
     async login(@Body() authenDTO: AuthenDTO) {
         const user = await this.authenService.validateUser(authenDTO);
         if (!user) throw new BadRequestException('Wrong username/email or password');
-        return { message: "Login successfully", token: user };
+        return { message: "Login successfully", statusCode: 200, token: user };
     }
 
     @ApiOperation({ summary: 'User login via Google Oauth', description: 'Authenticate user and return JWT token.' })
-    @Get('google')
     @UseGuards(GoogleAuthGuard)
+    @Get('google')
     async googleAuth() {}
 
     @ApiOperation({ summary: 'Callback url for Google Oauth' })
-    @Get('google/callback')
     @UseGuards(GoogleAuthGuard)
+    @Get('google/callback')
     async googleAuthRedirect(@Req() req) {
         return req.user;
     }
@@ -73,6 +77,8 @@ export class AuthenController {
             required: ['email'],
         },
     })
+    @ApiResponse({ status: 200, description: `Reset link sent` })
+    @ApiResponse({ status: 409, description: 'Account not exist' })
     @Post('forgot-password')
     async forgotPassword(@Body('email') email: string) {
         return await this.authenService.forgotPassword(email);
@@ -88,6 +94,9 @@ export class AuthenController {
             required: ['newPassword'],
         },
     })
+    @ApiResponse({ status: 200, description: `New password set` })
+    @ApiResponse({ status: 400, description: 'Wrong token' })
+    @ApiResponse({ status: 409, description: 'Token invalid/expired' })
     @Post('reset-password')
     async resetPassword(@Query('token') token: string, @Body('newPassword') newPassword: string) {
         return await this.authenService.resetPassword(token, newPassword);
@@ -103,12 +112,18 @@ export class AuthenController {
             required: ['email'],
         },
     })
+    @ApiResponse({ status: 200, description: `Verify link sent` })
+    @ApiResponse({ status: 400, description: 'Account not exist' })
+    @ApiResponse({ status: 409, description: 'Email has been verified' })
     @Post('verify-email')
     async verifyEmail(@Body('email') email: string){
         return await this.authenService.verifyEmail(email);
     }
 
     @ApiOperation({ summary: 'User verify email', description: 'Verify email using a token.' })
+    @ApiResponse({ status: 200, description: `Verified` })
+    @ApiResponse({ status: 400, description: 'Wrong token' })
+    @ApiResponse({ status: 409, description: 'Token invalid/expired' })
     @Get('verify')
     async acceptVerifyEmail(@Query('token') token: string){
         return await this.authenService.verify(token);

@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { HealthCheckService } from './healthcheck.service';
 
 @ApiTags('Health Check')
@@ -10,6 +10,7 @@ export class HealthCheckController {
   ) {}
 
   @ApiOperation({ summary: `Get system's health`, description: `Check whether system is working or not.` })
+  @ApiResponse({ status: 200, description: 'Server is running' })
   @Get()
   async healthCheck() {
     return this.healthCheckService.healthCheck();

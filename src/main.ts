@@ -46,7 +46,7 @@ async function bootstrap() {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('Social Network')
       .setDescription('API documentation for Social Network backend')
-      .setVersion('1.0')
+      .setVersion('alpha')
       .addBearerAuth()
       .build();
 

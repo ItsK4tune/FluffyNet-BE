@@ -64,7 +64,7 @@ export class ProfileService {
         }
 
         if (Object.keys(changedFields).length === 0) {
-            return { message: 'No changes detected', profile: cacheData };
+            return { message: 'Profile updated successfully', statusCode: 200, profile: cacheData };
         }
 
         let userProfile = await this.userProfileUtil.getProfileByUserId(user_id);
@@ -83,9 +83,6 @@ export class ProfileService {
         await this.redis.hset(key, changedFields);
         await this.redis.expire(key, convertToSeconds(env.redis.ttl));
 
-        return {
-            message: 'Profile updated successfully',
-            profile: userProfile,
-        };
+        return { message: 'Profile updated successfully', statusCode: 200, profile: userProfile };
     }
 }

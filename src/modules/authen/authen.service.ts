@@ -1,14 +1,11 @@
-import { Injectable, BadRequestException, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { UserAccount } from './entities/user-account.entity';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { AuthenDTO } from './dtos/authen.dto';
 import { UserAccountUtil } from 'src/utils/queries/user-account.util';
 import { MailService } from './mail.service';
 import { env } from 'src/config';
-import { UserProfile } from '../profile/entities/user-profile.entity';
 
 @Injectable()
 export class AuthenService {
@@ -19,17 +16,17 @@ export class AuthenService {
     ) {}
 
     async createUser ({ username, password } : AuthenDTO) {
-        if (!username || !password) throw new BadRequestException({ message: 'Username and password are required' });
+        if (!username || !password) throw new BadRequestException('Username and password are required');
 
         const findUser = await this.userAccountUtil.findByUsername(username);
-        if (findUser) throw new ConflictException({ message: 'Username already exists' });
+        if (findUser) throw new ConflictException('Username already exists');
 
         const ecryptPassword = await bcrypt.hash(password, 12)
 
         const user = this.userAccountUtil.create(username, ecryptPassword);
         await this.userAccountUtil.save(user);
 
-        return { message: 'User created successfully' };
+        return { message: 'User created successfully', statusCode: 200 };
     }
 
     async validateUser ({ username, email, password } : AuthenDTO) {
@@ -60,9 +57,9 @@ export class AuthenService {
     async verifyEmail(email: string) {
         const user = await this.userAccountUtil.findByEmail(email);
         
-        if (!user) throw new BadRequestException({message: 'Account not exist'});
+        if (!user) throw new BadRequestException('Account not exist');
 
-        if (user.verifyEmail)   throw new BadRequestException({message: 'Email has been verified'});
+        if (user.verifyEmail)   throw new ConflictException('Email has been verified');
 
         const payload = { email };
         const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
@@ -83,7 +80,7 @@ export class AuthenService {
             `,
         });
 
-        return { message: 'Verify link sent' };
+        return { message: 'Verify link sent', statusCode: 200 };
     }
 
     async verify(token: string) {
@@ -92,13 +89,13 @@ export class AuthenService {
             const email = decoded.email;
         
             const user = await this.userAccountUtil.findByEmail(email);
-            if (!user) throw new BadRequestException('Wrong token');
+            if (!user) throw new ConflictException('Wrong token');
         
             await this.userAccountUtil.updateVerifyEmail(user);
         
-            return { message: 'Verified' };
+            return { message: 'Verified', statusCode: 200 };
         } catch (error) {
-            throw new BadRequestException({ message: 'Token invalid/expired' });
+            throw new BadRequestException('Token invalid/expired');
         }
     }
 
@@ -106,7 +103,7 @@ export class AuthenService {
         console.log(email);
         const user = await this.userAccountUtil.findByEmail(email);
         console.log(user);
-        if (!user) throw new BadRequestException({message: 'Account not exist'});
+        if (!user) throw new BadRequestException('Account not exist');
 
         const payload = { email };
         const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
@@ -127,7 +124,7 @@ export class AuthenService {
             `,
         });
 
-        return { message: 'Reset link sent' };
+        return { message: 'Reset link sent', statusCode: 200 };
     }
 
     async resetPassword(token: string, newPassword: string) {
@@ -140,9 +137,9 @@ export class AuthenService {
         
             await this.userAccountUtil.updatePassword(user, newPassword);
         
-            return { message: 'New password set' };
+            return { message: 'New password set', statusCode: 200 };
         } catch (error) {
-            throw new BadRequestException({ message: 'Token invalid/expired' });
+            throw new ConflictException('Token invalid/expired');
         }
     }
 }

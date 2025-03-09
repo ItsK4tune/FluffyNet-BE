@@ -1,6 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRedis } from '@nestjs-modules/ioredis';
-import Redis from 'ioredis';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { FollowUtil } from 'src/utils/queries/follow.util';
 import { UserProfileUtil } from 'src/utils/queries/user-profile.util';
 
@@ -9,11 +7,10 @@ export class FollowService {
     constructor(
         private readonly followUtil: FollowUtil,
         private readonly userProfileUtil: UserProfileUtil,
-        // @InjectRedis() private readonly redis: Redis,
     ) {}
 
     async getStatus(user_id: number, target_id: number) {
-        if (user_id === target_id) throw new BadRequestException('Cannot follow yourself');
+        if (user_id === target_id) throw new ConflictException('Cannot follow yourself');
         
         const user = this.userProfileUtil.getProfileByUserId(user_id);
         const target = this.userProfileUtil.getProfileByUserId(target_id);
