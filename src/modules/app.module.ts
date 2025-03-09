@@ -7,6 +7,7 @@ import { env } from 'src/config';
 import { AuthenModule } from './authen/authen.module';
 import { ProfileModule } from './profile/profile.module';
 import { HealthcheckModule } from './healthcheck/healthcheck.module';
+import { FollowModule } from './follow/follow.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { HealthcheckModule } from './healthcheck/healthcheck.module';
     HealthcheckModule,
     AuthenModule,
     ProfileModule,
+    FollowModule,
   ],
 })
 export class AppModule {}

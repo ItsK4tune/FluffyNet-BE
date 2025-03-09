@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { UserAccount } from "src/modules/authen/entities/user-account.entity";
 import * as bcrypt from "bcrypt"
+import { UserProfile } from "src/modules/profile/entities/user-profile.entity";
 
 @Injectable()
 export class UserAccountUtil{
@@ -43,6 +44,10 @@ export class UserAccountUtil{
         userAccount.verifyEmail = true;
         await this.repo.save(userAccount);
         return;
+    }
+
+    create(username: string, ecryptPassword: string) {
+        return this.repo.create({ username, password: ecryptPassword, profile: new UserProfile() });
     }
 
     async save (userAccount: UserAccount) {

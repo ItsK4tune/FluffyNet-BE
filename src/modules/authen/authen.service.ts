@@ -13,7 +13,6 @@ import { UserProfile } from '../profile/entities/user-profile.entity';
 @Injectable()
 export class AuthenService {
     constructor(
-        @InjectRepository(UserAccount) private readonly repo: Repository<UserAccount>,
         private readonly jwtService: JwtService,
         private readonly mailService: MailService,
         private readonly userAccountUtil: UserAccountUtil,
@@ -22,13 +21,13 @@ export class AuthenService {
     async createUser ({ username, password } : AuthenDTO) {
         if (!username || !password) throw new BadRequestException({ message: 'Username and password are required' });
 
-        const findUser = await this.repo.findOne({ where: { username } });
+        const findUser = await this.userAccountUtil.findByUsername(username);
         if (findUser) throw new ConflictException({ message: 'Username already exists' });
 
         const ecryptPassword = await bcrypt.hash(password, 12)
 
-        const user = this.repo.create({ username, password: ecryptPassword, profile: new UserProfile() });
-        await this.repo.save(user);
+        const user = this.userAccountUtil.create(username, ecryptPassword);
+        await this.userAccountUtil.save(user);
 
         return { message: 'User created successfully' };
     }
@@ -84,7 +83,7 @@ export class AuthenService {
             `,
         });
 
-        return { message: 'Reset link sent' };
+        return { message: 'Verify link sent' };
     }
 
     async verify(token: string) {
