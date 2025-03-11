@@ -12,13 +12,13 @@ export class ProfileController {
     constructor(private readonly profileService: ProfileService) {}
 
     @ApiOperation({ summary: `Get user's profile`, description: `Return user's profile.` })
-    @ApiResponse({ status: 200, description: 'Fetch successfully from user_id: <user_id> + profile' })
+    @ApiResponse({ status: 201, description: 'Fetch successfully from user_id: <user_id> + profile' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @Get('view-profile')
     async viewProfile(@Query('user_id') user_id: number) {     
         const profile = await this.profileService.getProfile(user_id);
         if (!profile)   throw new BadRequestException({ message: 'User not found'});
-        return { message: `Fetch successfully from user_id: ${user_id}`, statusCode: 200, profile: profile };
+        return { message: `Fetch successfully from user_id: ${user_id}`, profile: profile };
     }
 
     @ApiOperation({ summary: `Edit user's profile`, description: `Authenticate user, check authorize (only user can edit their's profile).` })
@@ -42,7 +42,7 @@ export class ProfileController {
             },
         },
     })
-    @ApiResponse({ status: 200, description: 'Profile updated successfully + profile' })
+    @ApiResponse({ status: 201, description: 'Profile updated successfully + profile' })
     @ApiResponse({ status: 404, description: 'User profile not found' })
     @Put('edit-profile')
     async editProfile(@Request() req, @Body() body: ProfileDto) {

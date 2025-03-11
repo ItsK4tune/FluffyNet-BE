@@ -4,7 +4,6 @@ import { Injectable } from '@nestjs/common';
 export class HealthCheckService {
   public async healthCheck() {
     return {
-      statusCode: 200,
       message: 'Server is running',
     };
   }

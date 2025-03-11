@@ -26,7 +26,7 @@ export class AuthenService {
         const user = this.userAccountUtil.create(username, ecryptPassword);
         await this.userAccountUtil.save(user);
 
-        return { message: 'User created successfully', statusCode: 200 };
+        return { message: 'User created successfully'};
     }
 
     async validateUser ({ username, email, password } : AuthenDTO) {
@@ -80,7 +80,7 @@ export class AuthenService {
             `,
         });
 
-        return { message: 'Verify link sent', statusCode: 200 };
+        return { message: 'Verify link sent' };
     }
 
     async verify(token: string) {
@@ -93,7 +93,7 @@ export class AuthenService {
         
             await this.userAccountUtil.updateVerifyEmail(user);
         
-            return { message: 'Verified', statusCode: 200 };
+            return { message: 'Verified' };
         } catch (error) {
             throw new BadRequestException('Token invalid/expired');
         }
@@ -124,7 +124,7 @@ export class AuthenService {
             `,
         });
 
-        return { message: 'Reset link sent', statusCode: 200 };
+        return { message: 'Reset link sent' };
     }
 
     async resetPassword(token: string, newPassword: string) {
@@ -137,7 +137,7 @@ export class AuthenService {
         
             await this.userAccountUtil.updatePassword(user, newPassword);
         
-            return { message: 'New password set', statusCode: 200 };
+            return { message: 'New password set' };
         } catch (error) {
             throw new ConflictException('Token invalid/expired');
         }
