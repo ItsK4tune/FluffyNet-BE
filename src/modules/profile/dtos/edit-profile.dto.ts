@@ -1,4 +1,12 @@
-import { IsEmail, IsOptional, IsString, IsInt, Min, Max, IsUrl } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  IsInt,
+  Min,
+  Max,
+  IsUrl,
+} from 'class-validator';
 
 export class ProfileDto {
   @IsOptional()

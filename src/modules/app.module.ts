@@ -8,6 +8,7 @@ import { AuthenModule } from './authen/authen.module';
 import { ProfileModule } from './profile/profile.module';
 import { HealthcheckModule } from './healthcheck/healthcheck.module';
 import { FollowModule } from './follow/follow.module';
+import { PostsModule } from './posts/posts.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { FollowModule } from './follow/follow.module';
     AuthenModule,
     ProfileModule,
     FollowModule,
+    PostsModule,
   ],
 })
 export class AppModule {}

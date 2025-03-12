@@ -15,11 +15,11 @@ import { UserProfile } from '../profile/entities/user-profile.entity';
     TypeOrmModule.forFeature([Follow, UserProfile]),
     PassportModule,
     JwtModule.register({
-      secret: env.jwt.secret, 
-      signOptions: { expiresIn: env.jwt.time }, 
+      secret: env.jwt.secret,
+      signOptions: { expiresIn: env.jwt.time },
     }),
   ],
   controllers: [FollowController],
-  providers: [FollowService, FollowUtil, UserProfileUtil]
+  providers: [FollowService, FollowUtil, UserProfileUtil],
 })
 export class FollowModule {}

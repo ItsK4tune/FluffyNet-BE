@@ -8,22 +8,27 @@ export class MailService {
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      service: 'gmail', 
+      service: 'gmail',
       auth: {
-        user: env.mailer.sender, 
+        user: env.mailer.sender,
         pass: env.mailer.password,
       },
     });
   }
 
-  async sendMail(options: { to: string; subject: string; text: string; html?: string }) {
+  async sendMail(options: {
+    to: string;
+    subject: string;
+    text: string;
+    html?: string;
+  }) {
     try {
       const mailOptions = {
-          from: `"Social Network" <${env.mailer.sender}>`,
-          to: options.to,
-          subject: options.subject,
-          text: options.text,
-          html: options.html || options.text, 
+        from: `"Social Network" <${env.mailer.sender}>`,
+        to: options.to,
+        subject: options.subject,
+        text: options.text,
+        html: options.html || options.text,
       };
 
       await this.transporter.sendMail(mailOptions);

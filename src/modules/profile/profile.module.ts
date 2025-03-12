@@ -21,6 +21,6 @@ import { PassportModule } from '@nestjs/passport';
     }),
   ],
   controllers: [ProfileController],
-  providers: [ProfileService, UserAccountUtil, UserProfileUtil, JwtStrategy]
+  providers: [ProfileService, UserAccountUtil, UserProfileUtil, JwtStrategy],
 })
 export class ProfileModule {}

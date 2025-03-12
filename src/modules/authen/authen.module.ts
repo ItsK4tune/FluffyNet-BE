@@ -17,12 +17,17 @@ import { UserProfile } from '../profile/entities/user-profile.entity';
     TypeOrmModule.forFeature([UserAccount, UserProfile]),
     PassportModule,
     JwtModule.register({
-      secret: env.jwt.secret, 
-      signOptions: { expiresIn: env.jwt.time }, 
+      secret: env.jwt.secret,
+      signOptions: { expiresIn: env.jwt.time },
     }),
   ],
   controllers: [AuthenController],
-  providers: [AuthenService, MailService, UserAccountUtil, UserProfileUtil, GoogleStrategy],
+  providers: [
+    AuthenService,
+    MailService,
+    UserAccountUtil,
+    UserProfileUtil,
+    GoogleStrategy,
+  ],
 })
-
 export class AuthenModule {}
