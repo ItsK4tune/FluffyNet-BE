@@ -21,17 +21,16 @@ export class AuthenService {
 
   async createUser({ username, password }: AuthenDTO) {
     if (!username || !password)
-      throw new BadRequestException('Username and password are required');
+      return 400;
 
     const findUser = await this.userAccountUtil.findByUsername(username);
-    if (findUser) throw new ConflictException('Username already exists');
+    if (findUser) 
+      return 409;
 
     const ecryptPassword = await bcrypt.hash(password, 12);
 
     const user = this.userAccountUtil.create(username, ecryptPassword);
     await this.userAccountUtil.save(user);
-
-    return { message: 'User created successfully'};
   }
 
   async validateUser({ username, email, password }: AuthenDTO) {
@@ -66,57 +65,11 @@ export class AuthenService {
     return null;
   }
 
-  async verifyEmail(email: string) {
-    const user = await this.userAccountUtil.findByEmail(email);
-
-    if (!user) throw new BadRequestException('Account not exist');
-
-    if (user.verifyEmail)
-      throw new ConflictException('Email has been verified');
-
-    const payload = { email };
-    const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
-
-    const verifyLink = `${env.dns}/verify?token=${token}`;
-    await this.mailService.sendMail({
-      to: email,
-      subject: 'Verify email',
-      text: `Dear user,\n\nWe received a request to verify your email...`,
-      html: `
-                <h1>Dear user,</h1>
-                <p>We received a request to verify your email. If you did not make this request, please ignore this email.</p>
-                <p>To verify your email, click the link below:</p>
-                <p><a href="${verifyLink}">${verifyLink}</a></p>
-                <p>This link will expire in <strong>${env.mailer.time}</strong> for security reasons.</p>
-                <p>If you have any issues, please contact our support team.</p>
-                <p>Best regards,<br>Your Website Team</p>
-            `,
-    });
-
-    return { message: 'Verify link sent' };
-  }
-
-  async verify(token: string) {
-    try {
-      const decoded = this.jwtService.verify(token);
-      const email = decoded.email;
-
-      const user = await this.userAccountUtil.findByEmail(email);
-      if (!user) throw new ConflictException('Wrong token');
-
-      await this.userAccountUtil.updateVerifyEmail(user);
-
-      return { message: 'Verified' };
-    } catch (error) {
-      throw new BadRequestException('Token invalid/expired');
-    }
-  }
-
   async forgotPassword(email: string) {
-    console.log(email);
     const user = await this.userAccountUtil.findByEmail(email);
-    console.log(user);
-    if (!user) throw new BadRequestException('Account not exist');
+
+    if (!user) 
+      return 400;
 
     const payload = { email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
@@ -137,7 +90,7 @@ export class AuthenService {
             `,
     });
 
-    return { message: 'Reset link sent' };
+    return;
   }
 
   async resetPassword(token: string, newPassword: string) {
@@ -146,13 +99,61 @@ export class AuthenService {
           const email = decoded.email;
       
           const user = await this.userAccountUtil.findByEmail(email);
-          if (!user) throw new BadRequestException('Wrong token');
+          if (!user) 
+            return 400;
       
           await this.userAccountUtil.updatePassword(user, newPassword);
       
-          return { message: 'New password set' };
+          return;
       } catch (error) {
-          throw new ConflictException('Token invalid/expired');
+          return 409;
       }
+  }
+
+  async verifyEmail(email: string) {
+    const user = await this.userAccountUtil.findByEmail(email);
+
+    if (!user) 
+      return 400;
+    if (user.verifyEmail)
+      return 409;
+
+    const payload = { email };
+    const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
+
+    const verifyLink = `${env.dns}/verify?token=${token}`;
+    await this.mailService.sendMail({
+      to: email,
+      subject: 'Verify email',
+      text: `Dear user,\n\nWe received a request to verify your email...`,
+      html: `
+                <h1>Dear user,</h1>
+                <p>We received a request to verify your email. If you did not make this request, please ignore this email.</p>
+                <p>To verify your email, click the link below:</p>
+                <p><a href="${verifyLink}">${verifyLink}</a></p>
+                <p>This link will expire in <strong>${env.mailer.time}</strong> for security reasons.</p>
+                <p>If you have any issues, please contact our support team.</p>
+                <p>Best regards,<br>Your Website Team</p>
+            `,
+    });
+
+    return;
+  }
+
+  async verify(token: string) {
+    try {
+      const decoded = this.jwtService.verify(token);
+      const email = decoded.email;
+
+      const user = await this.userAccountUtil.findByEmail(email);
+      if (!user) 
+        return 409;
+
+      await this.userAccountUtil.updateVerifyEmail(user);
+
+      return { message: 'Verified' };
+    } catch (error) {
+      return 400;
+    }
   }
 }
