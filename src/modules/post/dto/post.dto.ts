@@ -6,11 +6,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 
-export class CreatePostDto {
-  @IsNumber()
-  @IsNotEmpty()
-  user_id: number;
-
+export class PostDto {
   @ValidateIf((o) => !o.image && !o.video)
   @IsString()
   @IsNotEmpty()

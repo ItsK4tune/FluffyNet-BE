@@ -1,15 +1,17 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
+  Request,
   UseGuards,
 } from '@nestjs/common';
-import { PostsService } from './posts.service';
-import { PostUil } from 'src/utils/queries/post.util';
+import { PostService } from './post.service';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -19,54 +21,53 @@ import {
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
 import { Roles } from 'src/decorators/role.decorator';
-import { CreatePostDto } from './dto/create-post-dto';
-import { UpdatePostDto } from './dto/update-post.dto';
+import { PostDto } from './dto/post.dto';
 
 @Controller('posts')
 export class PostsController {
   constructor(
-    private readonly postsService: PostsService,
-    private readonly postUtil: PostUil,
+    private readonly postService: PostService,
   ) {}
 
   @ApiOperation({ summary: 'Get all posts' })
   @ApiResponse({
-    status: 200,
+    status: 201,
     description: 'List of all posts retrieved successfully',
   })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user', 'admin')
   @Get()
   async getAllPosts() {
-    const posts = await this.postsService.getAllPosts();
+    const posts = await this.postService.getAllPosts();
     return {
       message: 'List of all posts retrieved successfully',
-      statusCode: 200,
-      posts,
+      post: posts,
     };
   }
 
   @ApiOperation({ summary: 'Get post by ID' })
   @ApiResponse({
-    status: 200,
+    status: 201,
     description: 'Post retrieved successfully ',
   })
   @ApiResponse({
     status: 404,
     description: 'Post not found',
   })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user', 'admin')
   @Get('/:post_id')
   async getPostById(@Param('post_id') post_id: number) {
-    const post = await this.postsService.findOneById(post_id);
+    const post = await this.postService.findOneById(post_id);
     if (post) {
       return {
         message: 'Post retrieved successfully',
-        statusCode: 200,
-        post,
+        post: post,
       };
     }
-    return {
-      message: 'Post not found',
-      statusCode: 404,
-    };
+    throw new NotFoundException('Post not found');
   }
 
   @ApiOperation({ summary: 'Create a new post' })
@@ -77,30 +78,29 @@ export class PostsController {
     schema: {
       type: 'object',
       properties: {
-        user_id: { type: 'number', example: 1 },
         body: { type: 'string', example: 'This is a post body' },
         image: { type: 'string', example: 'image-url.jpg' },
         video: { type: 'string', example: 'video-url.mp4' },
         repost_id: { type: 'number', example: 5 },
       },
-      required: ['user_id'],
       oneOf: [
         { required: ['body'] },
         { required: ['image'] },
         { required: ['video'] },
+        { required: ['repost_id']},
       ],
     },
   })
-  @ApiResponse({ status: 201, description: 'Post created successfully ' })
-  @ApiResponse({ status: 400, description: 'Bad request ' })
+  @ApiResponse({ status: 201, description: 'Post created successfully' })
+  @ApiResponse({ status: 400, description: 'Repost_id invalid' })
   @Post()
-  async createPost(@Body() createPostDto: CreatePostDto) {
-    const newPost = await this.postsService.createPost(createPostDto);
-    return {
-      message: 'Post created successfully',
-      statusCode: 201,
-      newPost,
-    };
+  async createPost(@Request() req, @Body() postDto: PostDto) {
+    const newPost = await this.postService.createPost(postDto);
+
+    if (newPost)
+      return { message: 'Post created successfully' };
+
+    throw new BadRequestException('Repost_id invalid');
   }
 
   @ApiOperation({ summary: 'Update a post' })
@@ -127,20 +127,18 @@ export class PostsController {
   @Patch('/:post_id')
   async updatePost(
     @Param('post_id') post_id: number,
-    @Body() updatedPostDto: UpdatePostDto,
+    @Body() postDto: PostDto,
   ) {
-    const updatedPost = await this.postsService.updatePost(
+    const updatedPost = await this.postService.updatePost(
       post_id,
-      updatedPostDto,
+      postDto,
     );
     if (updatedPost) {
       return {
         message: 'Post updated successfully',
-        statusCode: 200,
-        updatedPost,
       };
     }
-    return { message: 'Post not found', statusCode: 404 };
+    throw new NotFoundException('Post not found');
   }
 
   @ApiOperation({ summary: 'Delete a post' })
@@ -151,13 +149,11 @@ export class PostsController {
   @ApiResponse({ status: 404, description: 'Post not found' })
   @Delete('/:post_id')
   async deletePost(@Param('post_id') post_id: number) {
-    const result = await this.postsService.deletePost(post_id);
+    const result = await this.postService.deletePost(post_id);
     if (result.affected > 0) {
-      return { message: 'Post deleted successfully', statusCode: '200' };
+      return { message: 'Post deleted successfully' };
     }
-    return {
-      message: 'Post not found',
-      statusCode: 404,
-    };
+    
+    throw new NotFoundException('Post not found');
   }
 }

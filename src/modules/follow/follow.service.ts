@@ -3,8 +3,8 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import { FollowUtil } from 'src/utils/queries/follow.util';
-import { UserProfileUtil } from 'src/utils/queries/user-profile.util';
+import { FollowUtil } from 'src/modules/follow/follow.util';
+import { UserProfileUtil } from 'src/modules/profile/user-profile.util';
 
 @Injectable()
 export class FollowService {

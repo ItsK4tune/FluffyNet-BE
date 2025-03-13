@@ -7,9 +7,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { env } from 'src/config';
 import { GoogleStrategy } from '../../strategies/google.strategy';
-import { UserAccountUtil } from 'src/utils/queries/user-account.util';
+import { UserAccountUtil } from 'src/modules/authen/user-account.util';
 import { MailService } from './mail.service';
-import { UserProfileUtil } from 'src/utils/queries/user-profile.util';
+import { UserProfileUtil } from 'src/modules/profile/user-profile.util';
 import { UserProfile } from '../profile/entities/user-profile.entity';
 
 @Module({

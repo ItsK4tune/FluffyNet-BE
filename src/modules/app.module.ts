@@ -8,7 +8,7 @@ import { AuthenModule } from './authen/authen.module';
 import { ProfileModule } from './profile/profile.module';
 import { HealthcheckModule } from './healthcheck/healthcheck.module';
 import { FollowModule } from './follow/follow.module';
-import { PostsModule } from './posts/posts.module';
+import { PostsModule } from './post/post.module';
 
 @Module({
   imports: [

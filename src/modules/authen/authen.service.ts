@@ -7,7 +7,7 @@ import { UserAccount } from './entities/user-account.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { AuthenDTO } from './dtos/authen.dto';
-import { UserAccountUtil } from 'src/utils/queries/user-account.util';
+import { UserAccountUtil } from 'src/modules/authen/user-account.util';
 import { MailService } from './mail.service';
 import { env } from 'src/config';
 

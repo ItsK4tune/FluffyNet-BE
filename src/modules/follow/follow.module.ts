@@ -6,8 +6,8 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { env } from 'src/config';
 import { Follow } from './entities/follow.entity';
-import { FollowUtil } from 'src/utils/queries/follow.util';
-import { UserProfileUtil } from 'src/utils/queries/user-profile.util';
+import { FollowUtil } from 'src/modules/follow/follow.util';
+import { UserProfileUtil } from 'src/modules/profile/user-profile.util';
 import { UserProfile } from '../profile/entities/user-profile.entity';
 
 @Module({
