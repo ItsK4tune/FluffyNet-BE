@@ -9,10 +9,14 @@ export class Follow {
   @PrimaryColumn()
   following_id: number;
 
-  @ManyToOne(() => UserProfile, (user) => user.followers, { onDelete: 'CASCADE' })
+  @ManyToOne(() => UserProfile, (user) => user.followers, {
+    onDelete: 'CASCADE',
+  })
   follower: UserProfile;
 
-  @ManyToOne(() => UserProfile, (user) => user.following, { onDelete: 'CASCADE' })
+  @ManyToOne(() => UserProfile, (user) => user.following, {
+    onDelete: 'CASCADE',
+  })
   following: UserProfile;
 
   @CreateDateColumn()

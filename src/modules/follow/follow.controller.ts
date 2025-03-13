@@ -1,5 +1,19 @@
-import { Controller, Get, Query, UseGuards, Request, Post, Body } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Query,
+  UseGuards,
+  Request,
+  Post,
+  Body,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Roles } from 'src/decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
@@ -8,9 +22,7 @@ import { FollowService } from './follow.service';
 @ApiTags('Follow')
 @Controller('follow')
 export class FollowController {
-    constructor(
-        private readonly followService: FollowService,
-    ) {}
+  constructor(private readonly followService: FollowService) {}
 
     @ApiOperation({ summary: `Get status whether user has follow target`, description: `Authenticate, authorize and return user's following status toward target.` })
     @UseGuards(JwtAuthGuard, RolesGuard)

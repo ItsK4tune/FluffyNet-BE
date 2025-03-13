@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { UserProfileUtil } from 'src/utils/queries/user-profile.util';
+import { UserProfileUtil } from './user-profile.util';
 import { ProfileDto } from './dtos/edit-profile.dto';
-import { UserAccountUtil } from 'src/utils/queries/user-account.util';
+import { UserAccountUtil } from '../authen/user-account.util';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
 import { RedisEnum } from 'src/utils/enums/redis.enum';

@@ -1,4 +1,13 @@
-import { Entity, Column, PrimaryColumn, OneToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryColumn,
+  OneToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { UserAccount } from 'src/modules/authen/entities/user-account.entity';
 import { Follow } from 'src/modules/follow/entities/follow.entity';
 
@@ -49,7 +58,9 @@ export class UserProfile {
   @OneToMany(() => Follow, (follow) => follow.following)
   followers: Follow[];
 
-  @OneToOne(() => UserAccount, account => account.profile, { onDelete: 'CASCADE' })
+  @OneToOne(() => UserAccount, (account) => account.profile, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'user_id' })
   user: UserAccount;
 }

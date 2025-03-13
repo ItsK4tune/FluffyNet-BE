@@ -1,15 +1,30 @@
-import { Controller, Get, Put, Body, UseGuards, Request, BadRequestException, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Body,
+  UseGuards,
+  Request,
+  BadRequestException,
+  Query,
+} from '@nestjs/common';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { ProfileService } from './profile.service';
 import { RolesGuard } from 'src/guards/roles.guard';
 import { Roles } from 'src/decorators/role.decorator';
-import { ApiBody, ApiOperation, ApiBearerAuth, ApiTags, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiTags,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { ProfileDto } from './dtos/edit-profile.dto';
 
 @ApiTags('Profile')
 @Controller('profile')
 export class ProfileController {
-    constructor(private readonly profileService: ProfileService) {}
+  constructor(private readonly profileService: ProfileService) {}
 
     @ApiOperation({ summary: `Get user's profile`, description: `Return user's profile.` })
     @ApiResponse({ status: 201, description: 'Fetch successfully from user_id: <user_id> + profile' })

@@ -1,5 +1,5 @@
 export enum RedisEnum {
-    profile = "profile",
-    follower = "follower",
-    following = "following",
+  profile = 'profile',
+  follower = 'follower',
+  following = 'following',
 }

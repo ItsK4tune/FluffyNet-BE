@@ -1,4 +1,13 @@
-import { Body, Controller, BadRequestException, Post, UseGuards, Get, Req, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  BadRequestException,
+  Post,
+  UseGuards,
+  Get,
+  Req,
+  Query,
+} from '@nestjs/common';
 import { ApiBody, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthenService } from './authen.service';
 import { AuthenDTO } from './dtos/authen.dto';
@@ -7,9 +16,7 @@ import { GoogleAuthGuard } from '../../guards/google.guard';
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthenController {
-    constructor (
-        private readonly authenService: AuthenService,
-    ){}
+  constructor(private readonly authenService: AuthenService) {}
 
     @ApiOperation({ summary: 'User register', description: 'Create user for further using.' })
     @ApiBody({
@@ -55,10 +62,13 @@ export class AuthenController {
         return { message: "Login successfully", token: user };
     }
 
-    @ApiOperation({ summary: 'User login via Google Oauth', description: 'Authenticate user and return JWT token.' })
-    @UseGuards(GoogleAuthGuard)
-    @Get('google')
-    async googleAuth() {}
+  @ApiOperation({
+    summary: 'User login via Google Oauth',
+    description: 'Authenticate user and return JWT token.',
+  })
+  @UseGuards(GoogleAuthGuard)
+  @Get('google')
+  async googleAuth() {}
 
     @ApiOperation({ summary: 'Callback url for Google Oauth' })
     @UseGuards(GoogleAuthGuard)

@@ -1,0 +1,30 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:latest
+    container_name: mysql_container
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword # Set root password
+      MYSQL_DATABASE: socialnetwork_db # Automatically create this database
+      MYSQL_USER: user # Optional: create a user
+      MYSQL_PASSWORD: userpassword # Optional: user password
+    ports:
+      - '3306:3306' # Map MySQL port to host
+    volumes:
+      - mysql_data:/var/lib/mysql # Persist MySQL data
+    networks:
+      - backend
+
+  redis:
+    image: redis:alpine
+    container_name: redis_container
+    ports:
+      - '6379:6379' # Redis port
+    networks:
+      - backend
+
+volumes:
+  mysql_data: # Define volume for MySQL
+
+networks:
+  backend:

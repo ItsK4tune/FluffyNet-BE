@@ -42,7 +42,7 @@ export const env = {
   dns: envVars.DNS,
   jwt: {
     secret: envVars.JWT_SECRET,
-    time: envVars.JWT_TIME
+    time: envVars.JWT_TIME,
   },
   google: {
     id: envVars.GOOGLE_CLIENT_ID,
