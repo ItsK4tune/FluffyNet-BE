@@ -48,4 +48,12 @@ export class RedisCacheService {
   async expire(key: string, ttl: number): Promise<void> {
     await this.redis.expire(key, ttl);
   }
+
+  async sadd(key: string, data: string) {
+    await this.redis.sadd(key, data);
+  }
+
+  async scheck(key: string, data: string) {
+    return await this.redis.sismember(key, data);
+  }
 }

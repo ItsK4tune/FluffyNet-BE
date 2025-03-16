@@ -9,6 +9,9 @@ import { AccountUtil } from 'src/modules/authen/account.util';
 import { MailService } from './mail.service';
 import { env } from 'src/config';
 import { v4 as uuidv4 } from 'uuid';
+import { RedisCacheService } from '../redis-cache/redis-cache.service';
+import { RedisEnum } from 'src/utils/enums/redis.enum';
+import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
 
 @Injectable()
 export class AuthenService {
@@ -16,6 +19,7 @@ export class AuthenService {
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
     private readonly accountUtil: AccountUtil,
+    private readonly redisCacheService: RedisCacheService,
   ) {}
 
   async createUser({ username, password }: AuthenDTO): Promise<Boolean> {
@@ -29,7 +33,7 @@ export class AuthenService {
     await this.accountUtil.save(user);
   }
 
-  async validateUser({ username, email, password }: AuthenDTO): Promise<string> {
+  async login({ username, email, password }: AuthenDTO): Promise<string> {
     let findUser: Account;
 
     if (username) {
@@ -54,10 +58,17 @@ export class AuthenService {
         updated_at,
         ...user
       } = findUser;
+      
       return this.jwtService.sign({ user, jit: uuidv4() });
     }
 
     return null;
+  }
+
+  async logout(jit: string) {
+    const key = `${RedisEnum.jit}`;
+    await this.redisCacheService.sadd(key, jit);
+    await this.redisCacheService.expire(key, convertToSeconds(env.jwt.time));
   }
 
   async forgotPassword(email: string): Promise<Boolean> {

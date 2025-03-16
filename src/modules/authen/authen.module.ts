@@ -11,6 +11,7 @@ import { AccountUtil } from 'src/modules/authen/account.util';
 import { MailService } from './mail.service';
 import { ProfileUtil } from 'src/modules/profile/profile.util';
 import { Profile } from '../profile/entities/user-profile.entity';
+import { RedisCacheService } from '../redis-cache/redis-cache.service';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { Profile } from '../profile/entities/user-profile.entity';
     AccountUtil,
     ProfileUtil,
     GoogleStrategy,
+    RedisCacheService,
   ],
 })
 export class AuthenModule {}

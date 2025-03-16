@@ -6,13 +6,17 @@ import {
   UseGuards,
   Get,
   Req,
+  Request,
   Query,
   ConflictException,
 } from '@nestjs/common';
-import { ApiBody, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiBody, ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthenService } from './authen.service';
 import { AuthenDTO } from './dtos/authen.dto';
 import { GoogleAuthGuard } from '../../guards/google.guard';
+import { Roles } from 'src/decorators/role.decorator';
+import { JwtAuthGuard } from 'src/guards/jwt.guard';
+import { RolesGuard } from 'src/guards/roles.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -59,9 +63,21 @@ export class AuthenController {
     @ApiResponse({ status: 400, description: 'Wrong username/email or password' })
     @Post('login')
     async login(@Body() authenDTO: AuthenDTO) {
-        const user = await this.authenService.validateUser(authenDTO);
+        const user = await this.authenService.login(authenDTO);
         if (!user) throw new BadRequestException('Wrong username/email or password');
         return { message: "Login successfully", token: user };
+    }
+
+    @ApiOperation({ summary: 'User logout', description: 'Withdraw JWT token and logout' })
+    @ApiResponse({ status: 201, description: `Logout successfully` })
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('user', 'admin')
+    @Get('logout')
+    async logout(@Request() req) {
+        const jit = req.user.jit; 
+        await this.authenService.logout(jit);
+        return { message: "Logout successfully" };
     }
 
     @ApiOperation({
