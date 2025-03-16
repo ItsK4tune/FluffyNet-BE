@@ -7,12 +7,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { env } from 'src/config';
 import { Follow } from './entities/follow.entity';
 import { FollowUtil } from 'src/modules/follow/follow.util';
-import { UserProfileUtil } from 'src/modules/profile/user-profile.util';
-import { UserProfile } from '../profile/entities/user-profile.entity';
+import { ProfileUtil } from 'src/modules/profile/profile.util';
+import { Profile } from '../profile/entities/user-profile.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Follow, UserProfile]),
+    TypeOrmModule.forFeature([Follow, Profile]),
     PassportModule,
     JwtModule.register({
       secret: env.jwt.secret,
@@ -20,6 +20,6 @@ import { UserProfile } from '../profile/entities/user-profile.entity';
     }),
   ],
   controllers: [FollowController],
-  providers: [FollowService, FollowUtil, UserProfileUtil],
+  providers: [FollowService, FollowUtil, ProfileUtil],
 })
 export class FollowModule {}

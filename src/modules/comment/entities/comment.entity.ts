@@ -1,5 +1,5 @@
-import { Entity, Column, PrimaryColumn, ManyToOne, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn } from 'typeorm';
-import { UserProfile } from 'src/modules/profile/entities/user-profile.entity';
+import { Entity, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn } from 'typeorm';
+import { Profile } from 'src/modules/profile/entities/user-profile.entity';
 
 @Entity('comment')
 export class Comment {
@@ -27,6 +27,6 @@ export class Comment {
   @Column()
   post_id: number;
 
-  @ManyToOne(() => UserProfile, (user) => user.user_id, { onDelete: 'CASCADE' })
-  user: UserProfile;
+  @ManyToOne(() => Profile, (user) => user.user_id, { onDelete: 'CASCADE' })
+  user: Profile;
 }

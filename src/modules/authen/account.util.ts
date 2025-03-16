@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserAccount } from 'src/modules/authen/entities/user-account.entity';
+import { Account } from 'src/modules/authen/entities/account.entity';
 import * as bcrypt from 'bcrypt';
-import { UserProfile } from 'src/modules/profile/entities/user-profile.entity';
+import { Profile } from 'src/modules/profile/entities/user-profile.entity';
 
 @Injectable()
-export class UserAccountUtil {
+export class AccountUtil {
   constructor(
-    @InjectRepository(UserAccount)
-    private readonly repo: Repository<UserAccount>,
+    @InjectRepository(Account)
+    private readonly repo: Repository<Account>,
   ) {}
 
   async findByUserID(user_id: number) {
@@ -35,12 +35,12 @@ export class UserAccountUtil {
     });
   }
 
-  async updatePassword(user: UserAccount, newPassword: string) {
+  async updatePassword(user: Account, newPassword: string) {
     user.password = await bcrypt.hash(newPassword, 12);
     await this.repo.save(user);
   }
 
-  async updateVerifyEmail(userAccount: UserAccount) {
+  async updateVerifyEmail(userAccount: Account) {
     userAccount.verifyEmail = true;
     await this.repo.save(userAccount);
   }
@@ -49,11 +49,11 @@ export class UserAccountUtil {
     return this.repo.create({
       username,
       password: ecryptPassword,
-      profile: new UserProfile(),
+      profile: new Profile(),
     });
   }
 
-  async save(userAccount: UserAccount) {
+  async save(userAccount: Account) {
     await this.repo.save(userAccount);
   }
 }

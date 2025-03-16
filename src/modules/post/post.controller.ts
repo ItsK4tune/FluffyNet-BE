@@ -38,7 +38,7 @@ export class PostsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('user', 'admin')
-  @Get()
+  @Get('post-list')
   async getAllPosts() {
     const posts = await this.postService.getAllPosts();
     return {
@@ -59,7 +59,7 @@ export class PostsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('user', 'admin')
-  @Get('/:post_id')
+  @Get('post/:post_id')
   async getPostById(@Param('post_id') post_id: number) {
     const post = await this.postService.findOneById(post_id);
     if (post) {
@@ -94,7 +94,7 @@ export class PostsController {
   })
   @ApiResponse({ status: 201, description: 'Post created successfully' })
   @ApiResponse({ status: 400, description: 'Repost_id invalid' })
-  @Post()
+  @Post('post/:post_id')
   async createPost(@Request() req, @Body() postDto: PostDto) {
     const user_id = req.user.user_id;
     const newPost = await this.postService.createPost(user_id, postDto);
@@ -124,7 +124,7 @@ export class PostsController {
   @ApiResponse({ status: 200, description: 'Post updated successfully ' })
   @ApiResponse({ status: 404, description: 'Post not found' })
   @ApiResponse({ status: 409, description: 'User is not the owner' })
-  @Patch('/:post_id')
+  @Patch('post/:post_id')
   async updatePost(@Request() req,
     @Param('post_id') post_id: number,
     @Body() postDto: PostDto,
@@ -149,7 +149,7 @@ export class PostsController {
   @ApiResponse({ status: 200, description: 'Post deleted successfully ' })
   @ApiResponse({ status: 404, description: 'Post not found' })
   @ApiResponse({ status: 409, description: 'User is not the owner of this post' })
-  @Delete('/:post_id')
+  @Delete('post/:post_id')
   async deletePost(@Request() req, @Param('post_id') post_id: number) {
     const user_id = req.user.user_id;
     const result = await this.postService.deletePost(user_id, post_id);

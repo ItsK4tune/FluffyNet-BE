@@ -1,7 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { UserProfileUtil } from './user-profile.util';
+import { Injectable } from '@nestjs/common';
+import { ProfileUtil } from './profile.util';
 import { ProfileDto } from './dtos/edit-profile.dto';
-import { UserAccountUtil } from '../authen/user-account.util';
 import { RedisEnum } from 'src/utils/enums/redis.enum';
 import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
 
@@ -11,7 +10,7 @@ import { RedisCacheService } from '../redis-cache/redis-cache.service';
 @Injectable()
 export class ProfileService {
     constructor (
-        private readonly userProfileUtil: UserProfileUtil,
+        private readonly profileUtil: ProfileUtil,
         private readonly redisCacheService: RedisCacheService,
     ) {}
 
@@ -21,7 +20,7 @@ export class ProfileService {
 
         if (cache)  return cache;
 
-        const profile = await this.userProfileUtil.getProfileByUserId(user_id);
+        const profile = await this.profileUtil.getProfileByUserId(user_id);
         if (!profile) return null;
         
         await this.redisCacheService.hsetall(key, profile);
@@ -36,10 +35,10 @@ export class ProfileService {
         const key = `${RedisEnum.profile}:${target_id}`;
         await this.redisCacheService.del(key);
 
-        let userProfile = await this.userProfileUtil.getProfileByUserId(user_id);
+        let userProfile = await this.profileUtil.getProfileByUserId(user_id);
         if (!userProfile)   return null; 
 
         userProfile = { ...userProfile, ...editData };
-        await this.userProfileUtil.save(userProfile);
+        await this.profileUtil.save(userProfile);
     }
 }

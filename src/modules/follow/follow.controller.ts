@@ -24,7 +24,9 @@ import { FollowService } from './follow.service';
 @ApiTags('Follow')
 @Controller('follow')
 export class FollowController {
-  constructor(private readonly followService: FollowService) {}
+    constructor(
+        private readonly followService: FollowService
+    ) {}
 
     @ApiOperation({ summary: `Get status whether user has follow target`, description: `Authenticate, authorize and return user's following status toward target.` })
     @UseGuards(JwtAuthGuard, RolesGuard)
@@ -40,8 +42,8 @@ export class FollowController {
         const status = await this.followService.getStatus(user_id, target_id);
         if (status === 409) throw new ConflictException('Cannot follow yourself');
         if (status === 400) throw new BadRequestException('User not found');
-        if (status) return { message: "Followed" };
-        return { message: "Not followed" };
+        if (!status)    return { message: "Not followed" }; 
+        return { message: "Followed" };
     }
 
     @ApiOperation({ summary: `Set follow status from user to target`, description: `Authenticate, authorize and set user's following status toward target.` })
@@ -70,8 +72,9 @@ export class FollowController {
     }
 
     @ApiOperation({ summary: `Get all target following`, description: `Get target's following list.` })
-    @UseGuards(RolesGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
+    @ApiBearerAuth()
     @ApiResponse({ status: 201, description: 'Following list of user_id: <user_id> + following list' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @Get('following')
@@ -82,8 +85,9 @@ export class FollowController {
     }
 
     @ApiOperation({ summary: `Get all target follower`, description: `Get target's follower list.` })
-    @UseGuards(RolesGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
+    @ApiBearerAuth()
     @ApiResponse({ status: 201, description: 'Follower list of user_id: <user_id> + follower list' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @Get('follower')

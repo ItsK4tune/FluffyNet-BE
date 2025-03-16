@@ -1,44 +1,43 @@
 import {
   Injectable,
-  BadRequestException,
-  ConflictException,
 } from '@nestjs/common';
-import { UserAccount } from './entities/user-account.entity';
+import { Account } from './entities/account.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { AuthenDTO } from './dtos/authen.dto';
-import { UserAccountUtil } from 'src/modules/authen/user-account.util';
+import { AccountUtil } from 'src/modules/authen/account.util';
 import { MailService } from './mail.service';
 import { env } from 'src/config';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AuthenService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
-    private readonly userAccountUtil: UserAccountUtil,
+    private readonly accountUtil: AccountUtil,
   ) {}
 
   async createUser({ username, password }: AuthenDTO): Promise<Boolean> {
-    const findUser = await this.userAccountUtil.findByUsername(username);
+    const findUser = await this.accountUtil.findByUsername(username);
     if (findUser) 
       return true;
 
     const ecryptPassword = await bcrypt.hash(password, 12);
 
-    const user = this.userAccountUtil.create(username, ecryptPassword);
-    await this.userAccountUtil.save(user);
+    const user = this.accountUtil.create(username, ecryptPassword);
+    await this.accountUtil.save(user);
   }
 
   async validateUser({ username, email, password }: AuthenDTO): Promise<string> {
-    let findUser: UserAccount;
+    let findUser: Account;
 
     if (username) {
-      findUser = await this.userAccountUtil.findByUsername(username);
+      findUser = await this.accountUtil.findByUsername(username);
     }
 
     if (!findUser && email) {
-      const userByEmail = await this.userAccountUtil.findByEmail(email);
+      const userByEmail = await this.accountUtil.findByEmail(email);
       if (userByEmail?.verifyEmail) {
         findUser = userByEmail;
       }
@@ -55,14 +54,14 @@ export class AuthenService {
         updated_at,
         ...user
       } = findUser;
-      return this.jwtService.sign(user);
+      return this.jwtService.sign({ user, jit: uuidv4() });
     }
 
     return null;
   }
 
   async forgotPassword(email: string): Promise<Boolean> {
-    const user = await this.userAccountUtil.findByEmail(email);
+    const user = await this.accountUtil.findByEmail(email);
 
     if (!user) return null
 
@@ -84,8 +83,6 @@ export class AuthenService {
                 <p>Best regards,<br>Your Website Team</p>
             `,
     });
-
-    return true;
   }
 
   async resetPassword(token: string, newPassword: string): Promise<Boolean> {
@@ -93,20 +90,17 @@ export class AuthenService {
           const decoded = this.jwtService.verify(token);
           const email = decoded.email;
       
-          const user = await this.userAccountUtil.findByEmail(email);
+          const user = await this.accountUtil.findByEmail(email);
           if (!user) 
             return null;
-      
-          await this.userAccountUtil.updatePassword(user, newPassword);
-      
-          return true;
+          await this.accountUtil.updatePassword(user, newPassword);
       } catch (error) {
           return false;
       }
   }
 
   async verifyEmail(email: string): Promise<Boolean> {
-    const user = await this.userAccountUtil.findByEmail(email);
+    const user = await this.accountUtil.findByEmail(email);
 
     if (!user) return null
     if (user.verifyEmail) return false;
@@ -129,8 +123,6 @@ export class AuthenService {
                 <p>Best regards,<br>Your Website Team</p>
             `,
     });
-
-    return true;
   }
 
   async verify(token: string): Promise<Boolean> {
@@ -138,12 +130,10 @@ export class AuthenService {
       const decoded = this.jwtService.verify(token);
       const email = decoded.email;
 
-      const user = await this.userAccountUtil.findByEmail(email);
+      const user = await this.accountUtil.findByEmail(email);
       if (!user)  return null;
 
-      await this.userAccountUtil.updateVerifyEmail(user);
-
-      return true;
+      await this.accountUtil.updateVerifyEmail(user);
     } catch (error) {
       return false
     }

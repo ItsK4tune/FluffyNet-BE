@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserProfile } from 'src/modules/profile/entities/user-profile.entity';
+import { Profile } from 'src/modules/profile/entities/user-profile.entity';
 
 @Injectable()
-export class UserProfileUtil {
+export class ProfileUtil {
   constructor(
-    @InjectRepository(UserProfile)
-    private readonly repo: Repository<UserProfile>,
+    @InjectRepository(Profile)
+    private readonly repo: Repository<Profile>,
   ) {}
 
   async getProfileByUserId(user_id: number) {
@@ -16,7 +16,7 @@ export class UserProfileUtil {
     });
   }
 
-  async save(userProfile: UserProfile) {
+  async save(userProfile: Profile) {
     await this.repo.save(userProfile);
   }
 }
