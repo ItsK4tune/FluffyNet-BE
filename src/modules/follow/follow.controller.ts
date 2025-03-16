@@ -6,6 +6,8 @@ import {
   Request,
   Post,
   Body,
+  ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -34,8 +36,10 @@ export class FollowController {
     @ApiResponse({ status: 409, description: 'Cannot follow yourself' })
     @Get('follow-status')
     async getStatus(@Request() req: any, @Query('target_id') target_id: number) {
-        const user_id: number = req.user.user_id     
+        const user_id: number = req.user.user_id;
         const status = await this.followService.getStatus(user_id, target_id);
+        if (status === 409) throw new ConflictException('Cannot follow yourself');
+        if (status === 400) throw new BadRequestException('User not found');
         if (status) return { message: "Followed" };
         return { message: "Not followed" };
     }
@@ -59,7 +63,7 @@ export class FollowController {
     @ApiResponse({ status: 409, description: 'Cannot follow yourself' })
     @Post('follow')
     async setStatus(@Request() req: any, @Body('target_id') target_id: number) {
-        const user_id: number = req.user.user_id     
+        const user_id: number = req.user.user_id;
         const status = await this.followService.followTarget(user_id, target_id);
         if (status) return { message: "Followed" };
         return { message: "Not followed" };
@@ -72,7 +76,8 @@ export class FollowController {
     @ApiResponse({ status: 400, description: 'User not found' })
     @Get('following')
     async getFollowingList(@Query('user_id') user_id: number) {
-        const list = await this.followService.followingList(user_id)
+        const list = await this.followService.followingList(user_id);
+        if (!list)  throw new BadRequestException('User not found');
         return { message: `Following list of user_id: ${user_id}`, list: list }
     }
 
@@ -83,7 +88,8 @@ export class FollowController {
     @ApiResponse({ status: 400, description: 'User not found' })
     @Get('follower')
     async getFollowerList(@Query('user_id') user_id: number) {
-        const list = await this.followService.followerList(user_id)
+        const list = await this.followService.followerList(user_id);
+        if (!list)  throw new BadRequestException('User not found');
         return { message: `Follower list of user_id: ${user_id}`, list: list }
     }
 }

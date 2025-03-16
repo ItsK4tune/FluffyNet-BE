@@ -10,6 +10,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { env } from 'src/config';
 import { JwtStrategy } from 'src/strategies/jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
+import { RedisCacheService } from '../redis-cache/redis-cache.service';
 
 @Module({
   imports: [
@@ -17,10 +18,10 @@ import { PassportModule } from '@nestjs/passport';
     PassportModule,
     JwtModule.register({
       secret: env.jwt.secret,
-      signOptions: { expiresIn: '1h' },
+      signOptions: { expiresIn: env.jwt.time },
     }),
   ],
   controllers: [ProfileController],
-  providers: [ProfileService, UserAccountUtil, UserProfileUtil, JwtStrategy],
+  providers: [ProfileService, UserAccountUtil, UserProfileUtil, JwtStrategy, RedisCacheService],
 })
 export class ProfileModule {}

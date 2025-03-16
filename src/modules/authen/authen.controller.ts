@@ -31,15 +31,11 @@ export class AuthenController {
         },
     })
     @ApiResponse({ status: 201, description: 'User created successfully' })
-    @ApiResponse({ status: 400, description: 'Username and password are required' })
     @ApiResponse({ status: 409, description: 'Username already exists' })
     @Post('register')
     async register(@Body() authenDTO: AuthenDTO) {
         const status = await this.authenService.createUser(authenDTO);
-
-        if (status === 400) throw new BadRequestException('Username and password are required');
-        if (status === 409) throw new ConflictException('Username already exists');
-        
+        if (status) throw new ConflictException('Username already exists');
         return { message: 'User created successfully'};
     }
 
@@ -68,13 +64,13 @@ export class AuthenController {
         return { message: "Login successfully", token: user };
     }
 
-  @ApiOperation({
-    summary: 'User login via Google Oauth',
-    description: 'Authenticate user and return JWT token.',
-  })
-  @UseGuards(GoogleAuthGuard)
-  @Get('google')
-  async googleAuth() {}
+    @ApiOperation({
+        summary: 'User login via Google Oauth',
+        description: 'Authenticate user and return JWT token.',
+    })
+    @UseGuards(GoogleAuthGuard)
+    @Get('google')
+    async googleAuth() {}
 
     @ApiOperation({ summary: 'Callback url for Google Oauth' })
     @UseGuards(GoogleAuthGuard)
@@ -99,8 +95,7 @@ export class AuthenController {
     @Post('forgot-password')
     async forgotPassword(@Body('email') email: string) {
         const status = await this.authenService.forgotPassword(email);
-        if (status === 400) throw new BadRequestException('Account not exist');
-
+        if (!status) throw new BadRequestException('Account not exist');
         return { message: 'Reset link sent' };
     }
 
@@ -121,8 +116,8 @@ export class AuthenController {
     async resetPassword(@Query('token') token: string, @Body('newPassword') newPassword: string) {
         const status = await this.authenService.resetPassword(token, newPassword);
         
-        if (status === 400) throw new BadRequestException('Wrong token');
-        if (status === 409) throw new ConflictException('Token invalid/expired');
+        if (status === null) throw new BadRequestException('Wrong token');
+        if (status === false) throw new ConflictException('Token invalid/expired');
 
         return { message: 'New password set' };
     }
@@ -144,8 +139,8 @@ export class AuthenController {
     async verifyEmail(@Body('email') email: string){
         const status = await this.authenService.verifyEmail(email);
 
-        if (status === 400) throw new BadRequestException('Account not exist');
-        if (status === 409) throw new ConflictException('Email has been verified');
+        if (status === null) throw new BadRequestException('Account not exist');
+        if (status === false) throw new ConflictException('Email has been verified');
 
         return { message: 'Verify link sent' };
     }
@@ -158,8 +153,8 @@ export class AuthenController {
     async acceptVerifyEmail(@Query('token') token: string){
         const status = await this.authenService.verify(token);
 
-        if (status === 400) throw new BadRequestException('Token invalid/expired');
-        if (status === 409) throw new ConflictException('Wrong token');
+        if (status === null) throw new BadRequestException('Token invalid/expired');
+        if (status === false) throw new ConflictException('Wrong token');
 
         return { message: 'Verified' };
     }

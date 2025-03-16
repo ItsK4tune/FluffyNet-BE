@@ -10,8 +10,8 @@ export class UserProfileUtil {
     private readonly repo: Repository<UserProfile>,
   ) {}
 
-  getProfileByUserId(user_id: number) {
-    return this.repo.findOne({
+  async getProfileByUserId(user_id: number) {
+    return await this.repo.findOne({
       where: { user_id },
     });
   }

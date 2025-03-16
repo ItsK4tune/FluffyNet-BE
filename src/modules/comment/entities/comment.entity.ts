@@ -1,10 +1,10 @@
-import { Entity, Column, PrimaryColumn, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, ManyToOne, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn } from 'typeorm';
 import { UserProfile } from 'src/modules/profile/entities/user-profile.entity';
 
 @Entity('comment')
 export class Comment {
-  @PrimaryColumn()
-  comment_id: string;
+  @PrimaryGeneratedColumn()
+  comment_id: number;
 
   @Column()
   body: string;
@@ -22,10 +22,10 @@ export class Comment {
   updatedAt: Date;
 
   @Column()
-  user_id: string;
+  user_id: number;
 
   @Column()
-  post_id: string;
+  post_id: number;
 
   @ManyToOne(() => UserProfile, (user) => user.user_id, { onDelete: 'CASCADE' })
   user: UserProfile;

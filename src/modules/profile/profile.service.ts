@@ -2,87 +2,44 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserProfileUtil } from './user-profile.util';
 import { ProfileDto } from './dtos/edit-profile.dto';
 import { UserAccountUtil } from '../authen/user-account.util';
-import { InjectRedis } from '@nestjs-modules/ioredis';
-import Redis from 'ioredis';
 import { RedisEnum } from 'src/utils/enums/redis.enum';
-import { UserProfile } from './entities/user-profile.entity';
 import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
-import { profileFields } from 'src/utils/fields/profile.field';
+
 import { env } from 'src/config';
+import { RedisCacheService } from '../redis-cache/redis-cache.service';
 
 @Injectable()
 export class ProfileService {
     constructor (
         private readonly userProfileUtil: UserProfileUtil,
-        private readonly userAccountUtil: UserAccountUtil,
-        @InjectRedis() private readonly redis: Redis,
+        private readonly redisCacheService: RedisCacheService,
     ) {}
 
     async getProfile (user_id: number) {
         const key = `${RedisEnum.profile}:${user_id}`;
-        const fields = profileFields;
+        const cache = await this.redisCacheService.hgetall(key);
 
-        const cacheDataArray = await Promise.all(fields.map(field => this.redis.hget(key, field)));
+        if (cache)  return cache;
 
-        const cacheData: Record<string, any> = Object.fromEntries(
-            fields.map((field, i) => [field, cacheDataArray[i]])
-        );
+        const profile = await this.userProfileUtil.getProfileByUserId(user_id);
+        if (!profile) return null;
+        
+        await this.redisCacheService.hsetall(key, profile);
+        await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
 
-        const missingFields = fields.filter((field) => cacheData[field] == null);
-
-        if (missingFields.length === 0) {
-            return cacheData as unknown as UserProfile;
-        }
-
-        const user = await this.userProfileUtil.getProfileByUserId(user_id);
-        if (!user) return null;
-
-        const updates: Record<string, string> = {};
-        fields.forEach(field => {    
-            updates[field] = user[field] !== undefined && user[field] !== null ? user[field].toString() : "";
-        });
-
-        await this.redis.hset(key, updates);
-        await this.redis.expire(key, convertToSeconds(env.redis.ttl));
-
-        return updates as unknown as UserProfile;
+        return profile;
     }   
 
-    async editProfile (user_id: number, editData: ProfileDto) {
-        const key = `${RedisEnum.profile}:${user_id}`;
-        const fields = Object.keys(editData);
+    async editProfile (user_id: number, editData: ProfileDto, target_id: number) {
+        if (user_id !== target_id)  return false;
 
-        const cacheDataArray = await Promise.all(fields.map(field => this.redis.hget(key, field)));
-        const cacheData: Record<string, any> = Object.fromEntries(fields.map((field, i) => [field, cacheDataArray[i]]));
-        
-        const changedFields: Record<string, string> = {};
-        for (const field of fields) {
-            const newValue = editData[field] !== undefined && editData[field] !== null ? editData[field].toString() : "";
-            if (cacheData[field] !== newValue) {
-                changedFields[field] = newValue;
-            }
-        }
-
-        if (Object.keys(changedFields).length === 0) {
-            return { message: 'Profile updated successfully', profile: cacheData };
-        }
+        const key = `${RedisEnum.profile}:${target_id}`;
+        await this.redisCacheService.del(key);
 
         let userProfile = await this.userProfileUtil.getProfileByUserId(user_id);
-
-        if (!userProfile) {
-            throw new NotFoundException('User profile not found');
-        }
+        if (!userProfile)   return null; 
 
         userProfile = { ...userProfile, ...editData };
         await this.userProfileUtil.save(userProfile);
-
-        const userAccount = await this.userAccountUtil.findByUserID(user_id);
-        userAccount.email = editData.email;
-        await this.userAccountUtil.save(userAccount);
-
-        await this.redis.hset(key, changedFields);
-        await this.redis.expire(key, convertToSeconds(env.redis.ttl));
-
-        return { message: 'Profile updated successfully', profile: userProfile };
     }
 }

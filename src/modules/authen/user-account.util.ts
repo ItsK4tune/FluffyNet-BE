@@ -38,13 +38,11 @@ export class UserAccountUtil {
   async updatePassword(user: UserAccount, newPassword: string) {
     user.password = await bcrypt.hash(newPassword, 12);
     await this.repo.save(user);
-    return;
   }
 
   async updateVerifyEmail(userAccount: UserAccount) {
     userAccount.verifyEmail = true;
     await this.repo.save(userAccount);
-    return;
   }
 
   create(username: string, ecryptPassword: string) {

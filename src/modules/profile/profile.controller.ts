@@ -1,12 +1,13 @@
 import {
   Controller,
   Get,
-  Put,
   Body,
   UseGuards,
   Request,
   BadRequestException,
   Query,
+  Patch,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { ProfileService } from './profile.service';
@@ -27,6 +28,9 @@ export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
     @ApiOperation({ summary: `Get user's profile`, description: `Return user's profile.` })
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('admin', 'user')
+    @ApiBearerAuth()
     @ApiResponse({ status: 201, description: 'Fetch successfully from user_id: <user_id> + profile' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @Get('view-profile')
@@ -59,9 +63,15 @@ export class ProfileController {
     })
     @ApiResponse({ status: 201, description: 'Profile updated successfully + profile' })
     @ApiResponse({ status: 404, description: 'User profile not found' })
-    @Put('edit-profile')
-    async editProfile(@Request() req, @Body() body: ProfileDto) {
+    @ApiResponse({ status: 409, description: 'User is not the owner' })
+    @Patch('edit-profile')
+    async editProfile(@Request() req, @Body() body: ProfileDto, target_id: number) {
         const user: number = req.user.user_id
-        return await this.profileService.editProfile(user, body);
+        const status = await this.profileService.editProfile(user, body, target_id);
+
+        if (status == null) return new BadRequestException('User is not the owner');
+        if (status == false)  return new NotFoundException('User profile not found');
+
+        return { message: 'Profile updated successfully + profile' }
     }
 }

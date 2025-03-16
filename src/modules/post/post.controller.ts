@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
@@ -95,12 +96,10 @@ export class PostsController {
   @ApiResponse({ status: 400, description: 'Repost_id invalid' })
   @Post()
   async createPost(@Request() req, @Body() postDto: PostDto) {
-    const newPost = await this.postService.createPost(postDto);
-
-    if (newPost)
-      return { message: 'Post created successfully' };
-
-    throw new BadRequestException('Repost_id invalid');
+    const user_id = req.user.user_id;
+    const newPost = await this.postService.createPost(user_id, postDto);
+    if (!newPost) throw new BadRequestException('Repost_id invalid');
+    return { message: 'Post created successfully' }
   }
 
   @ApiOperation({ summary: 'Update a post' })
@@ -124,21 +123,23 @@ export class PostsController {
   })
   @ApiResponse({ status: 200, description: 'Post updated successfully ' })
   @ApiResponse({ status: 404, description: 'Post not found' })
+  @ApiResponse({ status: 409, description: 'User is not the owner' })
   @Patch('/:post_id')
-  async updatePost(
+  async updatePost(@Request() req,
     @Param('post_id') post_id: number,
     @Body() postDto: PostDto,
   ) {
+    const user_id = req.user.user_id;
     const updatedPost = await this.postService.updatePost(
+      user_id,
       post_id,
       postDto,
     );
-    if (updatedPost) {
-      return {
-        message: 'Post updated successfully',
-      };
-    }
-    throw new NotFoundException('Post not found');
+
+    if (updatedPost == null)  throw new NotFoundException('Post not found');
+    if (updatedPost == false)  throw new ConflictException('User is not the owner');
+
+    return { message: 'Post updated successfully' };
   }
 
   @ApiOperation({ summary: 'Delete a post' })
@@ -147,13 +148,15 @@ export class PostsController {
   @Roles('admin', 'user')
   @ApiResponse({ status: 200, description: 'Post deleted successfully ' })
   @ApiResponse({ status: 404, description: 'Post not found' })
+  @ApiResponse({ status: 409, description: 'User is not the owner of this post' })
   @Delete('/:post_id')
-  async deletePost(@Param('post_id') post_id: number) {
-    const result = await this.postService.deletePost(post_id);
-    if (result.affected > 0) {
-      return { message: 'Post deleted successfully' };
-    }
-    
-    throw new NotFoundException('Post not found');
+  async deletePost(@Request() req, @Param('post_id') post_id: number) {
+    const user_id = req.user.user_id;
+    const result = await this.postService.deletePost(user_id, post_id);
+
+    if (result == null)  throw new NotFoundException('Post not found');
+    if (result == false)  throw new ConflictException('User is not the owner of this post');
+
+    return { message: 'Post deleted successfully' };
   }
 }

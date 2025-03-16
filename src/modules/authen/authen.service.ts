@@ -19,13 +19,10 @@ export class AuthenService {
     private readonly userAccountUtil: UserAccountUtil,
   ) {}
 
-  async createUser({ username, password }: AuthenDTO) {
-    if (!username || !password)
-      return 400;
-
+  async createUser({ username, password }: AuthenDTO): Promise<Boolean> {
     const findUser = await this.userAccountUtil.findByUsername(username);
     if (findUser) 
-      return 409;
+      return true;
 
     const ecryptPassword = await bcrypt.hash(password, 12);
 
@@ -33,10 +30,9 @@ export class AuthenService {
     await this.userAccountUtil.save(user);
   }
 
-  async validateUser({ username, email, password }: AuthenDTO) {
-    if (username && email) return null;
-
+  async validateUser({ username, email, password }: AuthenDTO): Promise<string> {
     let findUser: UserAccount;
+
     if (username) {
       findUser = await this.userAccountUtil.findByUsername(username);
     }
@@ -65,11 +61,10 @@ export class AuthenService {
     return null;
   }
 
-  async forgotPassword(email: string) {
+  async forgotPassword(email: string): Promise<Boolean> {
     const user = await this.userAccountUtil.findByEmail(email);
 
-    if (!user) 
-      return 400;
+    if (!user) return null
 
     const payload = { email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
@@ -90,33 +85,31 @@ export class AuthenService {
             `,
     });
 
-    return;
+    return true;
   }
 
-  async resetPassword(token: string, newPassword: string) {
+  async resetPassword(token: string, newPassword: string): Promise<Boolean> {
       try {
           const decoded = this.jwtService.verify(token);
           const email = decoded.email;
       
           const user = await this.userAccountUtil.findByEmail(email);
           if (!user) 
-            return 400;
+            return null;
       
           await this.userAccountUtil.updatePassword(user, newPassword);
       
-          return;
+          return true;
       } catch (error) {
-          return 409;
+          return false;
       }
   }
 
-  async verifyEmail(email: string) {
+  async verifyEmail(email: string): Promise<Boolean> {
     const user = await this.userAccountUtil.findByEmail(email);
 
-    if (!user) 
-      return 400;
-    if (user.verifyEmail)
-      return 409;
+    if (!user) return null
+    if (user.verifyEmail) return false;
 
     const payload = { email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
@@ -137,23 +130,22 @@ export class AuthenService {
             `,
     });
 
-    return;
+    return true;
   }
 
-  async verify(token: string) {
+  async verify(token: string): Promise<Boolean> {
     try {
       const decoded = this.jwtService.verify(token);
       const email = decoded.email;
 
       const user = await this.userAccountUtil.findByEmail(email);
-      if (!user) 
-        return 409;
+      if (!user)  return null;
 
       await this.userAccountUtil.updateVerifyEmail(user);
 
-      return { message: 'Verified' };
+      return true;
     } catch (error) {
-      return 400;
+      return false
     }
   }
 }

@@ -9,6 +9,8 @@ import { ProfileModule } from './profile/profile.module';
 import { HealthcheckModule } from './healthcheck/healthcheck.module';
 import { FollowModule } from './follow/follow.module';
 import { PostsModule } from './post/post.module';
+// import { CommentModule } from './comment/comment.module';
+import { RedisCacheModule } from './redis-cache/redis-cache.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { PostsModule } from './post/post.module';
     ProfileModule,
     FollowModule,
     PostsModule,
+    // CommentModule,
+    RedisCacheModule,
   ],
 })
 export class AppModule {}
