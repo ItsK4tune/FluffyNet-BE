@@ -1,4 +1,12 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { UserAccount } from 'src/modules/authen/entities/user-account.entity';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity('post')
 export class Post {
@@ -20,15 +28,18 @@ export class Post {
   @Column({ nullable: true })
   repost_id: number;
 
-  @ManyToOne(() => Post, (post) => post.reposts, { nullable: true, onDelete: "CASCADE" })
+  @ManyToOne(() => Post, (post) => post.reposts, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
   repost: Post;
- 
+
   @OneToMany(() => Post, (post) => post.repost)
   reposts: Post[];
 
   @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;
-  
+
   @CreateDateColumn({ type: 'timestamp' })
   updated_at: Date;
 }

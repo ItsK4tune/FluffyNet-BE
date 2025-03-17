@@ -8,7 +8,8 @@ import {
   Param,
   Patch,
   Post,
-  Request,
+  Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { PostService } from './post.service';
@@ -16,18 +17,18 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiOperation,
+  ApiQuery,
   ApiResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
 import { Roles } from 'src/decorators/role.decorator';
 import { PostDto } from './dto/post.dto';
+import { PostFilterDto } from './dto/postFilter.dto';
 
 @Controller('posts')
 export class PostsController {
-  constructor(
-    private readonly postService: PostService,
-  ) {}
+  constructor(private readonly postService: PostService) {}
 
   @ApiOperation({ summary: 'Get all posts' })
   @ApiResponse({
@@ -46,6 +47,50 @@ export class PostsController {
     };
   }
 
+  @ApiOperation({ summary: 'Get all posts with optional filters' })
+  @ApiResponse({
+    status: 201,
+    description: 'List of all posts retrieved successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Post not found',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user', 'admin')
+  @ApiQuery({
+    name: 'body',
+    required: false,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'image',
+    required: false,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'video',
+    required: false,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'user_id',
+    required: false,
+    type: Number,
+  })
+  @Get('filter')
+  async getPostsWithFilters(@Query() postFilterDto: PostFilterDto) {
+    const posts = await this.postService.getPostsWithFilters(postFilterDto);
+    if (posts.length > 0) {
+      return {
+        message: 'Posts retrieved successfully',
+        posts: posts,
+      };
+    }
+    throw new NotFoundException('No posts found');
+  }
+
   @ApiOperation({ summary: 'Get post by ID' })
   @ApiResponse({
     status: 201,
@@ -59,8 +104,9 @@ export class PostsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('user', 'admin')
   @Get('/:post_id')
-  async getPostById(@Param('post_id') post_id: number) {
-    const post = await this.postService.findOneById(post_id);
+  async getPostById(@Param('post_id') post_id: number, @Req() req) {
+    const user_id = req.user.user_id;
+    const post = await this.postService.findPostById(post_id, user_id);
     if (post) {
       return {
         message: 'Post retrieved successfully',
@@ -87,18 +133,18 @@ export class PostsController {
         { required: ['body'] },
         { required: ['image'] },
         { required: ['video'] },
-        { required: ['repost_id']},
+        { required: ['repost_id'] },
       ],
     },
   })
   @ApiResponse({ status: 201, description: 'Post created successfully' })
   @ApiResponse({ status: 400, description: 'Repost_id invalid' })
   @Post()
-  async createPost(@Request() req, @Body() postDto: PostDto) {
-    const newPost = await this.postService.createPost(postDto);
+  async createPost(@Req() req, @Body() postDto: PostDto) {
+    const user_id = req.user.user_id;
+    const newPost = await this.postService.createPost(postDto, user_id);
 
-    if (newPost)
-      return { message: 'Post created successfully' };
+    if (newPost) return { message: 'Post created successfully' };
 
     throw new BadRequestException('Repost_id invalid');
   }
@@ -128,10 +174,13 @@ export class PostsController {
   async updatePost(
     @Param('post_id') post_id: number,
     @Body() postDto: PostDto,
+    @Req() req,
   ) {
+    const user_id: number = req.user.user_id;
     const updatedPost = await this.postService.updatePost(
       post_id,
       postDto,
+      user_id,
     );
     if (updatedPost) {
       return {
@@ -148,12 +197,13 @@ export class PostsController {
   @ApiResponse({ status: 200, description: 'Post deleted successfully ' })
   @ApiResponse({ status: 404, description: 'Post not found' })
   @Delete('/:post_id')
-  async deletePost(@Param('post_id') post_id: number) {
-    const result = await this.postService.deletePost(post_id);
+  async deletePost(@Param('post_id') post_id: number, @Req() req) {
+    const user_id: number = req.user.user_id;
+    const result = await this.postService.deletePost(post_id, user_id);
     if (result.affected > 0) {
       return { message: 'Post deleted successfully' };
     }
-    
+
     throw new NotFoundException('Post not found');
   }
 }
