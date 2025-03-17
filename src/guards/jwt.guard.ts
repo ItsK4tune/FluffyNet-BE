@@ -1,7 +1,7 @@
 import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RedisCacheService } from 'src/modules/redis-cache/redis-cache.service';
-import { RedisEnum } from 'src/utils/enums/redis.enum';
+import { RedisEnum } from 'src/utils/enums/enum';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {

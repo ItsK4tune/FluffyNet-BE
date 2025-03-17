@@ -24,6 +24,12 @@ const envSchema = z.object({
 
   REDIS_URL: z.string(),
   REDIS_TTL: z.string().default('1h'),
+
+  MINIO_END_POINT: z.string().default('localhost'),
+  MINIO_PORT: z.number().default(9000),
+  MINIO_ACCESS_KEY: z.string(),
+  MINIO_SECRET_KEY: z.string(),
+  MINIO_BUCKET: z.string().default('uploads'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -61,4 +67,11 @@ export const env = {
     url: envVars.REDIS_URL,
     ttl: envVars.REDIS_TTL,
   },
+  minio: {
+    host: envVars.MINIO_END_POINT,
+    port: envVars.MINIO_PORT,
+    accessKey: envVars.MINIO_ACCESS_KEY,
+    secretKey: envVars.MINIO_SECRET_KEY,
+    bucket: envVars.MINIO_BUCKET,
+  }
 };

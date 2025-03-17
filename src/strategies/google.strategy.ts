@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Account } from '../modules/authen/entities/account.entity';
 import * as bcrypt from 'bcrypt';
-import { Profile } from 'src/modules/profile/entities/user-profile.entity';
+import { Profile } from 'src/modules/profile/entities/profile.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()

@@ -11,6 +11,7 @@ import { FollowModule } from './follow/follow.module';
 import { PostsModule } from './post/post.module';
 import { CommentModule } from './comment/comment.module';
 import { RedisCacheModule } from './redis-cache/redis-cache.module';
+import { MinioClientModule } from './minio-client/minio-client.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RedisCacheModule } from './redis-cache/redis-cache.module';
     PostsModule,
     CommentModule,
     RedisCacheModule,
+    MinioClientModule,
   ],
 })
 export class AppModule {}

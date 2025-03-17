@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Account } from 'src/modules/authen/entities/account.entity';
 import * as bcrypt from 'bcrypt';
-import { Profile } from 'src/modules/profile/entities/user-profile.entity';
+import { Profile } from 'src/modules/profile/entities/profile.entity';
 
 @Injectable()
 export class AccountUtil {

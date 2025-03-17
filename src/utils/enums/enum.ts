@@ -5,3 +5,8 @@ export enum RedisEnum {
   following = 'following',
   comment = 'comment',
 }
+
+export enum MinioEnum {
+  avatars = 'avatars',
+  backgrounds = 'backgrounds',
+}

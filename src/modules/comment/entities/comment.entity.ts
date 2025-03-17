@@ -1,5 +1,5 @@
 import { Entity, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn } from 'typeorm';
-import { Profile } from 'src/modules/profile/entities/user-profile.entity';
+import { Profile } from 'src/modules/profile/entities/profile.entity';
 
 @Entity('comment')
 export class Comment {

@@ -10,7 +10,7 @@ import { MailService } from './mail.service';
 import { env } from 'src/config';
 import { v4 as uuidv4 } from 'uuid';
 import { RedisCacheService } from '../redis-cache/redis-cache.service';
-import { RedisEnum } from 'src/utils/enums/redis.enum';
+import { RedisEnum } from 'src/utils/enums/enum';
 import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
 
 @Injectable()

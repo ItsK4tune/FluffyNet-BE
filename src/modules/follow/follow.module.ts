@@ -8,7 +8,7 @@ import { env } from 'src/config';
 import { Follow } from './entities/follow.entity';
 import { FollowUtil } from 'src/modules/follow/follow.util';
 import { ProfileUtil } from 'src/modules/profile/profile.util';
-import { Profile } from '../profile/entities/user-profile.entity';
+import { Profile } from '../profile/entities/profile.entity';
 
 @Module({
   imports: [

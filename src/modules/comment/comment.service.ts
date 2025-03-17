@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Comment } from './entities/comment.entity';
 import { CommentDto } from './dtos/comment.dto';
-import { RedisEnum } from 'src/utils/enums/redis.enum';
+import { RedisEnum } from 'src/utils/enums/enum';
 import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
 import { env } from 'src/config';
 import { CommentUtil } from './comment.util';
