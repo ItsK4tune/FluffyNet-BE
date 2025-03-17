@@ -21,16 +21,17 @@ export class AuthenService {
 
   async createUser({ username, password }: AuthenDTO) {
     if (!username || !password)
-      return 400;
+      throw new BadRequestException('Username and password are required');
 
     const findUser = await this.userAccountUtil.findByUsername(username);
-    if (findUser) 
-      return 409;
+    if (findUser) throw new ConflictException('Username already exists');
 
     const ecryptPassword = await bcrypt.hash(password, 12);
 
     const user = this.userAccountUtil.create(username, ecryptPassword);
     await this.userAccountUtil.save(user);
+
+    return { message: 'User created successfully'};
   }
 
   async validateUser({ username, email, password }: AuthenDTO) {
@@ -65,58 +66,13 @@ export class AuthenService {
     return null;
   }
 
-  async forgotPassword(email: string) {
-    const user = await this.userAccountUtil.findByEmail(email);
-
-    if (!user) 
-      return 400;
-
-    const payload = { email };
-    const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
-
-    const resetLink = `${env.dns}/reset-password?token=${token}`;
-    await this.mailService.sendMail({
-      to: email,
-      subject: 'Reset password',
-      text: `Dear user,\n\nWe received a request to reset your password...`,
-      html: `
-                <h1>Dear user,</h1>
-                <p>We received a request to reset your password. If you did not make this request, please ignore this email.</p>
-                <p>To reset your password, click the link below:</p>
-                <p><a href="${resetLink}">${resetLink}</a></p>
-                <p>This link will expire in <strong>${env.mailer.time}</strong> for security reasons.</p>
-                <p>If you have any issues, please contact our support team.</p>
-                <p>Best regards,<br>Your Website Team</p>
-            `,
-    });
-
-    return;
-  }
-
-  async resetPassword(token: string, newPassword: string) {
-      try {
-          const decoded = this.jwtService.verify(token);
-          const email = decoded.email;
-      
-          const user = await this.userAccountUtil.findByEmail(email);
-          if (!user) 
-            return 400;
-      
-          await this.userAccountUtil.updatePassword(user, newPassword);
-      
-          return;
-      } catch (error) {
-          return 409;
-      }
-  }
-
   async verifyEmail(email: string) {
     const user = await this.userAccountUtil.findByEmail(email);
 
-    if (!user) 
-      return 400;
+    if (!user) throw new BadRequestException('Account not exist');
+
     if (user.verifyEmail)
-      return 409;
+      throw new ConflictException('Email has been verified');
 
     const payload = { email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
@@ -137,7 +93,7 @@ export class AuthenService {
             `,
     });
 
-    return;
+    return { message: 'Verify link sent' };
   }
 
   async verify(token: string) {
@@ -146,14 +102,57 @@ export class AuthenService {
       const email = decoded.email;
 
       const user = await this.userAccountUtil.findByEmail(email);
-      if (!user) 
-        return 409;
+      if (!user) throw new ConflictException('Wrong token');
 
       await this.userAccountUtil.updateVerifyEmail(user);
 
       return { message: 'Verified' };
     } catch (error) {
-      return 400;
+      throw new BadRequestException('Token invalid/expired');
     }
+  }
+
+  async forgotPassword(email: string) {
+    console.log(email);
+    const user = await this.userAccountUtil.findByEmail(email);
+    console.log(user);
+    if (!user) throw new BadRequestException('Account not exist');
+
+    const payload = { email };
+    const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
+
+    const resetLink = `${env.dns}/reset-password?token=${token}`;
+    await this.mailService.sendMail({
+      to: email,
+      subject: 'Reset password',
+      text: `Dear user,\n\nWe received a request to reset your password...`,
+      html: `
+                <h1>Dear user,</h1>
+                <p>We received a request to reset your password. If you did not make this request, please ignore this email.</p>
+                <p>To reset your password, click the link below:</p>
+                <p><a href="${resetLink}">${resetLink}</a></p>
+                <p>This link will expire in <strong>${env.mailer.time}</strong> for security reasons.</p>
+                <p>If you have any issues, please contact our support team.</p>
+                <p>Best regards,<br>Your Website Team</p>
+            `,
+    });
+
+    return { message: 'Reset link sent' };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+      try {
+          const decoded = this.jwtService.verify(token);
+          const email = decoded.email;
+      
+          const user = await this.userAccountUtil.findByEmail(email);
+          if (!user) throw new BadRequestException('Wrong token');
+      
+          await this.userAccountUtil.updatePassword(user, newPassword);
+      
+          return { message: 'New password set' };
+      } catch (error) {
+          throw new ConflictException('Token invalid/expired');
+      }
   }
 }

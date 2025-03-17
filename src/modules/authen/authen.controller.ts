@@ -7,7 +7,6 @@ import {
   Get,
   Req,
   Query,
-  ConflictException,
 } from '@nestjs/common';
 import { ApiBody, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthenService } from './authen.service';
@@ -35,12 +34,7 @@ export class AuthenController {
     @ApiResponse({ status: 409, description: 'Username already exists' })
     @Post('register')
     async register(@Body() authenDTO: AuthenDTO) {
-        const status = await this.authenService.createUser(authenDTO);
-
-        if (status === 400) throw new BadRequestException('Username and password are required');
-        if (status === 409) throw new ConflictException('Username already exists');
-        
-        return { message: 'User created successfully'};
+        return await this.authenService.createUser(authenDTO);
     }
 
     @ApiOperation({ summary: 'User login', description: 'Authenticate user and return JWT token.' })
@@ -98,10 +92,7 @@ export class AuthenController {
     @ApiResponse({ status: 409, description: 'Account not exist' })
     @Post('forgot-password')
     async forgotPassword(@Body('email') email: string) {
-        const status = await this.authenService.forgotPassword(email);
-        if (status === 400) throw new BadRequestException('Account not exist');
-
-        return { message: 'Reset link sent' };
+        return await this.authenService.forgotPassword(email);
     }
 
     @ApiOperation({ summary: 'User reset password', description: 'Reset password using a token.' })
@@ -119,12 +110,7 @@ export class AuthenController {
     @ApiResponse({ status: 409, description: 'Token invalid/expired' })
     @Post('reset-password')
     async resetPassword(@Query('token') token: string, @Body('newPassword') newPassword: string) {
-        const status = await this.authenService.resetPassword(token, newPassword);
-        
-        if (status === 400) throw new BadRequestException('Wrong token');
-        if (status === 409) throw new ConflictException('Token invalid/expired');
-
-        return { message: 'New password set' };
+        return await this.authenService.resetPassword(token, newPassword);
     }
 
     @ApiOperation({ summary: 'User verify email', description: 'Check email and send url to verify email.' })
@@ -142,12 +128,7 @@ export class AuthenController {
     @ApiResponse({ status: 409, description: 'Email has been verified' })
     @Post('verify-email')
     async verifyEmail(@Body('email') email: string){
-        const status = await this.authenService.verifyEmail(email);
-
-        if (status === 400) throw new BadRequestException('Account not exist');
-        if (status === 409) throw new ConflictException('Email has been verified');
-
-        return { message: 'Verify link sent' };
+        return await this.authenService.verifyEmail(email);
     }
 
     @ApiOperation({ summary: 'User verify email', description: 'Verify email using a token.' })
@@ -156,11 +137,6 @@ export class AuthenController {
     @ApiResponse({ status: 409, description: 'Token invalid/expired' })
     @Get('verify')
     async acceptVerifyEmail(@Query('token') token: string){
-        const status = await this.authenService.verify(token);
-
-        if (status === 400) throw new BadRequestException('Token invalid/expired');
-        if (status === 409) throw new ConflictException('Wrong token');
-
-        return { message: 'Verified' };
+        return await this.authenService.verify(token);
     }
 }
