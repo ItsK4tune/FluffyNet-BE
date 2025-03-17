@@ -1,4 +1,4 @@
-import { UserProfile } from 'src/modules/profile/entities/user-profile.entity';
+import { Profile } from 'src/modules/profile/entities/profile.entity';
 import {
   Entity,
   Column,
@@ -8,8 +8,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity('user_account')
-export class UserAccount {
+@Entity('account')
+export class Account {
   @PrimaryGeneratedColumn()
   user_id: number;
 
@@ -34,6 +34,6 @@ export class UserAccount {
   @UpdateDateColumn({ type: 'timestamp' })
   updated_at: Date;
 
-  @OneToOne(() => UserProfile, (profile) => profile.user, { cascade: true })
-  profile: UserProfile;
+  @OneToOne(() => Profile, (profile) => profile.user, { cascade: true })
+  profile: Profile;
 }

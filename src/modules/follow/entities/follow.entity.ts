@@ -1,5 +1,5 @@
 import { Entity, PrimaryColumn, ManyToOne, CreateDateColumn } from 'typeorm';
-import { UserProfile } from 'src/modules/profile/entities/user-profile.entity';
+import { Profile } from 'src/modules/profile/entities/profile.entity';
 
 @Entity('follow')
 export class Follow {
@@ -9,15 +9,15 @@ export class Follow {
   @PrimaryColumn()
   following_id: number;
 
-  @ManyToOne(() => UserProfile, (user) => user.followers, {
+  @ManyToOne(() => Profile, (user) => user.followers, {
     onDelete: 'CASCADE',
   })
-  follower: UserProfile;
+  follower: Profile;
 
-  @ManyToOne(() => UserProfile, (user) => user.following, {
+  @ManyToOne(() => Profile, (user) => user.following, {
     onDelete: 'CASCADE',
   })
-  following: UserProfile;
+  following: Profile;
 
   @CreateDateColumn()
   createdAt: Date;

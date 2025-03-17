@@ -5,17 +5,18 @@ import { env } from 'src/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserAccount } from '../modules/authen/entities/user-account.entity';
+import { Account } from '../modules/authen/entities/account.entity';
 import * as bcrypt from 'bcrypt';
-import { UserProfile } from 'src/modules/profile/entities/user-profile.entity';
+import { Profile } from 'src/modules/profile/entities/profile.entity';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(
-    @InjectRepository(UserAccount)
-    private readonly userAccountRepo: Repository<UserAccount>,
-    @InjectRepository(UserProfile)
-    private readonly userProfileRepo: Repository<UserProfile>,
+    @InjectRepository(Account)
+    private readonly accountRepo: Repository<Account>,
+    @InjectRepository(Profile)
+    private readonly profileRepo: Repository<Profile>,
     private readonly jwtService: JwtService,
   ) {
     super({
@@ -40,26 +41,26 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
     const email = emails[0].value;
 
-    let user = await this.userAccountRepo.findOne({ where: { email } });
+    let user = await this.accountRepo.findOne({ where: { email } });
 
     if (!user) {
-      const newUser = this.userAccountRepo.create({
+      const newUser = this.accountRepo.create({
         email,
         password: await bcrypt.hash('default-password', 12),
         verifyEmail: true,
       });
 
-      await this.userAccountRepo.save(newUser);
+      await this.accountRepo.save(newUser);
 
-      const newProfile = this.userProfileRepo.create({
+      const newProfile = this.profileRepo.create({
         name: displayName,
         avatar: photos[0].value,
         user: newUser,
       });
 
-      await this.userProfileRepo.save(newProfile);
+      await this.profileRepo.save(newProfile);
 
-      user = await this.userAccountRepo.findOne({ where: { email } });
+      user = await this.accountRepo.findOne({ where: { email } });
     }
 
     const jwtPayload = {
@@ -68,7 +69,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       email: email,
       role: user.role,
     };
-    const token = this.jwtService.sign(jwtPayload);
+    const token = this.jwtService.sign({ jwtPayload, jit: uuidv4() });
 
     return done(null, { ...jwtPayload, token });
   }

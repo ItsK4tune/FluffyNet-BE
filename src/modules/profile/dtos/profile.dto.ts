@@ -1,3 +1,4 @@
+import { BufferedFile } from 'src/modules/minio-client/file.model';
 import {
   IsEmail,
   IsOptional,
@@ -6,7 +7,10 @@ import {
   Min,
   Max,
   IsUrl,
+  ValidateIf,
+  IsNotEmpty,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class ProfileDto {
   @IsOptional()
@@ -18,6 +22,7 @@ export class ProfileDto {
   bio?: string;
 
   @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
   @IsInt()
   @Min(0)
   @Max(150)
@@ -26,14 +31,6 @@ export class ProfileDto {
   @IsOptional()
   @IsString()
   gender?: string;
-
-  @IsOptional()
-  @IsUrl()
-  avatar?: string;
-
-  @IsOptional()
-  @IsUrl()
-  background?: string;
 
   @IsOptional()
   @IsEmail()

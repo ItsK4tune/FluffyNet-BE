@@ -8,11 +8,11 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { UserAccount } from 'src/modules/authen/entities/user-account.entity';
+import { Account } from 'src/modules/authen/entities/account.entity';
 import { Follow } from 'src/modules/follow/entities/follow.entity';
 
-@Entity('user_profile')
-export class UserProfile {
+@Entity('profile')
+export class Profile {
   @PrimaryColumn()
   user_id: number;
 
@@ -58,9 +58,9 @@ export class UserProfile {
   @OneToMany(() => Follow, (follow) => follow.following)
   followers: Follow[];
 
-  @OneToOne(() => UserAccount, (account) => account.profile, {
+  @OneToOne(() => Account, (account) => account.profile, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })
-  user: UserAccount;
+  user: Account;
 }

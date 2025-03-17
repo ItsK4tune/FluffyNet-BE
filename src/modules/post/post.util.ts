@@ -18,8 +18,8 @@ export class PostUtil {
     return await this.repo.findOne({ where: { post_id } });
   }
 
-  async createPost(data: PostDto) {
-    const newPost = this.repo.create(data);
+  async createPost(user_id: number, data: PostDto) {
+    const newPost = this.repo.create({...data, user_id});
     return await this.repo.save(newPost);
   }
 

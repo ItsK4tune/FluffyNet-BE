@@ -2,19 +2,20 @@ import { Module } from '@nestjs/common';
 import { AuthenController } from './authen.controller';
 import { AuthenService } from './authen.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserAccount } from './entities/user-account.entity';
+import { Account } from './entities/account.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { env } from 'src/config';
 import { GoogleStrategy } from '../../strategies/google.strategy';
-import { UserAccountUtil } from 'src/modules/authen/user-account.util';
+import { AccountUtil } from 'src/modules/authen/account.util';
 import { MailService } from './mail.service';
-import { UserProfileUtil } from 'src/modules/profile/user-profile.util';
-import { UserProfile } from '../profile/entities/user-profile.entity';
+import { ProfileUtil } from 'src/modules/profile/profile.util';
+import { Profile } from '../profile/entities/profile.entity';
+import { RedisCacheService } from '../redis-cache/redis-cache.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserAccount, UserProfile]),
+    TypeOrmModule.forFeature([Account, Profile]),
     PassportModule,
     JwtModule.register({
       secret: env.jwt.secret,
@@ -25,9 +26,10 @@ import { UserProfile } from '../profile/entities/user-profile.entity';
   providers: [
     AuthenService,
     MailService,
-    UserAccountUtil,
-    UserProfileUtil,
+    AccountUtil,
+    ProfileUtil,
     GoogleStrategy,
+    RedisCacheService,
   ],
 })
 export class AuthenModule {}

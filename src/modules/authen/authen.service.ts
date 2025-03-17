@@ -1,49 +1,47 @@
 import {
   Injectable,
-  BadRequestException,
-  ConflictException,
 } from '@nestjs/common';
-import { UserAccount } from './entities/user-account.entity';
+import { Account } from './entities/account.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { AuthenDTO } from './dtos/authen.dto';
-import { UserAccountUtil } from 'src/modules/authen/user-account.util';
+import { AccountUtil } from 'src/modules/authen/account.util';
 import { MailService } from './mail.service';
 import { env } from 'src/config';
+import { v4 as uuidv4 } from 'uuid';
+import { RedisCacheService } from '../redis-cache/redis-cache.service';
+import { RedisEnum } from 'src/utils/enums/enum';
+import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
 
 @Injectable()
 export class AuthenService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
-    private readonly userAccountUtil: UserAccountUtil,
+    private readonly accountUtil: AccountUtil,
+    private readonly redisCacheService: RedisCacheService,
   ) {}
 
-  async createUser({ username, password }: AuthenDTO) {
-    if (!username || !password)
-      throw new BadRequestException('Username and password are required');
-
-    const findUser = await this.userAccountUtil.findByUsername(username);
-    if (findUser) throw new ConflictException('Username already exists');
+  async createUser({ username, password }: AuthenDTO): Promise<Boolean> {
+    const findUser = await this.accountUtil.findByUsername(username);
+    if (findUser) 
+      return true;
 
     const ecryptPassword = await bcrypt.hash(password, 12);
 
-    const user = this.userAccountUtil.create(username, ecryptPassword);
-    await this.userAccountUtil.save(user);
-
-    return { message: 'User created successfully'};
+    const user = this.accountUtil.create(username, ecryptPassword);
+    await this.accountUtil.save(user);
   }
 
-  async validateUser({ username, email, password }: AuthenDTO) {
-    if (username && email) return null;
+  async login({ username, email, password }: AuthenDTO): Promise<string> {
+    let findUser: Account;
 
-    let findUser: UserAccount;
     if (username) {
-      findUser = await this.userAccountUtil.findByUsername(username);
+      findUser = await this.accountUtil.findByUsername(username);
     }
 
     if (!findUser && email) {
-      const userByEmail = await this.userAccountUtil.findByEmail(email);
+      const userByEmail = await this.accountUtil.findByEmail(email);
       if (userByEmail?.verifyEmail) {
         findUser = userByEmail;
       }
@@ -60,63 +58,23 @@ export class AuthenService {
         updated_at,
         ...user
       } = findUser;
-      return this.jwtService.sign(user);
+      
+      return this.jwtService.sign({ user, jit: uuidv4() });
     }
 
     return null;
   }
 
-  async verifyEmail(email: string) {
-    const user = await this.userAccountUtil.findByEmail(email);
-
-    if (!user) throw new BadRequestException('Account not exist');
-
-    if (user.verifyEmail)
-      throw new ConflictException('Email has been verified');
-
-    const payload = { email };
-    const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
-
-    const verifyLink = `${env.dns}/verify?token=${token}`;
-    await this.mailService.sendMail({
-      to: email,
-      subject: 'Verify email',
-      text: `Dear user,\n\nWe received a request to verify your email...`,
-      html: `
-                <h1>Dear user,</h1>
-                <p>We received a request to verify your email. If you did not make this request, please ignore this email.</p>
-                <p>To verify your email, click the link below:</p>
-                <p><a href="${verifyLink}">${verifyLink}</a></p>
-                <p>This link will expire in <strong>${env.mailer.time}</strong> for security reasons.</p>
-                <p>If you have any issues, please contact our support team.</p>
-                <p>Best regards,<br>Your Website Team</p>
-            `,
-    });
-
-    return { message: 'Verify link sent' };
+  async logout(jit: string) {
+    const key = `${RedisEnum.jit}`;
+    await this.redisCacheService.sadd(key, jit);
+    await this.redisCacheService.expire(key, convertToSeconds(env.jwt.time));
   }
 
-  async verify(token: string) {
-    try {
-      const decoded = this.jwtService.verify(token);
-      const email = decoded.email;
+  async forgotPassword(email: string): Promise<Boolean> {
+    const user = await this.accountUtil.findByEmail(email);
 
-      const user = await this.userAccountUtil.findByEmail(email);
-      if (!user) throw new ConflictException('Wrong token');
-
-      await this.userAccountUtil.updateVerifyEmail(user);
-
-      return { message: 'Verified' };
-    } catch (error) {
-      throw new BadRequestException('Token invalid/expired');
-    }
-  }
-
-  async forgotPassword(email: string) {
-    console.log(email);
-    const user = await this.userAccountUtil.findByEmail(email);
-    console.log(user);
-    if (!user) throw new BadRequestException('Account not exist');
+    if (!user) return null
 
     const payload = { email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
@@ -136,23 +94,59 @@ export class AuthenService {
                 <p>Best regards,<br>Your Website Team</p>
             `,
     });
-
-    return { message: 'Reset link sent' };
   }
 
-  async resetPassword(token: string, newPassword: string) {
+  async resetPassword(token: string, newPassword: string): Promise<Boolean> {
       try {
           const decoded = this.jwtService.verify(token);
           const email = decoded.email;
       
-          const user = await this.userAccountUtil.findByEmail(email);
-          if (!user) throw new BadRequestException('Wrong token');
-      
-          await this.userAccountUtil.updatePassword(user, newPassword);
-      
-          return { message: 'New password set' };
+          const user = await this.accountUtil.findByEmail(email);
+          if (!user) 
+            return null;
+          await this.accountUtil.updatePassword(user, newPassword);
       } catch (error) {
-          throw new ConflictException('Token invalid/expired');
+          return false;
       }
+  }
+
+  async verifyEmail(email: string): Promise<Boolean> {
+    const user = await this.accountUtil.findByEmail(email);
+
+    if (!user) return null
+    if (user.verifyEmail) return false;
+
+    const payload = { email };
+    const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
+
+    const verifyLink = `${env.dns}/verify?token=${token}`;
+    await this.mailService.sendMail({
+      to: email,
+      subject: 'Verify email',
+      text: `Dear user,\n\nWe received a request to verify your email...`,
+      html: `
+                <h1>Dear user,</h1>
+                <p>We received a request to verify your email. If you did not make this request, please ignore this email.</p>
+                <p>To verify your email, click the link below:</p>
+                <p><a href="${verifyLink}">${verifyLink}</a></p>
+                <p>This link will expire in <strong>${env.mailer.time}</strong> for security reasons.</p>
+                <p>If you have any issues, please contact our support team.</p>
+                <p>Best regards,<br>Your Website Team</p>
+            `,
+    });
+  }
+
+  async verify(token: string): Promise<Boolean> {
+    try {
+      const decoded = this.jwtService.verify(token);
+      const email = decoded.email;
+
+      const user = await this.accountUtil.findByEmail(email);
+      if (!user)  return null;
+
+      await this.accountUtil.updateVerifyEmail(user);
+    } catch (error) {
+      return false
+    }
   }
 }
