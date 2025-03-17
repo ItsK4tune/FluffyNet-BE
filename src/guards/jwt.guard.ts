@@ -18,6 +18,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const key = `${RedisEnum.jit}`;
 
     if (jit && (await this.redisCacheService.scheck(key, jit))) {
+      console.log(jit);
       throw new UnauthorizedException('Token is blacklisted');
     }
 

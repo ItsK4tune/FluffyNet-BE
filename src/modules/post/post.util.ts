@@ -3,19 +3,37 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Post } from 'src/modules/post/entities/post.entity';
 import { Repository } from 'typeorm';
 import { PostDto } from './dto/post.dto';
+import { MinioClientService } from '../minio-client/minio-client.service';
 
 @Injectable()
 export class PostUtil {
   constructor(
     @InjectRepository(Post) private readonly repo: Repository<Post>,
+    private readonly minioClientService: MinioClientService,
   ) {}
 
   async getAllPosts() {
-    return await this.repo.find();
+    const list = await this.repo.find();
+
+    for (const post of list) {
+      if (post.image)
+        post.image = this.minioClientService.getFileUrl(post.image);
+      if (post.video)
+        post.video = this.minioClientService.getFileUrl(post.video);
+    }
+
+    return list;
   }
 
   async getPostById(post_id: number) {
-    return await this.repo.findOne({ where: { post_id } });
+    const post = await this.repo.findOne({ where: { post_id } });
+
+    if (post.image)
+      post.image = this.minioClientService.getFileUrl(post.image);
+    if (post.video)
+      post.video = this.minioClientService.getFileUrl(post.video);
+
+    return post;
   }
 
   async createPost(user_id: number, data: PostDto) {

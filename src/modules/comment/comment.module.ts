@@ -6,16 +6,19 @@ import { Comment } from './entities/comment.entity';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from 'src/strategies/jwt.strategy';
 import { CommentUtil } from './comment.util';
-import { PostUtil } from '../post/post.util';
 import { Post } from '../post/entities/post.entity';
 import { RedisCacheService } from '../redis-cache/redis-cache.service';
+import { PostsModule } from '../post/post.module';
+import { RedisCacheModule } from '../redis-cache/redis-cache.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Comment, Post]),
     PassportModule,
+    PostsModule,
+    RedisCacheModule,
   ],
   controllers: [CommentController],
-  providers: [CommentService, JwtStrategy, CommentUtil, PostUtil, RedisCacheService],
+  providers: [CommentService, JwtStrategy, CommentUtil],
 })
 export class CommentModule {}

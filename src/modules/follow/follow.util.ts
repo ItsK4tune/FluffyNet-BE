@@ -30,10 +30,10 @@ export class FollowUtil {
   }
 
   async findFollowingList(target_id: number) {
-    return await this.repo.find({ where: { following_id: target_id } });
+    return await this.repo.find({ where: { follower_id: target_id } });
   }
 
   async findFollowerList(target_id: number) {
-    return await this.repo.find({ where: { follower_id: target_id } });
+    return await this.repo.find({ where: { following_id: target_id } });
   }
 }

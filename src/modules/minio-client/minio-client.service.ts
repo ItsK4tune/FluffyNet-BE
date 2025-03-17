@@ -10,7 +10,7 @@ import { BufferedFile } from './file.model';
 import * as crypto from 'crypto';
 import { env } from 'src/config';
 
-const allowedMimeTypes = ['image/jpeg', 'image/png'];
+const allowedMimeTypes = ['image/jpeg', 'image/png', 'video/mp4'];
 
 const checkValidMineType = (mimeType: string) => {
     if (!allowedMimeTypes.includes(mimeType)) {

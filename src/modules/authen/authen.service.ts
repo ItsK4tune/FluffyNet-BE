@@ -42,6 +42,7 @@ export class AuthenService {
 
     if (!findUser && email) {
       const userByEmail = await this.accountUtil.findByEmail(email);
+      
       if (userByEmail?.verifyEmail) {
         findUser = userByEmail;
       }

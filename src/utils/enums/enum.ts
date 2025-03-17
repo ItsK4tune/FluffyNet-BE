@@ -9,4 +9,6 @@ export enum RedisEnum {
 export enum MinioEnum {
   avatars = 'avatars',
   backgrounds = 'backgrounds',
+  image = 'image',
+  video = 'video',
 }

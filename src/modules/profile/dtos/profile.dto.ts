@@ -7,8 +7,6 @@ import {
   Min,
   Max,
   IsUrl,
-  ValidateIf,
-  IsNotEmpty,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 

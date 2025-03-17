@@ -3,15 +3,16 @@ import { ProfileUtil } from './profile.util';
 import { ProfileDto } from './dtos/profile.dto';
 import { MinioEnum, RedisEnum } from 'src/utils/enums/enum';
 import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
-
 import { env } from 'src/config';
 import { RedisCacheService } from '../redis-cache/redis-cache.service';
 import { MinioClientService } from '../minio-client/minio-client.service';
+import { AccountUtil } from '../authen/account.util';
 
 @Injectable()
 export class ProfileService {
     constructor (
         private readonly profileUtil: ProfileUtil,
+        private readonly accountUtil: AccountUtil,
         private readonly redisCacheService: RedisCacheService,
         private readonly minioClientService: MinioClientService
     ) {}
@@ -55,7 +56,12 @@ export class ProfileService {
             userProfile.background = uploadedBackground;
         }
 
+        let userAccount = await this.accountUtil.findByUserID(user_id);
+        if (editData.email)
+            userAccount.email = editData.email;
+
         userProfile = { ...userProfile, ...editData, avatar: userProfile.avatar, background: userProfile.background };
         await this.profileUtil.save(userProfile);
+        await this.accountUtil.save(userAccount);
     }
 }

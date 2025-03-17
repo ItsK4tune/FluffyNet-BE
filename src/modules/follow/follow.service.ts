@@ -37,18 +37,19 @@ export class FollowService {
   }
 
   async followingList(target_id: number): Promise<Follow[]> {
-    const target = this.profileUtil.getProfileByUserId(target_id);
+    const target = await this.profileUtil.getProfileByUserId(target_id);
     if (!target)  return null;
 
-    const list = this.followUtil.findFollowingList(target_id);
+    const list = await this.followUtil.findFollowingList(target_id);
+    console.log(list);
     return list;
   }
 
   async followerList(target_id: number): Promise<Follow[]> {
-    const target = this.profileUtil.getProfileByUserId(target_id);
+    const target = await this.profileUtil.getProfileByUserId(target_id);
     if (!target)  return null;
 
-    const list = this.followUtil.findFollowingList(target_id);
+    const list = await this.followUtil.findFollowerList(target_id);
     return list;
   }
 }

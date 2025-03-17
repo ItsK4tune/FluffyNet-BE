@@ -31,52 +31,52 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
-    @ApiOperation({ summary: `Get user's profile`, description: `Return user's profile.` })
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'user')
-    @ApiBearerAuth()
-    @ApiResponse({ status: 201, description: 'Fetch successfully from user_id: <user_id> + profile' })
-    @ApiResponse({ status: 400, description: 'User not found' })
-    @Get('view-profile')
-    async viewProfile(@Query('user_id') user_id: number) {     
-        const profile = await this.profileService.getProfile(user_id);
-        if (!profile)   throw new BadRequestException({ message: 'User not found'});
-        return { message: `Fetch successfully from user_id: ${user_id}`, profile: profile };
-    }
+  @ApiOperation({ summary: `Get user's profile`, description: `Return user's profile.` })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'user')
+  @ApiBearerAuth()
+  @ApiResponse({ status: 201, description: 'Fetch successfully from user_id: <user_id> + profile' })
+  @ApiResponse({ status: 400, description: 'User not found' })
+  @Get('view-profile')
+  async viewProfile(@Query('user_id') user_id: number) {     
+      const profile = await this.profileService.getProfile(user_id);
+      if (!profile)   throw new BadRequestException({ message: 'User not found'});
+      return { message: `Fetch successfully from user_id: ${user_id}`, profile: profile };
+  }
 
-    @ApiOperation({ summary: `Edit user's profile`, description: `Authenticate user, check authorize (only user can edit their's profile).` })
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'user')
-    @ApiBearerAuth()
-    @UseInterceptors(FileFieldsInterceptor([
-      { name: 'avatar', maxCount: 1 },
-      { name: 'background', maxCount: 1 }
-    ]))
-    @ApiConsumes('multipart/form-data')
-    @ApiBody({
-        schema: {
-            type: 'object', 
-            properties: {
-                name: { type: 'string', example: 'name' }, 
-                bio: { type: 'string', example: 'this is a bio.' }, 
-                age: { type: 'number', example: 18 }, 
-                gender: { type: 'string', example: 'male' }, 
-                avatar: { type: 'file', format: 'jpeg/png' }, 
-                background: { type: 'file', format: 'jpeg/png' }, 
-                email: { type: 'string', example: 'user@example.com' },
-                phoneNumber: { type: 'string', example: '0999999999' }, 
-                hobby: { type: 'string', example: 'sport' },
-                socialLink: { type: 'string', example: 'social.link.com' },  
-            },
-        },
-    })
-    @ApiResponse({ status: 201, description: 'Profile updated successfully' })
-    @ApiResponse({ status: 404, description: 'User profile not found' })
-    @Patch('edit-profile')
-    async editProfile(@Request() req, @Body() body: ProfileDto, @UploadedFiles() files: { avatar?: any, background?: any }) {
-        const user: number = req.user.user_id;
-        const status = await this.profileService.editProfile(user, body, files);
-        if (status == false)  return new NotFoundException('User profile not found');
-        return { message: 'Profile updated successfully' }
-    }
+  @ApiOperation({ summary: `Edit user's profile`, description: `Authenticate user, check authorize (only user can edit their's profile).` })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'user')
+  @ApiBearerAuth()
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'avatar', maxCount: 1 },
+    { name: 'background', maxCount: 1 }
+  ]))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+      schema: {
+          type: 'object', 
+          properties: {
+              name: { type: 'string', example: 'name' }, 
+              bio: { type: 'string', example: 'this is a bio.' }, 
+              age: { type: 'number', example: 18 }, 
+              gender: { type: 'string', example: 'male' }, 
+              avatar: { type: 'file', format: 'jpeg/png' }, 
+              background: { type: 'file', format: 'jpeg/png' }, 
+              email: { type: 'string', example: 'user@example.com' },
+              phoneNumber: { type: 'string', example: '0999999999' }, 
+              hobby: { type: 'string', example: 'sport' },
+              socialLink: { type: 'string', example: 'social.link.com' },  
+          },
+      },
+  })
+  @ApiResponse({ status: 201, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 404, description: 'User profile not found' })
+  @Patch('edit-profile')
+  async editProfile(@Request() req, @Body() body: ProfileDto, @UploadedFiles() files: { avatar?: any, background?: any }) {
+      const user: number = req.user.user_id;
+      const status = await this.profileService.editProfile(user, body, files);
+      if (status == false)  return new NotFoundException('User profile not found');
+      return { message: 'Profile updated successfully' }
+  }
 }

@@ -9,6 +9,7 @@ import { Follow } from './entities/follow.entity';
 import { FollowUtil } from 'src/modules/follow/follow.util';
 import { ProfileUtil } from 'src/modules/profile/profile.util';
 import { Profile } from '../profile/entities/profile.entity';
+import { RedisCacheModule } from '../redis-cache/redis-cache.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { Profile } from '../profile/entities/profile.entity';
       secret: env.jwt.secret,
       signOptions: { expiresIn: env.jwt.time },
     }),
+    RedisCacheModule,
   ],
   controllers: [FollowController],
   providers: [FollowService, FollowUtil, ProfileUtil],

@@ -35,9 +35,14 @@ export class AuthenController {
         },
     })
     @ApiResponse({ status: 201, description: 'User created successfully' })
+    @ApiResponse({ status: 400, description: 'Only username allowed' })
     @ApiResponse({ status: 409, description: 'Username already exists' })
     @Post('register')
     async register(@Body() authenDTO: AuthenDTO) {
+        if (authenDTO.email) {
+            throw new BadRequestException('Only username allowed');
+        }
+
         const status = await this.authenService.createUser(authenDTO);
         if (status) throw new ConflictException('Username already exists');
         return { message: 'User created successfully'};
@@ -61,8 +66,13 @@ export class AuthenController {
     })
     @ApiResponse({ status: 201, description: `User created successfully + user's jwt token` })
     @ApiResponse({ status: 400, description: 'Wrong username/email or password' })
+    @ApiResponse({ status: 400, description: 'Only one allowed: username or email' })
     @Post('login')
     async login(@Body() authenDTO: AuthenDTO) {
+        if (authenDTO.username && authenDTO.email) {
+            throw new BadRequestException('Only one allowed: username or email.');
+        }
+
         const user = await this.authenService.login(authenDTO);
         if (!user) throw new BadRequestException('Wrong username/email or password');
         return { message: "Login successfully", token: user };
