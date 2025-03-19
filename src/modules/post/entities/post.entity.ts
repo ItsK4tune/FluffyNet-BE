@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('post')
 export class Post {
@@ -17,6 +17,7 @@ export class Post {
   @Column({ nullable: true })
   video: string;
 
+  @Index()
   @Column({ nullable: true })
   repost_id: number;
 

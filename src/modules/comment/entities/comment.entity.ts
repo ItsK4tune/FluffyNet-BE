@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, OneToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, OneToOne, OneToMany, JoinColumn, Index } from 'typeorm';
 import { Profile } from 'src/modules/profile/entities/profile.entity';
 
 @Entity('comment')
@@ -12,6 +12,7 @@ export class Comment {
   @Column()
   post_id: number;
 
+  @Index()
   @Column({ nullable: true })
   parent_id?: number;
 
@@ -30,7 +31,7 @@ export class Comment {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @ManyToOne(() => Profile, (user) => user.user_id, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Profile, (profile) => profile.user_id, { onDelete: 'CASCADE' })
   @JoinColumn({ name: "user_id" })
   user: Profile;
 
