@@ -21,7 +21,9 @@ export class ProfileService {
         const key = `${RedisEnum.profile}:${user_id}`;
         const cache = await this.redisCacheService.hgetall(key);
 
-        if (cache)  return cache;
+        if (cache && Object.keys(cache).length > 0) {
+            return Object.values(cache).map((c) => JSON.parse(c));
+        }
 
         const profile = await this.profileUtil.getProfileByUserId(user_id);
         if (!profile) return null;

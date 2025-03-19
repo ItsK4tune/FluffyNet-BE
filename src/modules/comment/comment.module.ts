@@ -9,6 +9,7 @@ import { CommentUtil } from './comment.util';
 import { Post } from '../post/entities/post.entity';
 import { PostModule } from '../post/post.module';
 import { RedisCacheModule } from '../redis-cache/redis-cache.module';
+import { MinioClientModule } from '../minio-client/minio-client.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RedisCacheModule } from '../redis-cache/redis-cache.module';
     PassportModule,
     PostModule,
     RedisCacheModule,
+    MinioClientModule,
   ],
   controllers: [CommentController],
   providers: [CommentService, JwtStrategy, CommentUtil],

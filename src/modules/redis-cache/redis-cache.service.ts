@@ -39,10 +39,14 @@ export class RedisCacheService {
     }
 
     await pipeline.exec();
-}
+  }
 
   async del(key: string): Promise<void> {
     await this.redis.del(key);
+  }
+
+  async hdel(hash: string, field: string): Promise<void> {
+    await this.redis.hdel(hash, field);
   }
 
   async expire(key: string, ttl: number): Promise<void> {
@@ -56,4 +60,8 @@ export class RedisCacheService {
   async scheck(key: string, data: string) {
     return await this.redis.sismember(key, data);
   }
+
+  async sgetall(key: string) {
+    return await this.redis.smembers(key);
+}
 }

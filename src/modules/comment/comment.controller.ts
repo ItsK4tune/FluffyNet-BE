@@ -10,6 +10,8 @@ import {
   Request,
   NotFoundException,
   ForbiddenException,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
 import { CommentService } from './comment.service';
 import { CommentDto } from './dtos/comment.dto';
@@ -22,7 +24,9 @@ import {
   ApiBearerAuth,
   ApiTags,
   ApiResponse,
+  ApiConsumes,
 } from '@nestjs/swagger';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Comment')
 @Controller('comment')
@@ -54,13 +58,19 @@ export class CommentController {
 
     @ApiOperation({ summary: `Create a new comment`, description: `Add a new comment to a post.` })
     @ApiResponse({ status: 201, description: 'Comment created successfully' })
+    @UseInterceptors(FileFieldsInterceptor([
+        { name: 'image', maxCount: 1 },
+        { name: 'video', maxCount: 1 }
+    ]))
+    @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {
         type: 'object',
         properties: {
-            body: { type: 'string', example: 'Updated post body' },
-            image: { type: 'string', example: 'updated-image-url.jpg' },
-            video: { type: 'string', example: 'updated-video-url.mp4' },
+            body: { type: 'string', example: 'Post post body' },
+            image: { type: 'file', format: 'jpeg/png' },
+            video: { type: 'file', format: 'mp4' },
+            parent_id: {type: 'number', example: 1 },
         },
         oneOf: [
             { required: ['body'] },
@@ -72,10 +82,10 @@ export class CommentController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
-    @Post('/create-comment')
-    async createComment(@Request() req, @Body() commentDto: CommentDto) {
+    @Post('/create-comment/:post_id')
+    async createComment(@Param('post_id') post_id: number, @Request() req, @Body() commentDto: CommentDto, @UploadedFiles() files: { image?: any, video?: any }) {
         const user_id = req.user.user_id
-        const status = await this.commentService.createComment(user_id, commentDto);
+        const status = await this.commentService.createComment(post_id, user_id, commentDto, files);
         if (status) return { message: 'Comment created successfully' };
     }
 
@@ -83,13 +93,18 @@ export class CommentController {
     @ApiResponse({ status: 200, description: 'Comment updated successfully' })
     @ApiResponse({ status: 404, description: 'Comment not found' })
     @ApiResponse({ status: 409, description: 'Not allowed' })
+    @UseInterceptors(FileFieldsInterceptor([
+        { name: 'image', maxCount: 1 },
+        { name: 'video', maxCount: 1 }
+    ]))
+    @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {
         type: 'object',
         properties: {
             body: { type: 'string', example: 'Updated post body' },
-            image: { type: 'string', example: 'updated-image-url.jpg' },
-            video: { type: 'string', example: 'updated-video-url.mp4' },
+            image: { type: 'file', format: 'jpeg/png' },
+            video: { type: 'file', format: 'mp4' },
         },
         oneOf: [
             { required: ['body'] },
@@ -101,14 +116,16 @@ export class CommentController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
-    @Patch(':comment_id')
+    @Patch(':post_id/:comment_id')
     async updateComment(
         @Request() req,
         @Param('comment_id') comment_id: number,
-        @Body() commentDto: CommentDto
+        @Param('post_id') post_id: number,
+        @Body() commentDto: CommentDto,
+        @UploadedFiles() files: { image?: any, video?: any }
     ) {
         const user_id = req.user.user_id;
-        const status = await this.commentService.updateComment(user_id, comment_id, commentDto);
+        const status = await this.commentService.updateComment(post_id, user_id, comment_id, commentDto, files);
         if (status === null)    throw new NotFoundException('Comment not found');
         if (status === false)    throw new ForbiddenException('Not allowed');
         return { message: 'Comment updated successfully' };
@@ -121,10 +138,10 @@ export class CommentController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
-    @Delete(':comment_id')
-    async deleteComment(@Request() req, @Param('comment_id') comment_id: number) {
+    @Delete('post_id/:comment_id')
+    async deleteComment(@Request() req, @Param('comment_id') comment_id: number, @Param('post_id') post_id: number) {
         const user_id = req.user.user_id;
-        const status = await this.commentService.deleteComment(user_id, comment_id);
+        const status = await this.commentService.deleteComment(post_id, user_id, comment_id);
         if (status === null)    throw new NotFoundException('Comment not found');
         if (status === false)    throw new ForbiddenException('Not allowed');
         return { message: 'Comment updated successfully' };

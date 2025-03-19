@@ -1,18 +1,16 @@
-import { IsOptional, IsString, IsNotEmpty, ValidateIf } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsOptional, IsString, IsNotEmpty, ValidateIf, IsNumber } from 'class-validator';
 
 export class CommentDto {
-  @ValidateIf((o) => !o.image && !o.video)  
   @IsString()
   @IsNotEmpty()
   body?: string;
 
-  @ValidateIf((o) => !o.body && !o.video)  
-  @IsOptional()
-  @IsString()
-  image?: string;
+  // @IsNumber()
+  // post_id: number;
 
-  @ValidateIf((o) => !o.body && !o.image) 
+  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? parseInt(value, 10) : undefined))
   @IsOptional()
-  @IsString()
-  video?: string;
+  @IsNumber()
+  parent_id?: number;
 }
