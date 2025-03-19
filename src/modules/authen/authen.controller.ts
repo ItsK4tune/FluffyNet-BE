@@ -149,6 +149,9 @@ export class AuthenController {
     }
 
     @ApiOperation({ summary: 'User verify email', description: 'Check email and send url to verify email.' })
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('admin', 'user')
+    @ApiBearerAuth()
     @ApiBody({
         schema: {
             type: 'object',
@@ -162,8 +165,9 @@ export class AuthenController {
     @ApiResponse({ status: 400, description: 'Account not exist' })
     @ApiResponse({ status: 409, description: 'Email has been verified' })
     @Post('verify-email')
-    async verifyEmail(@Body('email') email: string){
-        const status = await this.authenService.verifyEmail(email);
+    async verifyEmail(@Request() req, @Body('email') email: string){
+        const user_id = req.user.user_id;
+        const status = await this.authenService.verifyEmail(user_id, email);
 
         if (status === null) throw new BadRequestException('Account not exist');
         if (status === false) throw new ConflictException('Email has been verified');

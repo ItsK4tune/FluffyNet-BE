@@ -40,8 +40,9 @@ export class AccountUtil {
     await this.repo.save(user);
   }
 
-  async updateVerifyEmail(userAccount: Account) {
+  async updateVerifyEmail(userAccount: Account, email: string) {
     userAccount.verifyEmail = true;
+    userAccount.email = email;
     await this.repo.save(userAccount);
   }
 

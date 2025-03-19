@@ -63,7 +63,6 @@ export class ProfileController {
               gender: { type: 'string', example: 'male' }, 
               avatar: { type: 'file', format: 'jpeg/png' }, 
               background: { type: 'file', format: 'jpeg/png' }, 
-              email: { type: 'string', example: 'user@example.com' },
               phoneNumber: { type: 'string', example: '0999999999' }, 
               hobby: { type: 'string', example: 'sport' },
               socialLink: { type: 'string', example: 'social.link.com' },  

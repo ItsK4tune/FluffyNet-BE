@@ -23,5 +23,6 @@ import { RedisCacheModule } from '../redis-cache/redis-cache.module';
   ],
   controllers: [FollowController],
   providers: [FollowService, FollowUtil, ProfileUtil],
+  exports: [FollowService],
 })
 export class FollowModule {}

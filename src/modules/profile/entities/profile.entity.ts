@@ -34,9 +34,6 @@ export class Profile {
   @Column({ nullable: true })
   background: string;
 
-  @Column({ unique: true, nullable: true })
-  email: string;
-
   @Column({ nullable: true })
   phoneNumber: string;
 

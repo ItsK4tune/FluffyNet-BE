@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Post } from 'src/modules/post/entities/post.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { PostDto } from './dto/post.dto';
 import { MinioClientService } from '../minio-client/minio-client.service';
 
@@ -25,13 +25,30 @@ export class PostUtil {
     return list;
   }
 
+  async getPostsOfFollowing(user_ids: number[]): Promise<Post[]> {
+    const list = await this.repo.find({ where: { user_id: In(user_ids) } });
+
+    for (const post of list) {
+      if (post.image)
+        post.image = this.minioClientService.getFileUrl(post.image);
+      if (post.video)
+        post.video = this.minioClientService.getFileUrl(post.video);
+    }
+
+    return list;
+  }
+
   async getPostById(post_id: number) {
     const post = await this.repo.findOne({ where: { post_id } });
+    
+    if (!post) {
+        return null;
+    }
 
     if (post.image)
-      post.image = this.minioClientService.getFileUrl(post.image);
+        post.image = this.minioClientService.getFileUrl(post.image);
     if (post.video)
-      post.video = this.minioClientService.getFileUrl(post.video);
+        post.video = this.minioClientService.getFileUrl(post.video);
 
     return post;
   }

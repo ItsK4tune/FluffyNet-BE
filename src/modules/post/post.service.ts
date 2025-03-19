@@ -4,16 +4,28 @@ import { PostDto } from './dto/post.dto';
 import { Post } from './entities/post.entity';
 import { MinioClientService } from '../minio-client/minio-client.service';
 import { MinioEnum } from 'src/utils/enums/enum';
+import { FollowService } from '../follow/follow.service';
 
 @Injectable()
 export class PostService {
   constructor(
     private readonly postUtil: PostUtil,
     private readonly minioClientService: MinioClientService,
+    private readonly followService: FollowService,
   ) {}
 
   async getAllPosts(): Promise<Post[]> {
     return this.postUtil.getAllPosts();
+  }
+
+  async getPostsOfFollowing(user_id: number): Promise<Post[]> {
+    const list = await this.followService.followingList(user_id);
+
+    if (!list || list.length === 0) return [];
+
+    const follows = list.map(follow => follow.following_id);
+
+    return this.postUtil.getPostsOfFollowing(follows);
   }
 
   async findOneById(post_id: number): Promise<Post> {
@@ -21,6 +33,7 @@ export class PostService {
   }
 
   async createPost(user_id: number, data: PostDto, files: { image?: any, video?: any }): Promise<Boolean> {
+    if (!data.body && !files.image && !files.video )  return false;
     const { repost_id } = data;
     
     if (repost_id) {
@@ -29,19 +42,22 @@ export class PostService {
         return null;
     }
 
+    let savedImage: string | null = null;
+    let savedVideo: string | null = null;
+
     if (files?.image?.[0]) {
       const uploadedAvatar = await this.minioClientService.upload(files.image[0], MinioEnum.image);
-      var savedImage = uploadedAvatar;
+      savedImage = uploadedAvatar;
     }
     if (files?.video?.[0]) {
       const uploadedBackground = await this.minioClientService.upload(files.video[0], MinioEnum.video);
-      var savedVideo = uploadedBackground;
+      savedVideo = uploadedBackground;
     }
 
-    const postData: Partial<PostDto> & { savedImage?: string; savedVideo?: string } = {
+    const postData: Partial<PostDto> & { image?: string; video?: string } = {
       ...data,
-      savedImage,
-      savedVideo,
+      image: savedImage,
+      video: savedVideo,
     };
 
     await this.postUtil.createPost(user_id, postData);
@@ -49,24 +65,35 @@ export class PostService {
   }
 
   async updatePost(user_id: number, post_id: number, data: PostDto, files: { image?: any, video?: any }) {
+    if (!data.body && !data.repost_id && !files.image && !files.video )  return null;
+    const { repost_id } = data;
     const post = await this.postUtil.getPostById(post_id);
 
     if (!post)  return null;
     if (post.user_id !== user_id) return false;
 
+    if (repost_id) {
+      const repost = await this.postUtil.getPostById(repost_id);
+      if (!repost)
+        return null;
+    }
+
+    let savedImage: string | null = null;
+    let savedVideo: string | null = null;
+
     if (files?.image?.[0]) {
       const uploadedAvatar = await this.minioClientService.upload(files.image[0], MinioEnum.image);
-      var savedImage = uploadedAvatar;
+      savedImage = uploadedAvatar;
     }
     if (files?.video?.[0]) {
       const uploadedBackground = await this.minioClientService.upload(files.video[0], MinioEnum.video);
-      var savedVideo = uploadedBackground;
+      savedVideo = uploadedBackground;
     }
 
-    const patchData: Partial<PostDto> & { savedImage?: string; savedVideo?: string } = {
+    const patchData: Partial<PostDto> & { image?: string; video?: string } = {
       ...data,
-      savedImage,
-      savedVideo,
+      image: savedImage,
+      video: savedVideo,
     };
 
     return this.postUtil.updatePost(post_id, patchData);

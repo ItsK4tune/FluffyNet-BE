@@ -41,7 +41,6 @@ export class FollowService {
     if (!target)  return null;
 
     const list = await this.followUtil.findFollowingList(target_id);
-    console.log(list);
     return list;
   }
 

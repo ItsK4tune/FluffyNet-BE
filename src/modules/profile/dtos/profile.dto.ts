@@ -1,6 +1,4 @@
-import { BufferedFile } from 'src/modules/minio-client/file.model';
 import {
-  IsEmail,
   IsOptional,
   IsString,
   IsInt,
@@ -20,7 +18,7 @@ export class ProfileDto {
   bio?: string;
 
   @IsOptional()
-  @Transform(({ value }) => parseInt(value, 10))
+  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? parseInt(value, 10) : undefined))
   @IsInt()
   @Min(0)
   @Max(150)
@@ -29,10 +27,6 @@ export class ProfileDto {
   @IsOptional()
   @IsString()
   gender?: string;
-
-  @IsOptional()
-  @IsEmail()
-  email?: string;
 
   @IsOptional()
   @IsString()

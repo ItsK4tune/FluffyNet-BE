@@ -111,13 +111,13 @@ export class AuthenService {
       }
   }
 
-  async verifyEmail(email: string): Promise<Boolean> {
-    const user = await this.accountUtil.findByEmail(email);
+  async verifyEmail(user_id: number, email: string): Promise<Boolean> {
+    const user = await this.accountUtil.findByUserID(user_id);
 
     if (!user) return null
-    if (user.verifyEmail) return false;
+    if (user.verifyEmail || (user.email != email && user.email)) return false;
 
-    const payload = { email };
+    const payload = { user_id, email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
 
     const verifyLink = `${env.dns}/verify?token=${token}`;
@@ -140,12 +140,12 @@ export class AuthenService {
   async verify(token: string): Promise<Boolean> {
     try {
       const decoded = this.jwtService.verify(token);
-      const email = decoded.email;
+      const { user_id, email } = decoded;
 
-      const user = await this.accountUtil.findByEmail(email);
+      const user = await this.accountUtil.findByUserID(user_id);
       if (!user)  return null;
 
-      await this.accountUtil.updateVerifyEmail(user);
+      await this.accountUtil.updateVerifyEmail(user, email);
     } catch (error) {
       return false
     }

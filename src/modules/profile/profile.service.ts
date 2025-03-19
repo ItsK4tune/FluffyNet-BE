@@ -57,8 +57,6 @@ export class ProfileService {
         }
 
         let userAccount = await this.accountUtil.findByUserID(user_id);
-        if (editData.email)
-            userAccount.email = editData.email;
 
         userProfile = { ...userProfile, ...editData, avatar: userProfile.avatar, background: userProfile.background };
         await this.profileUtil.save(userProfile);

@@ -29,7 +29,7 @@ import { PostDto } from './dto/post.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
 @Controller('posts')
-export class PostsController {
+export class PostController {
   constructor(
     private readonly postService: PostService,
   ) {}
@@ -45,6 +45,24 @@ export class PostsController {
   @Get('post-list')
   async getAllPosts() {
     const posts = await this.postService.getAllPosts();
+    return {
+      message: 'List of all posts retrieved successfully',
+      post: posts,
+    };
+  }
+
+  @ApiOperation({ summary: 'Get all posts' })
+  @ApiResponse({
+    status: 201,
+    description: 'List of all posts retrieved successfully',
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'user')
+  @ApiBearerAuth()
+  @Get('post-following-list')
+  async getPostsOfFollowing(@Request() req) {
+    const user_id = req.user.user_id;
+    const posts = await this.postService.getPostsOfFollowing(user_id);
     return {
       message: 'List of all posts retrieved successfully',
       post: posts,
@@ -80,8 +98,8 @@ export class PostsController {
   @Roles('admin', 'user')
   @ApiBearerAuth()
   @UseInterceptors(FileFieldsInterceptor([
-    { name: 'avatar', maxCount: 1 },
-    { name: 'background', maxCount: 1 }
+    { name: 'image', maxCount: 1 },
+    { name: 'video', maxCount: 1 }
   ]))
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -91,7 +109,7 @@ export class PostsController {
         body: { type: 'string', example: 'This is a post body' },
         image: { type: 'file', format: 'jpeg/png' },
         video: { type: 'file', format: 'mp4' },
-        repost_id: { type: 'number', example: 5 },
+        repost_id: { type: 'integer', example: 1 },
       },
       oneOf: [
         { required: ['body'] },
@@ -103,11 +121,13 @@ export class PostsController {
   })
   @ApiResponse({ status: 201, description: 'Post created successfully' })
   @ApiResponse({ status: 400, description: 'Repost_id invalid' })
+  @ApiResponse({ status: 400, description: 'Require body/image/video' })
   @Post('post')
   async createPost(@Request() req, @Body() postDto: PostDto, @UploadedFiles() files: { image?: any, video?: any }) {
     const user_id = req.user.user_id;
     const newPost = await this.postService.createPost(user_id, postDto, files);
-    if (!newPost) throw new BadRequestException('Repost_id invalid');
+    if (newPost === null) throw new BadRequestException('Repost_id invalid');
+    if (newPost === false) throw new BadRequestException('Require body/image/video');
     return { message: 'Post created successfully' }
   }
 
@@ -116,8 +136,8 @@ export class PostsController {
   @Roles('admin', 'user')
   @ApiBearerAuth()
   @UseInterceptors(FileFieldsInterceptor([
-    { name: 'avatar', maxCount: 1 },
-    { name: 'background', maxCount: 1 }
+    { name: 'image', maxCount: 1 },
+    { name: 'video', maxCount: 1 }
   ]))
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -125,8 +145,8 @@ export class PostsController {
       type: 'object',
       properties: {
         body: { type: 'string', example: 'Updated post body' },
-        image: { type: 'string', example: 'updated-image-url.jpg' },
-        video: { type: 'string', example: 'updated-video-url.mp4' },
+        image: { type: 'file', format: 'jpeg/png' },
+        video: { type: 'file', format: 'mp4' },
       },
       oneOf: [
         { required: ['body'] },
@@ -136,7 +156,7 @@ export class PostsController {
     },
   })
   @ApiResponse({ status: 200, description: 'Post updated successfully ' })
-  @ApiResponse({ status: 404, description: 'Post not found' })
+  @ApiResponse({ status: 404, description: 'Input not valid' })
   @ApiResponse({ status: 409, description: 'User is not the owner' })
   @Patch('post/:post_id')
   async updatePost(@Request() req, @Param('post_id') post_id: number, @Body() postDto: PostDto, @UploadedFiles() files: { image?: any, video?: any }) {

@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('post')
 export class Post {
@@ -21,6 +21,7 @@ export class Post {
   repost_id: number;
 
   @ManyToOne(() => Post, (post) => post.reposts, { nullable: true, onDelete: "CASCADE" })
+  @JoinColumn({ name: "repost_id" })
   repost: Post;
  
   @OneToMany(() => Post, (post) => post.repost)

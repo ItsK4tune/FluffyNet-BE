@@ -8,7 +8,7 @@ import { AuthenModule } from './authen/authen.module';
 import { ProfileModule } from './profile/profile.module';
 import { HealthcheckModule } from './healthcheck/healthcheck.module';
 import { FollowModule } from './follow/follow.module';
-import { PostsModule } from './post/post.module';
+import { PostModule } from './post/post.module';
 import { CommentModule } from './comment/comment.module';
 import { RedisCacheModule } from './redis-cache/redis-cache.module';
 import { MinioClientModule } from './minio-client/minio-client.module';
@@ -25,7 +25,7 @@ import { MinioClientModule } from './minio-client/minio-client.module';
     AuthenModule,
     ProfileModule,
     FollowModule,
-    PostsModule,
+    PostModule,
     CommentModule,
     RedisCacheModule,
     MinioClientModule,

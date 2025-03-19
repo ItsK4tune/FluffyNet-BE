@@ -1,6 +1,6 @@
+import { Transform } from 'class-transformer';
 import {
-  IsNotEmpty,
-  IsNumber,
+  IsInt,
   IsOptional,
   IsString,
 } from 'class-validator';
@@ -10,7 +10,8 @@ export class PostDto {
   @IsOptional()
   body?: string;
 
-  @IsNumber()
+  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? parseInt(value, 10) : undefined))
+  @IsInt()
   @IsOptional()
   repost_id?: number;
 }
