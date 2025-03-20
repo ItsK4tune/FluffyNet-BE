@@ -51,4 +51,5 @@ export class FollowService {
     const list = await this.followUtil.findFollowerList(target_id);
     return list;
   }
+
 }
