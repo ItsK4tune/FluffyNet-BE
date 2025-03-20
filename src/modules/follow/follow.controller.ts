@@ -96,4 +96,16 @@ export class FollowController {
         if (!list)  throw new BadRequestException('User not found');
         return { message: `Follower list of user_id: ${user_id}`, list: list }
     }
+
+    @ApiOperation({ summary: `Get suggest follower`, description: `Get user's follow suggestion list.` })
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('admin', 'user')
+    @ApiBearerAuth()
+    @ApiResponse({ status: 201, description: 'Suggestion list of user_id: <user_id> + suggestion list' })
+    @Get('follow-suggest')
+    async getSuggestionList(@Request() req) {
+        const user_id = req.user.user_id;
+        const list = await this.followService.suggestionList(user_id);
+        return { message: `Suggestion list of user_id: ${user_id}`, list: list }
+    }
 }

@@ -19,4 +19,12 @@ export class ProfileUtil {
   async save(userProfile: Profile) {
     await this.repo.save(userProfile);
   }
+
+  async getAllProfilesExcludingUser(user_id: number): Promise<Profile[]> {
+    return await this.repo.createQueryBuilder("profile")
+      .where("profile.user_id != :user_id", { user_id })
+      .orderBy("RAND()")
+      .limit(20)
+      .getMany();
+  }
 }
