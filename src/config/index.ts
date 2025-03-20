@@ -23,7 +23,7 @@ const envSchema = z.object({
   MYSQL_URL: z.string(),
 
   REDIS_URL: z.string(),
-  REDIS_TTL: z.string().default('1h'),
+  REDIS_TTL: z.string().default('3600s'),
 });
 
 const parsed = envSchema.safeParse(process.env);

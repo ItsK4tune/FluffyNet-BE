@@ -21,5 +21,6 @@ import { UserProfile } from '../profile/entities/user-profile.entity';
   ],
   controllers: [FollowController],
   providers: [FollowService, FollowUtil, UserProfileUtil],
+  exports: [FollowService],
 })
 export class FollowModule {}
