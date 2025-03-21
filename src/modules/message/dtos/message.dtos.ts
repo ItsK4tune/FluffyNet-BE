@@ -8,57 +8,37 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class CreateMessageDto {
-  @IsNumber()
-  @IsNotEmpty()
-  conversationId: number;
+export class MessageDto {
+  @IsString()
+  @IsOptional()
+  body?: string;
 
   @IsString()
   @IsOptional()
-  content: string;
+  image?: string;
 
   @IsString()
   @IsOptional()
-  imageUrl: string;
+  video?: string;
 
   @IsString()
   @IsOptional()
-  videoUrl: string;
+  audio?: string;
 
   @IsString()
   @IsOptional()
-  audioUrl: string;
-
-  @IsString()
-  @IsOptional()
-  fileUrl: string;
+  file?: string;
 }
 
-export class UpdateMessageDto {
-  @IsString()
-  @IsOptional()
-  content: string;
-
-  @IsString()
-  @IsOptional()
-  imageUrl: string;
-
-  @IsString()
-  @IsOptional()
-  videoUrl: string;
-
-  @IsString()
-  @IsOptional()
-  audioUrl: string;
-
-  @IsString()
-  @IsOptional()
-  fileUrl: string;
+export class CreateMessageDto extends MessageDto{
+  @IsNumber()
+  @IsNotEmpty()
+  conversation_id: number;
 }
 
 export class GetMessagesDto {
   @IsNumber()
-  conversationId: number;
+  conversation_id: number;
 
   @IsOptional()
   @Type(() => Date)

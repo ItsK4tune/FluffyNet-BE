@@ -6,30 +6,22 @@
 // import { Message } from './entities/message.entity';
 // import { CreateMessageDto } from './dtos/message.dtos';
 // import { MessageRepository } from './message.repository';
-// import { MemberService } from '../conversation_member/member.service';
+// // import { MemberService } from '../conversation_member/member.service';
 
 // @Injectable()
 // export class MessageService {
 //   constructor(
 //     private readonly messageRepository: MessageRepository,
-//     private readonly memberService: MemberService,
+//     // private readonly memberService: MemberService,
 //   ) {}
 
 //   // -> websockets
-//   async create(
-//     createMessageDto: CreateMessageDto,
-//     userId: number,
-//   ): Promise<Message> {
-//     if (
-//       !(await this.memberService.isActiveMember(
-//         createMessageDto.conversationId,
-//         userId,
-//       ))
-//     ) {
-//       throw new UnauthorizedException(
-//         'You are not an active member of this conversation',
-//       );
-//     }
+//   async create(createMessageDto: CreateMessageDto, userId: number, files: { image?: any, video?: any, audio?: any, file?: any }): Promise<Message> {
+//     // if (!(await this.memberService.isActiveMember(createMessageDto.conversationId, userId))) {
+//     //   throw new UnauthorizedException(
+//     //     'You are not an active member of this conversation',
+//     //   );
+//     // }
 
 //     const message = Object.assign(new Message(), {
 //       ...createMessageDto,

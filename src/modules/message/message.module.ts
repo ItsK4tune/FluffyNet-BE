@@ -4,10 +4,11 @@
 // import { Message } from './entities/message.entity';
 // import { MessageController } from './message.controller';
 // import { MessageService } from './message.service';
-// import { MemberModule } from '../conversation_member/member.module';
+// // import { MemberModule } from '../conversation_member/member.module';
 
 // @Module({
-//   imports: [TypeOrmModule.forFeature([Message]), MemberModule],
+// //   imports: [TypeOrmModule.forFeature([Message]), MemberModule],
+//     imports: [TypeOrmModule.forFeature([Message])],
 //   controllers: [MessageController],
 //   providers: [MessageService, MessageRepository],
 //   exports: [MessageService],

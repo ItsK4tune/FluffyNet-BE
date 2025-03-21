@@ -51,7 +51,7 @@ export class PostController {
     };
   }
 
-  @ApiOperation({ summary: 'Get all posts' })
+  @ApiOperation({ summary: 'Get all posts posted by following' })
   @ApiResponse({
     status: 201,
     description: 'List of all posts retrieved successfully',

@@ -188,4 +188,21 @@ export class AuthenController {
 
         return { message: 'Verified' };
     }
+
+    @ApiOperation({ summary: 'User unbind email', description: 'Unbind email.' })
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('admin', 'user')
+    @ApiBearerAuth()
+    @ApiResponse({ status: 201, description: `Unbinded` })
+    @ApiResponse({ status: 409, description: 'Token invalid/expired' })
+    @Get('unbind')
+    async unbindEmail(@Request() req){
+        const user_id = req.user.user_id;
+        const status = await this.authenService.unbind(user_id);
+
+        if (status === null)    throw new BadRequestException('User not found');
+        if (status === false)    throw new ConflictException(`User don't have email binded`);
+
+        return { message: 'Unbinded' };
+    }
 }

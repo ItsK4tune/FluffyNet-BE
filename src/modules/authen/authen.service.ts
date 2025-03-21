@@ -150,4 +150,15 @@ export class AuthenService {
       return false
     }
   }
+
+  async unbind(user_id: number): Promise<Boolean> {
+    const user = await this.accountUtil.findByUserID(user_id);
+    if (!user)  return null;
+    if (!user.email)  return false;
+
+    user.email = null;
+    user.verifyEmail = null;
+    await this.accountUtil.save(user);
+    return true;
+  } 
 }
