@@ -73,5 +73,5 @@ export const env = {
     accessKey: envVars.MINIO_ACCESS_KEY,
     secretKey: envVars.MINIO_SECRET_KEY,
     bucket: envVars.MINIO_BUCKET,
-  }
+  },
 };

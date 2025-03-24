@@ -4,6 +4,9 @@ export enum RedisEnum {
   follower = 'follower',
   following = 'following',
   comment = 'comment',
+  message = 'message',
+  conversation = 'conversation',
+  member = 'member',
 }
 
 export enum MinioEnum {

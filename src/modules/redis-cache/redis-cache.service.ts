@@ -33,9 +33,9 @@ export class RedisCacheService {
 
   async hsetall(hash: string, data: Record<string, any>): Promise<void> {
     const pipeline = this.redis.pipeline();
-    
+
     for (const [key, value] of Object.entries(data)) {
-        pipeline.hset(hash, key, JSON.stringify(value));
+      pipeline.hset(hash, key, JSON.stringify(value));
     }
 
     await pipeline.exec();
@@ -63,5 +63,5 @@ export class RedisCacheService {
 
   async sgetall(key: string) {
     return await this.redis.smembers(key);
-}
+  }
 }

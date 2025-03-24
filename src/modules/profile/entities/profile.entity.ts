@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Account } from 'src/modules/authen/entities/account.entity';
 import { Follow } from 'src/modules/follow/entities/follow.entity';
+import { Member } from "../../chat_member/entities/member.entity";
 // import { Member } from "../../conversation_member/entities/member.entity";
 
 @Entity('profile')
@@ -61,4 +62,7 @@ export class Profile {
   })
   @JoinColumn({ name: 'user_id' })
   user: Account;
+
+  @OneToMany(() => Member, (member) => member.user)
+  members: Member[];
 }

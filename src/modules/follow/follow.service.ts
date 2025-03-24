@@ -13,20 +13,21 @@ export class FollowService {
     private readonly profileUtil: ProfileUtil,
   ) {}
 
-  async getStatus(user_id: number, target_id: number): Promise<number | Boolean> {
-    if (user_id === target_id)
-      return 409;
+  async getStatus(
+    user_id: number,
+    target_id: number,
+  ): Promise<number | boolean> {
+    if (user_id === target_id) return 409;
 
     const target = this.profileUtil.getProfileByUserId(target_id);
-    
-    if (!target)
-      return 400;
+
+    if (!target) return 400;
 
     const log = await this.followUtil.findFollow(user_id, target_id);
     if (!log) return false;
   }
 
-  async followTarget(user_id: number, target_id: number): Promise<Boolean> {
+  async followTarget(user_id: number, target_id: number): Promise<boolean> {
     const log = await this.getStatus(user_id, target_id);
 
     let status: boolean;

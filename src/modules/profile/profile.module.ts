@@ -24,6 +24,12 @@ import { MinioClientModule } from '../minio-client/minio-client.module';
     MinioClientModule,
   ],
   controllers: [ProfileController],
-  providers: [ProfileService, AccountUtil, ProfileUtil, JwtStrategy, RedisCacheService],
+  providers: [
+    ProfileService,
+    AccountUtil,
+    ProfileUtil,
+    JwtStrategy,
+    RedisCacheService,
+  ],
 })
 export class ProfileModule {}

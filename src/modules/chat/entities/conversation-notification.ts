@@ -1,6 +1,4 @@
-// import { Conversation } from "./conversation.entity";
-//
-// import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+// import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 //
 // @Entity('conversation_notifications')
 // export class ConversationNotification {

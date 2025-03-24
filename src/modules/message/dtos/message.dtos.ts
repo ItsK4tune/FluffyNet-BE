@@ -1,40 +1,5 @@
-import {
-  IsInt,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { IsInt, IsNumber, IsOptional, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-
-export class MessageDto {
-  @IsString()
-  @IsOptional()
-  body?: string;
-
-  @IsString()
-  @IsOptional()
-  image?: string;
-
-  @IsString()
-  @IsOptional()
-  video?: string;
-
-  @IsString()
-  @IsOptional()
-  audio?: string;
-
-  @IsString()
-  @IsOptional()
-  file?: string;
-}
-
-export class CreateMessageDto extends MessageDto{
-  @IsNumber()
-  @IsNotEmpty()
-  conversation_id: number;
-}
 
 export class GetMessagesDto {
   @IsNumber()
