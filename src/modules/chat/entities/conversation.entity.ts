@@ -1,6 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { Member } from '../../conversation_member/entities/member.entity';
 import { Message } from '../../message/entities/message.entity';
+import { Member } from '../../chat_member/entities/member.entity';
 // import { ConversationEnum } from '../../../utils/enums/message.enum';
 
 @Entity('conversations')
