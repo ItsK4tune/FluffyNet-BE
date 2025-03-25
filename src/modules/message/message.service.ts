@@ -6,7 +6,7 @@ import {
 import { MessageRepository } from './message.repository';
 import { Message } from './entities/message.entity';
 import { MinioClientService } from '../minio-client/minio-client.service';
-import { MemberService } from "../chat_member/member.service";
+import { MemberService } from '../chat_member/member.service';
 
 @Injectable()
 export class MessageService {

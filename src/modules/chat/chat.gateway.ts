@@ -12,6 +12,7 @@ import { UseGuards } from '@nestjs/common';
 import { WsJwtGuard } from 'src/guards/websocket.guard';
 import { MessageService } from '../message/message.service';
 import { MemberService } from '../chat_member/member.service';
+import { ConversationService } from './conversation.service';
 
 @WebSocketGateway({
   cors: {
@@ -31,6 +32,7 @@ export class ConversationGateway
   constructor(
     private readonly memberService: MemberService,
     private readonly messageService: MessageService,
+    private readonly conversationService: ConversationService,
   ) {}
 
   async handleConnection(client: Socket): Promise<void> {

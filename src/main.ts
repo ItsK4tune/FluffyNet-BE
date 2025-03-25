@@ -7,7 +7,7 @@ import * as cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import * as morgan from 'morgan';
 
-import { env } from './config/index';
+import { env } from './config';
 import { AppModule } from './modules/app.module';
 
 const setMiddleware = (app: NestExpressApplication) => {

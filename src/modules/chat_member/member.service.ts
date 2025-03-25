@@ -24,11 +24,9 @@ export class MemberService {
     conversation_id: number,
     userRequestId: number,
   ) {
-    if (await this.isActiveMember(conversation_id, userRequestId)) {
+    if (!(await this.isActiveMember(conversation_id, userRequestId))) {
       throw new UnauthorizedException('Not authorized to add member');
     }
-
-    const key = `${RedisEnum.member}:{id}`;
 
     // Check if member already exists
     let member = await this.getMemberByConversationIdAndUserId(
@@ -42,8 +40,7 @@ export class MemberService {
       member.type = 'active';
       member = await this.memberRepository.save(member);
 
-      await this.redisCacheService.hset(key, member.id.toString(), member);
-      await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
+      await this.redisSet(member);
 
       return member;
     }
@@ -55,8 +52,7 @@ export class MemberService {
     });
     member = await this.memberRepository.save(member);
 
-    await this.redisCacheService.hset(key, member.id.toString(), member);
-    await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
+    await this.redisSet(member);
 
     return member;
   }
@@ -83,9 +79,7 @@ export class MemberService {
 
     member = await this.memberRepository.save(member);
 
-    const key = `${RedisEnum.member}:{member.id}`;
-    await this.redisCacheService.hset(key, member.id.toString(), member);
-    await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
+    await this.redisSet(member);
 
     return member;
   }
@@ -108,9 +102,7 @@ export class MemberService {
 
     member = await this.memberRepository.save(member);
 
-    const key = `${RedisEnum.member}:{member.id}`;
-    await this.redisCacheService.hset(key, member.id.toString(), member);
-    await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
+    await this.redisSet(member);
 
     return member;
   }
@@ -130,9 +122,7 @@ export class MemberService {
 
     member = await this.memberRepository.save(member);
 
-    const key = `${RedisEnum.member}:{member.id}`;
-    await this.redisCacheService.hset(key, member.id.toString(), member);
-    await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
+    await this.redisSet(member);
 
     return member;
   }
@@ -150,58 +140,59 @@ export class MemberService {
 
     member = await this.memberRepository.save(member);
 
-    const key = `${RedisEnum.member}:{member.id}`;
-    await this.redisCacheService.hset(key, member.id.toString(), member);
-    await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
+    await this.redisSet(member);
 
     return member;
   }
 
   // get methods - cache this data
-  async getMemberById(id: number) {
-    const key = `${RedisEnum.member}:{id}`;
-    const cache = await this.redisCacheService.get(key);
-    if (cache) {
-      return JSON.parse(cache) as Member; //????
-    } else {
-      const member = await this.memberRepository.getMemberById(id);
-      await this.redisCacheService.hset(key, id.toString(), member);
-      await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
-      return member;
+  async getMemberById(memberId: number): Promise<Member> {
+    const memberKey = `${RedisEnum.member}:${memberId}`;
+    const cachedMember = await this.redisCacheService.hget(
+      memberKey,
+      memberId.toString(),
+    );
+    if (cachedMember) {
+      return JSON.parse(cachedMember) as Member;
     }
+
+    // Nếu không có trong cache, truy vấn từ database
+    const member = await this.memberRepository.getMemberById(memberId);
+    if (member) {
+      // Lưu vào cache
+      await this.redisSet(member);
+      return member;
+    } else throw new NotFoundException('Member not found');
   }
 
   async getMemberByConversationIdAndUserId(
     conversationId: number,
-    userUserId: number,
-  ) {
-    // idea, {key: conversationId + userId, value: memberId} -> {key: memberId, value: member}
-    const cnUId = conversationId.toString() + ' ' + userUserId.toString();
-    const key = `${RedisEnum.member}withCnUId:{cnUId}`;
-    const cache = await this.redisCacheService.get(key);
-    if (cache) {
-      const idKey = `${RedisEnum.member}:{cache}`;
-      const memberCache = await this.redisCacheService.get(idKey);
-      return JSON.parse(memberCache) as Member;
-    } else {
-      const member =
-        await this.memberRepository.getMemberByConversationIdAndUserId(
-          conversationId,
-          userUserId,
-        );
-      await this.redisCacheService.hset(key, cnUId, member.id);
-      await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
-      await this.redisCacheService.hset(
-        `${RedisEnum.member}:{member.id}`,
-        member.id.toString(),
-        member,
-      );
-      await this.redisCacheService.expire(
-        `${RedisEnum.member}:{member.id}`,
-        convertToSeconds(env.redis.ttl),
-      );
-      return member;
+    userId: number,
+  ): Promise<Member> {
+    // Tạo key cho index (mapping)
+    const cnUId = `${conversationId} ${userId}`;
+    const indexKey = `${RedisEnum.member}withCnUId:${cnUId}`;
+
+    // Kiểm tra xem có mapping từ (conversationId, userId) -> memberId hay không
+    const memberId = await this.redisCacheService.hget(indexKey, cnUId);
+
+    if (memberId) {
+      // Nếu có memberId, dùng getMemberById để lấy Member
+      return await this.getMemberById(parseInt(memberId));
     }
+
+    // Nếu không có trong cache, truy vấn từ database
+    const member =
+      await this.memberRepository.getMemberByConversationIdAndUserId(
+        conversationId,
+        userId,
+      );
+
+    if (member) {
+      // Lưu Member object
+      await this.redisSet(member);
+      return member;
+    } else throw new NotFoundException('Member not found');
   }
 
   // helper methods
@@ -221,5 +212,19 @@ export class MemberService {
     );
     if (!member) return false;
     return member.type === 'active';
+  }
+
+  async redisSet(member: Member) {
+    const key = `${RedisEnum.member}:${member.id}`;
+    await this.redisCacheService.hset(key, member.id.toString(), member);
+    await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
+
+    const cnUId = `${member.conversation_id} ${member.user_id}`;
+    const indexKey = `${RedisEnum.member}withCnUId:${cnUId}`;
+    await this.redisCacheService.hset(indexKey, cnUId, member.id);
+    await this.redisCacheService.expire(
+      indexKey,
+      convertToSeconds(env.redis.ttl),
+    );
   }
 }
