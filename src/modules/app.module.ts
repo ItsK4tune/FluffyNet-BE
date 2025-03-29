@@ -12,6 +12,9 @@ import { PostModule } from './post/post.module';
 import { CommentModule } from './comment/comment.module';
 import { RedisCacheModule } from './redis-cache/redis-cache.module';
 import { MinioClientModule } from './minio-client/minio-client.module';
+import { MessageModule } from './message/message.module';
+import { ConversationModule } from './chat/conversation.module';
+import { MemberModule } from './chat_member/member.module';
 
 @Module({
   imports: [
@@ -26,6 +29,9 @@ import { MinioClientModule } from './minio-client/minio-client.module';
     ProfileModule,
     FollowModule,
     PostModule,
+    MessageModule,
+    ConversationModule,
+    MemberModule,
     CommentModule,
     RedisCacheModule,
     MinioClientModule,

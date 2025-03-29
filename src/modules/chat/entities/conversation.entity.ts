@@ -1,4 +1,10 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Message } from '../../message/entities/message.entity';
 import { Member } from '../../chat_member/entities/member.entity';
 // import { ConversationEnum } from '../../../utils/enums/message.enum';
@@ -14,7 +20,7 @@ export class Conversation {
   @Column()
   type: string; // 'group' | 'direct'
 
-  @Column()
+  @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;
 
   @OneToMany(() => Message, (message) => message.conversation, {

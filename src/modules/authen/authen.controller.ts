@@ -10,7 +10,13 @@ import {
   Query,
   ConflictException,
 } from '@nestjs/common';
-import { ApiBody, ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AuthenService } from './authen.service';
 import { AuthenDTO } from './dtos/authen.dto';
 import { GoogleAuthGuard } from '../../guards/google.guard';

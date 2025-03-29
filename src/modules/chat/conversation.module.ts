@@ -7,6 +7,7 @@ import { ConversationService } from './conversation.service';
 import { ConversationRepository } from './conversation.repository';
 import { ProfileModule } from '../profile/profile.module';
 import { MemberModule } from '../chat_member/member.module';
+import { RedisCacheModule } from '../redis-cache/redis-cache.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { MemberModule } from '../chat_member/member.module';
     MemberModule,
     FollowModule,
     ProfileModule,
+    RedisCacheModule,
   ],
   controllers: [ConversationController],
   providers: [ConversationService, ConversationRepository],

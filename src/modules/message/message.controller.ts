@@ -11,6 +11,7 @@ import {
   UseInterceptors,
   UploadedFiles,
   Patch,
+  Logger,
 } from '@nestjs/common';
 import { MessageService } from './message.service';
 import { GetMessagesDto } from './dtos/message.dtos';
@@ -30,12 +31,13 @@ import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/role.decorator';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
-@Controller('messages')
-@ApiExtraModels(Message)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'user')
 @ApiBearerAuth()
+@Controller('messages')
+@ApiExtraModels(Message)
 export class MessageController {
+  private readonly logger = new Logger(MessageController.name);
   constructor(private readonly messageService: MessageService) {}
 
   // -> websockets
@@ -53,10 +55,6 @@ export class MessageController {
     schema: {
       type: 'object',
       properties: {
-        conversation_id: {
-          type: 'number',
-          example: 1,
-        },
         body: {
           type: 'string',
           example: 'Hello',
@@ -91,6 +89,7 @@ export class MessageController {
     files: { image?: any; video?: any; audio?: any; file?: any },
   ) {
     const user_id = req.user.user_id;
+
     const message = await this.messageService.create(
       conversation_id,
       body,

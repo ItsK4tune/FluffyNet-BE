@@ -1,4 +1,3 @@
-// // jobs/notification/notification-queue.module.ts
 // import { Module } from '@nestjs/common';
 // import { BullModule } from '@nestjs/bull';
 // import { NotificationQueueProcessor } from './notification-queue.processor';

@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { env } from '../../config';
 
 @Injectable()
 export class MemberService {
+  // private readonly logger = new Logger(MemberService.name);
   constructor(
     private readonly memberRepository: MemberRepository,
     private readonly redisCacheService: RedisCacheService,
@@ -48,7 +50,6 @@ export class MemberService {
     member = Object.assign(new Member(), {
       ...addMemberDto,
       conversation_id,
-      createdAt: new Date(),
     });
     member = await this.memberRepository.save(member);
 
@@ -169,19 +170,16 @@ export class MemberService {
     conversationId: number,
     userId: number,
   ): Promise<Member> {
-    // Tạo key cho index (mapping)
+    // idea (conversationId, userId) => memberId => member
     const cnUId = `${conversationId} ${userId}`;
     const indexKey = `${RedisEnum.member}withCnUId:${cnUId}`;
 
-    // Kiểm tra xem có mapping từ (conversationId, userId) -> memberId hay không
     const memberId = await this.redisCacheService.hget(indexKey, cnUId);
 
     if (memberId) {
-      // Nếu có memberId, dùng getMemberById để lấy Member
-      return await this.getMemberById(parseInt(memberId));
+      return await this.getMemberById(Number(memberId));
     }
 
-    // Nếu không có trong cache, truy vấn từ database
     const member =
       await this.memberRepository.getMemberByConversationIdAndUserId(
         conversationId,
@@ -189,7 +187,6 @@ export class MemberService {
       );
 
     if (member) {
-      // Lưu Member object
       await this.redisSet(member);
       return member;
     } else throw new NotFoundException('Member not found');

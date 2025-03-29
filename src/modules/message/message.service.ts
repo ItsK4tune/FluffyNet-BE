@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -7,9 +8,11 @@ import { MessageRepository } from './message.repository';
 import { Message } from './entities/message.entity';
 import { MinioClientService } from '../minio-client/minio-client.service';
 import { MemberService } from '../chat_member/member.service';
+import { MinioEnum } from '../../utils/enums/enum';
 
 @Injectable()
 export class MessageService {
+  private readonly logger = new Logger(MessageService.name);
   constructor(
     private readonly messageRepository: MessageRepository,
     private readonly memberService: MemberService,
@@ -23,27 +26,38 @@ export class MessageService {
     userId: number,
     files: { image?: any; video?: any; audio?: any; file?: any },
   ): Promise<Message> {
-    // will be handled by the websocket gateway
-    if (!(await this.memberService.isActiveMember(conversation_id, userId))) {
+    const member = await this.memberService.getMemberByConversationIdAndUserId(
+      conversation_id,
+      userId,
+    );
+
+    if (!member || member.type !== 'active') {
       throw new UnauthorizedException(
         'You are not an active member of this conversation',
       );
     }
+
     const message = Object.assign(new Message(), {
-      conversationId: conversation_id,
-      sender_id: userId,
+      conversation_id: conversation_id,
+      sender_id: member.id,
       created_at: new Date(),
     });
-
     // save files to minio
     if (files.image)
-      message.image = await this.minioService.upload(files.image, 'image');
+      message.image = await this.minioService.upload(
+        files.image[0],
+        MinioEnum.image,
+      );
+
     if (files.video)
-      message.video = await this.minioService.upload(files.video, 'video');
-    if (files.audio)
-      message.audio = await this.minioService.upload(files.audio, 'audio');
-    if (files.file)
-      message.file = await this.minioService.upload(files.file, 'file');
+      message.video = await this.minioService.upload(
+        files.video[0],
+        MinioEnum.video,
+      );
+    // if (files.audio)
+    //   message.audio = await this.minioService.upload(files.audio[0], MinioEnum.audio);
+    // if (files.file)
+    //   message.file = await this.minioService.upload(files.file[0], 'file');
     message.body = body;
     return await this.messageRepository.saveMessage(message);
   }
@@ -85,22 +99,28 @@ export class MessageService {
     // delete old files
     if (message.image) await this.minioService.delete(message.image);
     if (message.video) await this.minioService.delete(message.video);
-    if (message.file) await this.minioService.delete(message.file);
-    if (message.audio) await this.minioService.delete(message.audio);
+    // if (message.file) await this.minioService.delete(message.file);
+    // if (message.audio) await this.minioService.delete(message.audio);
 
     // save new files
     if (files.image)
-      message.image = await this.minioService.upload(files.image, 'image');
+      message.image = await this.minioService.upload(
+        files.image[0],
+        MinioEnum.image,
+      );
     else message.image = null;
     if (files.video)
-      message.video = await this.minioService.upload(files.video, 'video');
+      message.video = await this.minioService.upload(
+        files.video[0],
+        MinioEnum.video,
+      );
     else message.video = null;
-    if (files.audio)
-      message.audio = await this.minioService.upload(files.audio, 'audio');
-    else message.audio = null;
-    if (files.file)
-      message.file = await this.minioService.upload(files.file, 'file');
-    else message.file = null;
+    // if (files.audio)
+    //   message.audio = await this.minioService.upload(files.audio, 'audio');
+    // else message.audio = null;
+    // if (files.file)
+    //   message.file = await this.minioService.upload(files.file, 'file');
+    // else message.file = null;
 
     return await this.messageRepository.saveMessage(message);
   }
@@ -162,7 +182,7 @@ export class MessageService {
   }
 
   // private methods
-  async getMessageById(id: number) {
+  private async getMessageById(id: number) {
     return this.messageRepository.getMessageById(id);
   }
 }

@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ import { Member } from '../chat_member/entities/member.entity';
 
 @Injectable()
 export class ConversationService {
+  private readonly logger = new Logger(ConversationService.name);
   constructor(
     private readonly conversationRepository: ConversationRepository,
     private readonly redisService: RedisCacheService,
@@ -34,7 +36,6 @@ export class ConversationService {
     let conversation: Conversation = Object.assign(new Conversation(), {
       name: createConversationDto.name,
       type: 'group',
-      create_at: new Date(),
       members: [],
     });
 
@@ -53,25 +54,19 @@ export class ConversationService {
         conversation_id: conversation.id,
         type: 'active',
         role: 'member',
-        create_at: new Date(),
       });
       conversation.members.push(member);
     }
 
     conversation = await this.conversationRepository.save(conversation);
 
-    const key = `RedisEnum.CONVERSATION:${conversation.id}`;
-    await this.redisService.hset(key, conversation.id.toString(), conversation);
-    await this.redisService.expire(key, convertToSeconds(env.redis.ttl));
-
     return conversation;
   }
 
   async createDirectConversation(userId1: number, userId2: number) {
-    // Check user1 and user2 is following each other
-    const isFollowing =
-      (await this.followService.getStatus(userId1, userId2)) &&
-      (await this.followService.getStatus(userId2, userId1));
+    // if (await this.getDirectConversation(userId1, userId2))
+    //   throw new NotFoundException('Conversation already exists');
+    const isFollowing = await this.followService.isFollowing(userId2, userId1);
     const memberType = isFollowing ? 'active' : 'pending';
     const message = isFollowing
       ? 'Conversation is created'
@@ -102,10 +97,6 @@ export class ConversationService {
     conversation.members.push(member2);
 
     conversation = await this.conversationRepository.save(conversation);
-
-    const key = `${RedisEnum.conversation}:${conversation.id}`;
-    await this.redisService.hset(key, conversation.id.toString(), conversation);
-    await this.redisService.expire(key, convertToSeconds(env.redis.ttl));
 
     return {
       statusCode: 200,
@@ -156,13 +147,15 @@ export class ConversationService {
     }
 
     const key = `${RedisEnum.conversation}:${id}`;
-    const cache = await this.redisService.get(key);
+    const cache = await this.redisService.hget(key, id.toString());
 
     if (cache) {
       return JSON.parse(cache) as Conversation;
     }
 
     const conversation = await this.conversationRepository.findById(id);
+
+    if (!conversation) throw new NotFoundException('Conversation not found');
 
     await this.redisService.hset(key, conversation.id.toString(), conversation);
     await this.redisService.expire(key, convertToSeconds(env.redis.ttl));
@@ -200,3 +193,5 @@ export class ConversationService {
     return await this.conversationRepository.delete(id);
   }
 }
+
+// done

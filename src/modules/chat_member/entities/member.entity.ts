@@ -1,5 +1,5 @@
 import {
-  Column,
+  Column, CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -30,7 +30,7 @@ export class Member {
   @Column()
   type: string; // 'active' | 'pending' | 'removed' | 'left' | 'blocked'
 
-  @Column()
+  @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;
 
   @ManyToOne(() => Profile, (user) => user.members)

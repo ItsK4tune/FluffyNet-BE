@@ -26,7 +26,7 @@ const envSchema = z.object({
   REDIS_TTL: z.string().default('1h'),
 
   MINIO_END_POINT: z.string().default('localhost'),
-  MINIO_PORT: z.number().default(9000),
+  MINIO_PORT: z.coerce.number().default(9000),
   MINIO_ACCESS_KEY: z.string(),
   MINIO_SECRET_KEY: z.string(),
   MINIO_BUCKET: z.string().default('uploads'),

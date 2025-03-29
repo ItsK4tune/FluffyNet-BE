@@ -90,7 +90,7 @@ export class MemberController {
   }
 
   // -> websocket
-  @Patch(':id')
+  @Patch('update/:id')
   @ApiOperation({ summary: 'Update member information' })
   @ApiParam({ name: 'id', description: 'Member ID' })
   @ApiBody({
@@ -104,10 +104,6 @@ export class MemberController {
         role: {
           type: 'string',
           example: 'admin',
-        },
-        status: {
-          type: 'string',
-          example: 'active',
         },
       },
     },
@@ -148,7 +144,7 @@ export class MemberController {
 
   // convert to soft-remove?
   // -> websocket
-  @Patch(':id')
+  @Patch('remove/:id')
   @ApiOperation({ summary: 'Remove a member from a conversation' })
   @ApiParam({ name: 'id', description: 'Member ID' })
   @ApiResponse({ status: 200, description: 'Member removed successfully' })
