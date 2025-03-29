@@ -9,6 +9,7 @@ import {
   Request,
   Query,
   ConflictException,
+  Res,
 } from '@nestjs/common';
 import { ApiBody, ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthenService } from './authen.service';
@@ -17,6 +18,7 @@ import { GoogleAuthGuard } from '../../guards/google.guard';
 import { Roles } from 'src/decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
+import { env } from 'src/config';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -102,8 +104,9 @@ export class AuthenController {
     @UseGuards(GoogleAuthGuard)
     @ApiResponse({ status: 201, description: `jwt token` })
     @Get('google/callback')
-    async googleAuthRedirect(@Req() req) {
-        return { token: req.user.token };
+    async googleAuthRedirect(@Req() req, @Res() res) {
+        const token = req.user.token;
+        return res.redirect(`${env.fe}/auth/callback?token=${token}`);
     }
 
     @ApiOperation({ summary: 'User forgot password', description: 'Send a password reset email.' })

@@ -2,6 +2,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import rateLimit from 'express-rate-limit';
 import * as compression from 'compression';
 import * as cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -11,6 +12,14 @@ import { env } from './config/index';
 import { AppModule } from './modules/app.module';
 
 const setMiddleware = (app: NestExpressApplication) => {
+  app.use(
+    rateLimit({
+      windowMs: 60 * 1000,
+      max: 10,
+      message: 'Too many requests, please try again later.',
+    })
+  );
+
   app.use(helmet());
 
   app.enableCors({

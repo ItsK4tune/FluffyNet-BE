@@ -95,6 +95,8 @@ export class AuthenService {
                 <p>Best regards,<br>Your Website Team</p>
             `,
     });
+
+    return true;
   }
 
   async resetPassword(token: string, newPassword: string): Promise<Boolean> {

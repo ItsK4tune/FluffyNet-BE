@@ -4,7 +4,6 @@ import { env } from 'src/config';
 
 @Injectable()
 export class MailService {
-  private readonly logger: Logger = new Logger(MailService.name);
   private readonly transporter: nodemailer.Transporter;
 
   constructor() {
@@ -33,9 +32,7 @@ export class MailService {
       };
 
       await this.transporter.sendMail(mailOptions);
-      this.logger.log('Email sent!');
     } catch (error) {
-      this.logger.log('Failed to send email')
     }
   }
 }

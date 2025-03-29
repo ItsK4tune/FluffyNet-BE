@@ -1,4 +1,3 @@
-import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RedisModule } from '@nestjs-modules/ioredis';
@@ -12,6 +11,8 @@ import { PostModule } from './post/post.module';
 import { CommentModule } from './comment/comment.module';
 import { RedisCacheModule } from './redis-cache/redis-cache.module';
 import { MinioClientModule } from './minio-client/minio-client.module';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { SecurityMiddleware } from './security';
 
 @Module({
   imports: [
@@ -31,4 +32,8 @@ import { MinioClientModule } from './minio-client/minio-client.module';
     MinioClientModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(SecurityMiddleware).forRoutes('*');
+  }
+}
