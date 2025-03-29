@@ -23,6 +23,8 @@ const envSchema = z.object({
 
   MYSQL_URL: z.string(),
 
+  MONGOOSE_URL: z.string(),
+
   REDIS_URL: z.string(),
   REDIS_TTL: z.string().default('1h'),
 
@@ -64,6 +66,9 @@ export const env = {
   },
   mysql: {
     url: envVars.MYSQL_URL,
+  },
+  mongodb: {
+    url: envVars.MONGOOSE_URL,
   },
   redis: {
     url: envVars.REDIS_URL,

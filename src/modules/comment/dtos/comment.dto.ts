@@ -6,9 +6,6 @@ export class CommentDto {
   @IsNotEmpty()
   body?: string;
 
-  // @IsNumber()
-  // post_id: number;
-
   @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? parseInt(value, 10) : undefined))
   @IsOptional()
   @IsNumber()

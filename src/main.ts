@@ -53,8 +53,8 @@ async function bootstrap() {
 
   if (process.env.NODE_ENV !== 'production') {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('Social Network')
-      .setDescription('API documentation for Social Network backend')
+      .setTitle('Fluffy Net')
+      .setDescription('API documentation for Fluffy Net backend')
       .setVersion('alpha')
       .addBearerAuth()
       .build();

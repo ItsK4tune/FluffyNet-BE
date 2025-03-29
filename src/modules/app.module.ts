@@ -13,6 +13,8 @@ import { RedisCacheModule } from './redis-cache/redis-cache.module';
 import { MinioClientModule } from './minio-client/minio-client.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { SecurityMiddleware } from './security';
+import { NotificationModule } from './notification/notification.module';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
@@ -22,6 +24,7 @@ import { SecurityMiddleware } from './security';
       type: 'single',
       url: env.redis.url,
     }),
+    MongooseModule.forRoot(env.mongodb.url),
     HealthcheckModule,
     AuthenModule,
     ProfileModule,
@@ -30,6 +33,7 @@ import { SecurityMiddleware } from './security';
     CommentModule,
     RedisCacheModule,
     MinioClientModule,
+    NotificationModule,
   ],
 })
 export class AppModule implements NestModule {

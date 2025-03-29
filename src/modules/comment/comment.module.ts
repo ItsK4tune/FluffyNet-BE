@@ -10,6 +10,8 @@ import { Post } from '../post/entities/post.entity';
 import { PostModule } from '../post/post.module';
 import { RedisCacheModule } from '../redis-cache/redis-cache.module';
 import { MinioClientModule } from '../minio-client/minio-client.module';
+import { NotificationModule } from '../notification/notification.module';
+import { ProfileModule } from '../profile/profile.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { MinioClientModule } from '../minio-client/minio-client.module';
     PostModule,
     RedisCacheModule,
     MinioClientModule,
+    NotificationModule,
+    ProfileModule,
   ],
   controllers: [CommentController],
   providers: [CommentService, JwtStrategy, CommentUtil],

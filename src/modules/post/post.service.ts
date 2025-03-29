@@ -5,6 +5,8 @@ import { Post } from './entities/post.entity';
 import { MinioClientService } from '../minio-client/minio-client.service';
 import { MinioEnum } from 'src/utils/enums/enum';
 import { FollowService } from '../follow/follow.service';
+import { NotificationService } from '../notification/notification.service';
+import { ProfileService } from '../profile/profile.service';
 
 @Injectable()
 export class PostService {
@@ -12,6 +14,8 @@ export class PostService {
     private readonly postUtil: PostUtil,
     private readonly minioClientService: MinioClientService,
     private readonly followService: FollowService,
+    private readonly notificationService: NotificationService,
+    private readonly profileService: ProfileService,
   ) {}
 
   async getAllPosts(): Promise<Post[]> {
@@ -61,6 +65,23 @@ export class PostService {
     };
 
     await this.postUtil.createPost(user_id, postData);
+
+    const list = await this.followService.followingList(user_id);
+    if (list && list.length > 0) {
+      const profile = await this.profileService.getProfile(user_id);
+      const followers = list.map(follow => follow.following_id);
+      for (const follower of followers) {
+        await this.notificationService.createNotification(
+          follower,
+          'post',
+          {
+            profile: profile,
+            message: `User ${user_id} posted a new post that you may like`, 
+          }
+        );
+      }
+    }
+
     return true;
   }
 

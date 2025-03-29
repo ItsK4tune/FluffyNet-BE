@@ -7,6 +7,8 @@ import { env } from 'src/config';
 import { CommentUtil } from './comment.util';
 import { RedisCacheService } from '../redis-cache/redis-cache.service';
 import { MinioClientService } from '../minio-client/minio-client.service';
+import { NotificationService } from '../notification/notification.service';
+import { ProfileService } from '../profile/profile.service';
 
 @Injectable()
 export class CommentService {
@@ -14,22 +16,13 @@ export class CommentService {
         private readonly commentUtil: CommentUtil,
         private readonly redisCacheService: RedisCacheService,
         private readonly minioClientService: MinioClientService,
+        private readonly notificationService: NotificationService,
+        private readonly profileService: ProfileService,
     ) {}
 
     async getCommentsByPost(post_id: number): Promise<Comment[] | Record<string, any>> {
         const key = `${RedisEnum.comment}:${post_id}`;
         const cache = await this.redisCacheService.hgetall(key);
-        
-        
-        // if (cache && Object.keys(cache).length > 0) {
-        //     return Object.values(cache).map((c) => JSON.parse(c));
-        // }
-
-        // const comments = await this.commentUtil.getCommentByPost(post_id);
-
-        // await this.redisCacheService.hsetall(key, comments);
-        // await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
-        // return comments;
 
         let comments: any[];
         if (cache) {
@@ -48,6 +41,37 @@ export class CommentService {
 
         const newComment = await this.commentUtil.createComment(post_id, user_id, commentDto, files);
         await this.redisCacheService.hset(key, newComment.comment_id.toString(), newComment);
+
+        if (commentDto.parent_id) {
+            const parentComment = await this.commentUtil.getCommentById(commentDto.parent_id);
+            if (parentComment) {
+                const profile = await this.profileService.getProfile(parentComment.user_id);
+
+                if (profile) {
+                    await this.notificationService.createNotification(
+                        parentComment.user_id,
+                        'comment',
+                        {
+                            profile: profile,
+                            message: `User ${user_id} replied to your comment`,
+                            post_id: post_id,
+                        }
+                    );
+                }
+            }
+        }
+
+        const profile = await this.profileService.getProfile(user_id);
+        await this.notificationService.createNotification(
+            user_id,
+            'comment',
+            {
+                profile: profile,
+                message: `User ${user_id} commented on your post`,
+                post_id: post_id,
+            }
+        );
+        
         return true;
     }
 

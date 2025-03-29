@@ -5,12 +5,16 @@ import { FollowUtil } from 'src/modules/follow/follow.util';
 import { ProfileUtil } from 'src/modules/profile/profile.util';
 import { Follow } from './entities/follow.entity';
 import { Profile } from '../profile/entities/profile.entity';
+import { NotificationService } from '../notification/notification.service';
+import { ProfileService } from '../profile/profile.service';
 
 @Injectable()
 export class FollowService {
   constructor(
     private readonly followUtil: FollowUtil,
     private readonly profileUtil: ProfileUtil,
+    private readonly notificationService: NotificationService,
+    private readonly profileService: ProfileService,
   ) {}
 
   async getStatus(user_id: number, target_id: number): Promise<number | Boolean> {
@@ -18,20 +22,35 @@ export class FollowService {
       return 409;
 
     const target = this.profileUtil.getProfileByUserId(target_id);
-    
+
     if (!target)
       return 400;
 
     const log = await this.followUtil.findFollow(user_id, target_id);
-    if (!log) return false;
+    return !!log;
   }
 
   async followTarget(user_id: number, target_id: number): Promise<Boolean> {
     const log = await this.getStatus(user_id, target_id);
-
+    
     let status: boolean;
     if (log) status = await this.followUtil.deleteFollowing(user_id, target_id);
     else status = await this.followUtil.createFollow(user_id, target_id);
+
+    if (status) {
+      const profile = await this.profileService.getProfile(target_id);
+      if (profile) {
+        const notification = await this.notificationService.createNotification(
+          target_id,
+          'follow',
+          {
+            profile: profile,
+            message: `${user_id} started following you`,	
+            user_id: user_id,
+          }
+        );
+      }
+    }
 
     return status;
   }
