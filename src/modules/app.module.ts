@@ -16,6 +16,9 @@ import { SecurityMiddleware } from './security';
 import { NotificationModule } from './notification/notification.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { LikeModule } from './like/like.module';
+import { MessageModule } from './message/message.module';
+import { ConversationModule } from './chat/conversation.module';
+import { MemberModule } from './chat_member/member.module';
 
 @Module({
   imports: [
@@ -31,6 +34,9 @@ import { LikeModule } from './like/like.module';
     ProfileModule,
     FollowModule,
     PostModule,
+    MessageModule,
+    ConversationModule,
+    MemberModule,
     CommentModule,
     RedisCacheModule,
     MinioClientModule,

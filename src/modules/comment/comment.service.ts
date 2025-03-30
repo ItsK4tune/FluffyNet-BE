@@ -28,20 +28,25 @@ export class CommentService {
         const key = `${RedisEnum.comment}:${post_id}`;
         const cache = await this.redisCacheService.hgetall(key);
 
-        let comments: any[];
-        if (cache) {
-            comments = Object.values(cache).map(comment => JSON.parse(comment));
-        } else {
-            comments = await this.commentUtil.getCommentByPost(post_id);
-            await this.redisCacheService.hsetall(key, comments);
-            await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
-        }
-
-        return this.buildCommentTree(comments);
+    let comments: any[];
+    if (cache) {
+      comments = Object.values(cache).map((comment) => JSON.parse(comment));
+    } else {
+      comments = await this.commentUtil.getCommentByPost(post_id);
+      await this.redisCacheService.hsetall(key, comments);
+      await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
     }
 
-    async createComment(post_id: number, user_id: number, commentDto: CommentDto, files: { image?: any, video?: any }) {
-        const key = `${RedisEnum.comment}:${post_id}`;
+    return this.buildCommentTree(comments);
+  }
+
+  async createComment(
+    post_id: number,
+    user_id: number,
+    commentDto: CommentDto,
+    files: { image?: any; video?: any },
+  ) {
+    const key = `${RedisEnum.comment}:${post_id}`;
 
         const newComment = await this.commentUtil.createComment(post_id, user_id, commentDto, files);
         await this.redisCacheService.hset(key, newComment.comment_id.toString(), newComment);
@@ -79,47 +84,66 @@ export class CommentService {
         return true;
     }
 
-    async updateComment(post_id: number, user_id: number, comment_id: number, commentDto: CommentDto, files: { image?: any, video?: any }): Promise<Boolean> {
-        const key = `${RedisEnum.comment}:${post_id}`;
+  async updateComment(
+    post_id: number,
+    user_id: number,
+    comment_id: number,
+    commentDto: CommentDto,
+    files: { image?: any; video?: any },
+  ): Promise<boolean> {
+    const key = `${RedisEnum.comment}:${post_id}`;
 
-        const comment = await this.commentUtil.getCommentById(comment_id);
-        if (!comment)   return null; 
-        if (comment.user_id !== user_id)    return false; 
+    const comment = await this.commentUtil.getCommentById(comment_id);
+    if (!comment) return null;
+    if (comment.user_id !== user_id) return false;
 
-        Object.assign(comment, commentDto);
+    Object.assign(comment, commentDto);
 
-        if (files?.image?.[0]) {
-            comment.image = await this.minioClientService.upload(files.image[0], MinioEnum.image);
-        }
-    
-        if (files?.video?.[0]) {
-            comment.video = await this.minioClientService.upload(files.video[0], MinioEnum.video);
-        }
-
-        await this.commentUtil.saveComment(comment);
-        await this.redisCacheService.hset(key, comment_id.toString(), comment);
-        return true;
+    if (files?.image?.[0]) {
+      comment.image = await this.minioClientService.upload(
+        files.image[0],
+        MinioEnum.image,
+      );
     }
 
-    async deleteComment(post_id: number, user_id: number, comment_id: number): Promise<Boolean> {
-        const key = `${RedisEnum.comment}:${post_id}`;
-        await this.redisCacheService.del(key);
-
-        const comment = await this.commentUtil.getCommentById(comment_id);
-        if (!comment)   return null; 
-        if (comment.user_id !== user_id)    return false; 
-
-        await this.commentUtil.deleteComment(comment_id);
-        await this.redisCacheService.hdel(key, comment_id.toString());
-        return true;
+    if (files?.video?.[0]) {
+      comment.video = await this.minioClientService.upload(
+        files.video[0],
+        MinioEnum.video,
+      );
     }
 
-    private buildCommentTree(comments: Comment[], parentId: number | null = null): any[] {
-        return comments
-            .filter(comment => comment.parent_id === parentId) 
-            .map(comment => ({
-                ...comment,
-                children: this.buildCommentTree(comments, comment.comment_id)
-            }));
-    }
+    await this.commentUtil.saveComment(comment);
+    await this.redisCacheService.hset(key, comment_id.toString(), comment);
+    return true;
+  }
+
+  async deleteComment(
+    post_id: number,
+    user_id: number,
+    comment_id: number,
+  ): Promise<boolean> {
+    const key = `${RedisEnum.comment}:${post_id}`;
+    await this.redisCacheService.del(key);
+
+    const comment = await this.commentUtil.getCommentById(comment_id);
+    if (!comment) return null;
+    if (comment.user_id !== user_id) return false;
+
+    await this.commentUtil.deleteComment(comment_id);
+    await this.redisCacheService.hdel(key, comment_id.toString());
+    return true;
+  }
+
+  private buildCommentTree(
+    comments: Comment[],
+    parentId: number | null = null,
+  ): any[] {
+    return comments
+      .filter((comment) => comment.parent_id === parentId)
+      .map((comment) => ({
+        ...comment,
+        children: this.buildCommentTree(comments, comment.comment_id),
+      }));
+  }
 }

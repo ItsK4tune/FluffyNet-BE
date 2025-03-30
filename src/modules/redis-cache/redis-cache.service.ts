@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from "@nestjs/common";
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
 
 @Injectable()
 export class RedisCacheService {
+  private readonly logger = new Logger(RedisCacheService.name);
+
   constructor(@InjectRedis() private readonly redis: Redis) {}
 
   async get(key: string): Promise<string | null> {
@@ -33,9 +35,9 @@ export class RedisCacheService {
 
   async hsetall(hash: string, data: Record<string, any>): Promise<void> {
     const pipeline = this.redis.pipeline();
-    
+
     for (const [key, value] of Object.entries(data)) {
-        pipeline.hset(hash, key, JSON.stringify(value));
+      pipeline.hset(hash, key, JSON.stringify(value));
     }
 
     await pipeline.exec();
@@ -58,10 +60,11 @@ export class RedisCacheService {
   }
 
   async scheck(key: string, data: string) {
+    this.logger.log(`Redis authenticated with key:${key}`);
     return await this.redis.sismember(key, data);
   }
 
   async sgetall(key: string) {
     return await this.redis.smembers(key);
-}
+  }
 }

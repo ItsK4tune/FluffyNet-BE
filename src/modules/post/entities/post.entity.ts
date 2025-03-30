@@ -23,7 +23,7 @@ export class Post {
   repost_id: number;
 
   @ManyToOne(() => Post, (post) => post.reposts, { nullable: true, onDelete: "CASCADE" })
-  @JoinColumn({ name: "repost_id" })
+  @JoinColumn({ name: 'repost_id' })
   repost: Post;
 
   @OneToMany(() => Like, (like) => like.post_id)

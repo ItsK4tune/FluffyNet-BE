@@ -9,7 +9,7 @@ import {
 export class AddMemberDto {
   @IsNumber()
   @IsNotEmpty()
-  userUserId: number;
+  user_id: number;
 
   @IsString()
   @IsOptional()

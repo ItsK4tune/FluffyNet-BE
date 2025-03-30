@@ -1,6 +1,12 @@
-import { Entity, ManyToOne, Column, PrimaryGeneratedColumn } from 'typeorm';
-// import { Conversation } from '../../conversation/entities/conversation.entity';
-// import { Member } from '../../conversation_member/entities/member.entity';
+import {
+  Entity,
+  ManyToOne,
+  Column,
+  PrimaryGeneratedColumn,
+  JoinColumn,
+} from 'typeorm';
+import { Conversation } from '../../chat/entities/conversation.entity';
+import { Member } from '../../chat_member/entities/member.entity';
 
 @Entity('message')
 export class Message {
@@ -29,15 +35,17 @@ export class Message {
   file: string;
 
   @Column()
-  createdAt: Date;
+  created_at: Date;
 
-//   @ManyToOne(() => Conversation, (conversation) => conversation.messages, {
-//     onDelete: 'CASCADE',
-//   })
-//   conversation: Conversation;
+  @ManyToOne(() => Conversation, (conversation) => conversation.messages, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'conversation_id' })
+  conversation: Conversation;
 
-//   @ManyToOne(() => Member, (member) => member.messages, {
-//     onDelete: 'CASCADE',
-//   })
-//   sender: Member;
+  @ManyToOne(() => Member, (member) => member.messages, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'sender_id' })
+  sender: Member;
 }

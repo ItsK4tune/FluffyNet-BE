@@ -17,9 +17,11 @@ export class FollowService {
     private readonly profileService: ProfileService,
   ) {}
 
-  async getStatus(user_id: number, target_id: number): Promise<number | Boolean> {
-    if (user_id === target_id)
-      return 409;
+  async getStatus(
+    user_id: number,
+    target_id: number,
+  ): Promise<number | boolean> {
+    if (user_id === target_id) return 409;
 
     const target = this.profileUtil.getProfileByUserId(target_id);
 
@@ -30,7 +32,7 @@ export class FollowService {
     return !!log;
   }
 
-  async followTarget(user_id: number, target_id: number): Promise<Boolean> {
+  async followTarget(user_id: number, target_id: number): Promise<boolean> {
     const log = await this.getStatus(user_id, target_id);
     
     let status: boolean;
@@ -57,7 +59,7 @@ export class FollowService {
 
   async followingList(user_id: number): Promise<Follow[]> {
     const user = await this.profileUtil.getProfileByUserId(user_id);
-    if (!user)  return null;
+    if (!user) return null;
 
     const list = await this.followUtil.findFollowingList(user_id);
     return list;
@@ -113,5 +115,10 @@ export class FollowService {
   private getRandomElements<T>(arr: T[], k: number): T[] {
     const shuffled = [...arr].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, k);
+  }
+
+  async isFollowing(user_id: number, target_id: number): Promise<boolean> {
+    const log = await this.followUtil.findFollow(user_id, target_id);
+    return !!log;
   }
 }

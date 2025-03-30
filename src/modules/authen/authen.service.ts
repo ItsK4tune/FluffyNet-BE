@@ -1,6 +1,4 @@
-import {
-  Injectable,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Account } from './entities/account.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -22,10 +20,9 @@ export class AuthenService {
     private readonly redisCacheService: RedisCacheService,
   ) {}
 
-  async createUser({ username, password }: AuthenDTO): Promise<Boolean> {
+  async createUser({ username, password }: AuthenDTO): Promise<boolean> {
     const findUser = await this.accountUtil.findByUsername(username);
-    if (findUser) 
-      return true;
+    if (findUser) return true;
 
     const ecryptPassword = await bcrypt.hash(password, 12);
 
@@ -42,7 +39,7 @@ export class AuthenService {
 
     if (!findUser && email) {
       const userByEmail = await this.accountUtil.findByEmail(email);
-      
+
       if (userByEmail?.verifyEmail) {
         findUser = userByEmail;
       }
@@ -59,7 +56,7 @@ export class AuthenService {
         updated_at,
         ...user
       } = findUser;
-      
+
       return this.jwtService.sign({ user, jit: uuidv4() });
     }
 
@@ -72,10 +69,10 @@ export class AuthenService {
     await this.redisCacheService.expire(key, convertToSeconds(env.jwt.time));
   }
 
-  async forgotPassword(email: string): Promise<Boolean> {
+  async forgotPassword(email: string): Promise<boolean> {
     const user = await this.accountUtil.findByEmail(email);
 
-    if (!user) return null
+    if (!user) return null;
 
     const payload = { email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
@@ -99,24 +96,23 @@ export class AuthenService {
     return true;
   }
 
-  async resetPassword(token: string, newPassword: string): Promise<Boolean> {
-      try {
-          const decoded = this.jwtService.verify(token);
-          const email = decoded.email;
-      
-          const user = await this.accountUtil.findByEmail(email);
-          if (!user) 
-            return null;
-          await this.accountUtil.updatePassword(user, newPassword);
-      } catch (error) {
-          return false;
-      }
+  async resetPassword(token: string, newPassword: string): Promise<boolean> {
+    try {
+      const decoded = this.jwtService.verify(token);
+      const email = decoded.email;
+
+      const user = await this.accountUtil.findByEmail(email);
+      if (!user) return null;
+      await this.accountUtil.updatePassword(user, newPassword);
+    } catch (error) {
+      return false;
+    }
   }
 
-  async verifyEmail(user_id: number, email: string): Promise<Boolean> {
+  async verifyEmail(user_id: number, email: string): Promise<boolean> {
     const user = await this.accountUtil.findByUserID(user_id);
 
-    if (!user) return null
+    if (!user) return null;
     if (user.verifyEmail || (user.email != email && user.email)) return false;
 
     const payload = { user_id, email };
@@ -139,28 +135,28 @@ export class AuthenService {
     });
   }
 
-  async verify(token: string): Promise<Boolean> {
+  async verify(token: string): Promise<boolean> {
     try {
       const decoded = this.jwtService.verify(token);
       const { user_id, email } = decoded;
 
       const user = await this.accountUtil.findByUserID(user_id);
-      if (!user)  return null;
+      if (!user) return null;
 
       await this.accountUtil.updateVerifyEmail(user, email);
     } catch (error) {
-      return false
+      return false;
     }
   }
 
-  async unbind(user_id: number): Promise<Boolean> {
+  async unbind(user_id: number): Promise<boolean> {
     const user = await this.accountUtil.findByUserID(user_id);
-    if (!user)  return null;
-    if (!user.email)  return false;
+    if (!user) return null;
+    if (!user.email) return false;
 
     user.email = null;
     user.verifyEmail = null;
     await this.accountUtil.save(user);
     return true;
-  } 
+  }
 }

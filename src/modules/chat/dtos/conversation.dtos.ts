@@ -12,6 +12,6 @@ export class CreateConversationDto {
 
 export class UpdateConversationDto {
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   name?: string;
 }

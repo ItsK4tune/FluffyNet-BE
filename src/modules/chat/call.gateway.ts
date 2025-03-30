@@ -9,7 +9,7 @@
 // } from '@nestjs/websockets';
 // import { Server, Socket } from 'socket.io';
 // import { UseGuards } from '@nestjs/common';
-// import { WsJwtGuard } from 'src/guards/websocket.jwt.guard';
+// import { WsJwtGuard } from 'src/guards/websocket.guard';
 //
 // @WebSocketGateway({
 //   cors: {

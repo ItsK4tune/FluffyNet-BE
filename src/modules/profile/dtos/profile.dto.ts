@@ -1,11 +1,4 @@
-import {
-  IsOptional,
-  IsString,
-  IsInt,
-  Min,
-  Max,
-  IsUrl,
-} from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, Max, IsUrl } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class ProfileDto {
