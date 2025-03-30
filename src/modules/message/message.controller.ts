@@ -23,6 +23,7 @@ import {
   ApiOperation,
   ApiParam,
   ApiResponse,
+  ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
 import { Message } from './entities/message.entity';
@@ -34,8 +35,8 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'user')
 @ApiBearerAuth()
+@ApiTags('Messages')
 @Controller('messages')
-@ApiExtraModels(Message)
 export class MessageController {
   private readonly logger = new Logger(MessageController.name);
   constructor(private readonly messageService: MessageService) {}

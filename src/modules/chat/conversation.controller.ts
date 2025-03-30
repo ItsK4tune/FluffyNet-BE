@@ -28,7 +28,7 @@ import { JwtAuthGuard } from '../../guards/jwt.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/role.decorator';
 
-@ApiTags('conversations')
+@ApiTags('Conversations')
 @Controller('conversations')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'user')
