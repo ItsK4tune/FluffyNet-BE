@@ -185,5 +185,5 @@ export class PostController {
     if (result == false)  throw new ConflictException('User is not the owner of this post');
 
     return { message: 'Post deleted successfully' };
-  }
+  } 
 }

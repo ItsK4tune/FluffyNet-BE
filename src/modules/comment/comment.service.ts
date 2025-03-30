@@ -20,6 +20,10 @@ export class CommentService {
         private readonly profileService: ProfileService,
     ) {}
 
+    async findComment (comment_id: number): Promise<Comment> {
+        return this.commentUtil.getCommentById(comment_id);
+    }
+
     async getCommentsByPost(post_id: number): Promise<Comment[] | Record<string, any>> {
         const key = `${RedisEnum.comment}:${post_id}`;
         const cache = await this.redisCacheService.hgetall(key);

@@ -25,5 +25,6 @@ import { ProfileModule } from '../profile/profile.module';
   ],
   controllers: [CommentController],
   providers: [CommentService, JwtStrategy, CommentUtil],
+  exports: [CommentService]
 })
 export class CommentModule {}

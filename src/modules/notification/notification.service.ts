@@ -18,7 +18,7 @@ export class NotificationService {
     this.notificationGateway.sendNotification(user_id, { type, body });
   }
 
-  async getUserNotifications(userId: number) {
-    return this.notificationModel.find({ userId }).sort({ createdAt: -1 }).exec();
+  async getUserNotifications(user_id: number) {
+    return this.notificationModel.find({ user_id }).sort({ createdAt: -1 }).exec();
   }
 }

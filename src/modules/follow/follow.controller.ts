@@ -32,8 +32,8 @@ export class FollowController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
     @ApiBearerAuth()
-    @ApiResponse({ status: 201, description: 'Followed' })
-    @ApiResponse({ status: 201, description: 'Not followed' })
+    @ApiResponse({ status: 201, description: 'Follow' })
+    @ApiResponse({ status: 201, description: 'Unfollow' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @ApiResponse({ status: 409, description: 'Cannot follow yourself' })
     @Get('follow-status')
@@ -42,8 +42,8 @@ export class FollowController {
         const status = await this.followService.getStatus(user_id, target_id);
         if (status === 409) throw new ConflictException('Cannot follow yourself');
         if (status === 400) throw new BadRequestException('User not found');
-        if (!status)    return { message: "Not followed" }; 
-        return { message: "Followed" };
+        if (!status)    return { message: "Unfollow" }; 
+        return { message: "Follow" };
     }
 
     @ApiOperation({ summary: `Set follow status from user to target`, description: `Authenticate, authorize and set user's following status toward target.` })
@@ -60,7 +60,7 @@ export class FollowController {
         },
     })
     @ApiResponse({ status: 201, description: 'Followed' })
-    @ApiResponse({ status: 201, description: 'Not followed' })
+    @ApiResponse({ status: 201, description: 'Unfollowed' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @ApiResponse({ status: 409, description: 'Cannot follow yourself' })
     @Post('follow')
@@ -68,7 +68,7 @@ export class FollowController {
         const user_id: number = req.user.user_id;
         const status = await this.followService.followTarget(user_id, target_id);
         if (status) return { message: "Followed" };
-        return { message: "Not followed" };
+        return { message: "Unfollowed" };
     }
 
     @ApiOperation({ summary: `Get all target following`, description: `Get target's following list.` })

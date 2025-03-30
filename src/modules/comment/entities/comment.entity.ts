@@ -1,5 +1,6 @@
 import { Entity, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, OneToOne, OneToMany, JoinColumn, Index } from 'typeorm';
 import { Profile } from 'src/modules/profile/entities/profile.entity';
+import { Like } from 'src/modules/like/entity/like.entity';
 
 @Entity('comment')
 export class Comment {
@@ -38,6 +39,9 @@ export class Comment {
   @ManyToOne(() => Comment, (comment) => comment.replies, { nullable: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: "parent_id" })
   parentComment?: Comment;
+
+  @OneToMany(() => Like, (like) => like.comment_id)
+  likes: Like[];
 
   @OneToMany(() => Comment, (comment) => comment.parentComment)
   replies: Comment[];

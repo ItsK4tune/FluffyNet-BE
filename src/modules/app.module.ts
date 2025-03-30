@@ -15,6 +15,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { SecurityMiddleware } from './security';
 import { NotificationModule } from './notification/notification.module';
 import { MongooseModule } from '@nestjs/mongoose';
+import { LikeModule } from './like/like.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { MongooseModule } from '@nestjs/mongoose';
     RedisCacheModule,
     MinioClientModule,
     NotificationModule,
+    LikeModule,
   ],
 })
 export class AppModule implements NestModule {

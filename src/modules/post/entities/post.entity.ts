@@ -1,3 +1,4 @@
+import { Like } from 'src/modules/like/entity/like.entity';
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('post')
@@ -24,6 +25,9 @@ export class Post {
   @ManyToOne(() => Post, (post) => post.reposts, { nullable: true, onDelete: "CASCADE" })
   @JoinColumn({ name: "repost_id" })
   repost: Post;
+
+  @OneToMany(() => Like, (like) => like.post_id)
+  likes: Like[];
  
   @OneToMany(() => Post, (post) => post.repost)
   reposts: Post[];
