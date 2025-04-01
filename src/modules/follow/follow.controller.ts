@@ -32,8 +32,8 @@ export class FollowController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
     @ApiBearerAuth()
-    @ApiResponse({ status: 201, description: 'Follow' })
-    @ApiResponse({ status: 201, description: 'Unfollow' })
+    @ApiResponse({ status: 201, description: 'true' })
+    @ApiResponse({ status: 201, description: 'false' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @ApiResponse({ status: 409, description: 'Cannot follow yourself' })
     @Get('follow-status')
@@ -42,8 +42,7 @@ export class FollowController {
         const status = await this.followService.getStatus(user_id, target_id);
         if (status === 409) throw new ConflictException('Cannot follow yourself');
         if (status === 400) throw new BadRequestException('User not found');
-        if (!status)    return { message: "Unfollow" }; 
-        return { message: "Follow" };
+        return { status: status };
     }
 
     @ApiOperation({ summary: `Set follow status from user to target`, description: `Authenticate, authorize and set user's following status toward target.` })
@@ -59,8 +58,8 @@ export class FollowController {
             required: ['target_id'],
         },
     })
-    @ApiResponse({ status: 201, description: 'Followed' })
-    @ApiResponse({ status: 201, description: 'Unfollowed' })
+    @ApiResponse({ status: 201, description: 'true' })
+    @ApiResponse({ status: 201, description: 'false' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @ApiResponse({ status: 409, description: 'Cannot follow yourself' })
     @Post('')
@@ -69,45 +68,44 @@ export class FollowController {
         if (user_id === target_id)  throw new ConflictException('Cannot follow yourself');
         const status = await this.followService.followTarget(user_id, target_id);
         if (status === null)    throw new BadRequestException('User not found');
-        if (status) return { message: "Followed" };
-        return { message: "Unfollowed" };
+        return { status: status };
     }
 
     @ApiOperation({ summary: `Get all target following`, description: `Get target's following list.` })
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
     @ApiBearerAuth()
-    @ApiResponse({ status: 201, description: 'Following list of user_id: <user_id> + following list' })
+    @ApiResponse({ status: 201, description: 'following list' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @Get('following')
     async getFollowingList(@Query('user_id') user_id: number) {
         const list = await this.followService.followingList(user_id);
         if (!list)  throw new BadRequestException('User not found');
-        return { message: `Following list of user_id: ${user_id}`, list: list }
+        return { list: list }
     }
 
     @ApiOperation({ summary: `Get all target follower`, description: `Get target's follower list.` })
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
     @ApiBearerAuth()
-    @ApiResponse({ status: 201, description: 'Follower list of user_id: <user_id> + follower list' })
+    @ApiResponse({ status: 201, description: 'follower list' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @Get('follower')
     async getFollowerList(@Query('user_id') user_id: number) {
         const list = await this.followService.followerList(user_id);
         if (!list)  throw new BadRequestException('User not found');
-        return { message: `Follower list of user_id: ${user_id}`, list: list }
+        return { list: list }
     }
 
     @ApiOperation({ summary: `Get suggest follower`, description: `Get user's follow suggestion list.` })
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
     @ApiBearerAuth()
-    @ApiResponse({ status: 201, description: 'Suggestion list of user_id: <user_id> + suggestion list' })
+    @ApiResponse({ status: 201, description: 'suggestion list' })
     @Get('follow-suggest')
     async getSuggestionList(@Request() req) {
         const user_id = req.user.user_id;
         const list = await this.followService.suggestionList(user_id);
-        return { message: `Suggestion list of user_id: ${user_id}`, list: list }
+        return { list: list }
     }
 }

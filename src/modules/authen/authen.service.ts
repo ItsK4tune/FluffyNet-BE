@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Account } from './entities/account.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -34,21 +34,16 @@ export class AuthenService {
 
   async login({ username, email, password }: AuthenDTO): Promise<string> {
     let findUser: Account;
-
     if (username) {
       findUser = await this.accountUtil.findByUsername(username);
     }
-
     if (!findUser && email) {
       const userByEmail = await this.accountUtil.findByEmail(email);
-
       if (userByEmail?.verifyEmail) {
         findUser = userByEmail;
       }
     }
-
     if (!findUser) return null;
-
     if (await bcrypt.compare(password, findUser.password)) {
       const {
         password,
@@ -58,19 +53,22 @@ export class AuthenService {
         updated_at,
         ...user
       } = findUser;
-
       return this.jwtService.sign({ user, jit: uuidv4() });
     }
-
     return null;
   }
 
-  async logout(jit: string) {
-    const key = `${RedisEnum.jit}`;
-    await this.redisCacheService.sadd(key, jit);
-    await this.redisCacheService.expire(key, convertToSeconds(env.jwt.time));
+  async logout(jit: string): Promise<boolean> {
+    try{
+      const key = `${RedisEnum.jit}`;
+      await this.redisCacheService.sadd(key, jit);
+      await this.redisCacheService.expire(key, convertToSeconds(env.jwt.time));
+      return true;
+    } catch {
+      return false;
+    }
   }
-
+  
   async forgotPassword(email: string): Promise<boolean> {
     const user = await this.accountUtil.findByEmail(email);
 
@@ -114,6 +112,7 @@ export class AuthenService {
 
     if (!user) return null;
     if (user.verifyEmail || (user.email != email && user.email)) return false;
+    if (!user.email)  throw new BadRequestException('No email binded to this profile');
 
     const payload = { user_id, email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
@@ -136,11 +135,12 @@ export class AuthenService {
   async verify(token: string): Promise<boolean> {
     try {
       const decoded = this.jwtService.verify(token);
+      
       const { user_id, email } = decoded;
 
       const user = await this.accountUtil.findByUserID(user_id);
       if (!user) return null;
-
+      
       await this.accountUtil.updateVerifyEmail(user, email);
     } catch (error) {
       return false;

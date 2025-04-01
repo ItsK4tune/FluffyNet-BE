@@ -1,11 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
 
 @Injectable()
 export class RedisCacheService {
-  private readonly logger = new Logger(RedisCacheService.name);
-
   constructor(@InjectRedis() private readonly redis: Redis) {}
 
   async get(key: string): Promise<string | null> {
@@ -60,7 +58,6 @@ export class RedisCacheService {
   }
 
   async scheck(key: string, data: string) {
-    this.logger.log(`Redis authenticated with key:${key}`);
     return await this.redis.sismember(key, data);
   }
 

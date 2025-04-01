@@ -37,7 +37,7 @@ export class PostController {
   @ApiOperation({ summary: 'Get all posts' })
   @ApiResponse({
     status: 201,
-    description: 'List of all posts retrieved successfully',
+    description: 'post',
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'user')
@@ -46,7 +46,6 @@ export class PostController {
   async getAllPosts() {
     const posts = await this.postService.getAllPosts();
     return {
-      message: 'List of all posts retrieved successfully',
       post: posts,
     };
   }
@@ -54,7 +53,7 @@ export class PostController {
   @ApiOperation({ summary: 'Get all posts posted by following' })
   @ApiResponse({
     status: 201,
-    description: 'List of all posts retrieved successfully',
+    description: 'post',
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'user')
@@ -64,7 +63,6 @@ export class PostController {
     const user_id = req.user.user_id;
     const posts = await this.postService.getPostsOfFollowing(user_id);
     return {
-      message: 'List of all posts retrieved successfully',
       post: posts,
     };
   }
@@ -72,7 +70,7 @@ export class PostController {
   @ApiOperation({ summary: 'Get post by ID' })
   @ApiResponse({
     status: 201,
-    description: 'Post retrieved successfully ',
+    description: 'post',
   })
   @ApiResponse({
     status: 404,
@@ -86,7 +84,6 @@ export class PostController {
     const post = await this.postService.findOneById(post_id);
     if (post) {
       return {
-        message: 'Post retrieved successfully',
         post: post,
       };
     }
@@ -119,7 +116,7 @@ export class PostController {
       ],
     },
   })
-  @ApiResponse({ status: 201, description: 'Post created successfully' })
+  @ApiResponse({ status: 201 })
   @ApiResponse({ status: 400, description: 'Repost_id invalid' })
   @ApiResponse({ status: 400, description: 'Require body/image/video' })
   @Post()
@@ -128,7 +125,7 @@ export class PostController {
     const newPost = await this.postService.createPost(user_id, postDto, files);
     if (newPost === null) throw new BadRequestException('Repost_id invalid');
     if (newPost === false) throw new BadRequestException('Require body/image/video');
-    return { message: 'Post created successfully' }
+    return;
   }
 
   @ApiOperation({ summary: 'Update a post' })
@@ -155,7 +152,7 @@ export class PostController {
       ],
     },
   })
-  @ApiResponse({ status: 200, description: 'Post updated successfully ' })
+  @ApiResponse({ status: 200 })
   @ApiResponse({ status: 404, description: 'Input not valid' })
   @ApiResponse({ status: 409, description: 'User is not the owner' })
   @Patch('/:post_id')
@@ -166,14 +163,14 @@ export class PostController {
     if (updatedPost == null)  throw new NotFoundException('Post not found');
     if (updatedPost == false)  throw new ConflictException('User is not the owner');
 
-    return { message: 'Post updated successfully' };
+    return;
   }
 
   @ApiOperation({ summary: 'Delete a post' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'user')
   @ApiBearerAuth()
-  @ApiResponse({ status: 200, description: 'Post deleted successfully ' })
+  @ApiResponse({ status: 200 })
   @ApiResponse({ status: 404, description: 'Post not found' })
   @ApiResponse({ status: 409, description: 'User is not the owner of this post' })
   @Delete('/:post_id')
@@ -184,6 +181,6 @@ export class PostController {
     if (result == null)  throw new NotFoundException('Post not found');
     if (result == false)  throw new ConflictException('User is not the owner of this post');
 
-    return { message: 'Post deleted successfully' };
+    return;
   } 
 }

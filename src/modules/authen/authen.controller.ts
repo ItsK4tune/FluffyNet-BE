@@ -10,6 +10,7 @@ import {
   Query,
   ConflictException,
   Res,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -42,7 +43,7 @@ export class AuthenController {
             required: ['username', 'password'], 
         },
     })
-    @ApiResponse({ status: 201, description: 'Created successfully' })
+    @ApiResponse({ status: 201 })
     @ApiResponse({ status: 400, description: 'Only username allowed' })
     @ApiResponse({ status: 409, description: 'Username already exists' })
     @Post('register')
@@ -52,7 +53,7 @@ export class AuthenController {
         }
         const status = await this.authenService.createUser(authenDTO);
         if (status) throw new ConflictException('Username already exists');
-        return { message: 'Created successfully'};
+        return;
     }
 
     @ApiOperation({ summary: 'User login', description: 'Authenticate user and return JWT token.' })
@@ -71,29 +72,26 @@ export class AuthenController {
             ],
         },
     })
-    @ApiResponse({ status: 201, description: `user's jwt token` })
+    @ApiResponse({ status: 201, description: `User's token` })
     @ApiResponse({ status: 400, description: 'Wrong username/email or password' })
-    @ApiResponse({ status: 400, description: 'Only one allowed: username or email' })
     @Post('login')
     async login(@Body() authenDTO: AuthenDTO) {
-        if (authenDTO.username && authenDTO.email) {
-            throw new BadRequestException('Only one allowed: username or email.');
-        }
-
-        const user = await this.authenService.login(authenDTO);
-        if (!user) throw new BadRequestException('Wrong username/email or password');
-        return { token: user };
+        const token = await this.authenService.login(authenDTO);
+        if (!token) throw new BadRequestException('Wrong username/email or password');
+        return { token: token };
     }
 
     @ApiOperation({ summary: 'User logout', description: 'Withdraw JWT token and logout' })
-    @ApiResponse({ status: 201, description: `Logout successfully` })
-    @ApiBearerAuth()
+    @ApiResponse({ status: 201 })
+    @ApiResponse({ status: 500, description: 'An unexpected error occurred during logout' })
     @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @Get('logout')
     async logout(@Request() req) {
         const jit = req.user.jit; 
-        await this.authenService.logout(jit);
-        return { message: "Logout successfully" };
+        const status = await this.authenService.logout(jit);
+        if (status) return;
+        throw new InternalServerErrorException('An unexpected error occurred during logout');
     }
 
     @ApiOperation({
@@ -106,7 +104,7 @@ export class AuthenController {
 
     @ApiOperation({ summary: 'Callback url for Google Oauth' })
     @UseGuards(GoogleAuthGuard)
-    @ApiResponse({ status: 201, description: `jwt token` })
+    @ApiResponse({ status: 201 })
     @Get('google/callback')
     async googleAuthRedirect(@Req() req, @Res() res) {
         const token = req.user.token;
@@ -123,13 +121,13 @@ export class AuthenController {
             required: ['email'],
         },
     })
-    @ApiResponse({ status: 201, description: `Reset link sent` })
+    @ApiResponse({ status: 201 })
     @ApiResponse({ status: 409, description: 'Account not exist' })
     @Post('forgot-password')
     async forgotPassword(@Body('email') email: string) {
         const status = await this.authenService.forgotPassword(email);
         if (!status) throw new BadRequestException('Account not exist');
-        return { message: 'Reset link sent' };
+        return;
     }
 
     @ApiOperation({ summary: 'User reset password', description: 'Reset password using a token.' })
@@ -142,17 +140,15 @@ export class AuthenController {
             required: ['newPassword'],
         },
     })
-    @ApiResponse({ status: 201, description: `Password reset successfully` })
+    @ApiResponse({ status: 201 })
     @ApiResponse({ status: 400, description: 'Wrong token' })
     @ApiResponse({ status: 409, description: 'Token invalid/expired' })
     @Post('reset-password')
     async resetPassword(@Query('token') token: string, @Body('newPassword') newPassword: string) {
         const status = await this.authenService.resetPassword(token, newPassword);
-        
         if (status === null) throw new BadRequestException('Wrong token');
         if (status === false) throw new ConflictException('Token invalid/expired');
-
-        return { message: 'Password reset successfully' };
+        return;
     }
 
     @ApiOperation({ summary: 'User verify email', description: 'Check email and send url to verify email.' })
@@ -168,48 +164,43 @@ export class AuthenController {
             required: ['email'],
         },
     })
-    @ApiResponse({ status: 201, description: `Verify link sent` })
+    @ApiResponse({ status: 201 })
     @ApiResponse({ status: 400, description: 'Account not exist' })
+    @ApiResponse({ status: 400, description: 'No email binded to this profile' })
     @ApiResponse({ status: 409, description: 'Email has been verified' })
     @Post('verify-email')
     async verifyEmail(@Request() req, @Body('email') email: string){
         const user_id = req.user.user_id;
         const status = await this.authenService.verifyEmail(user_id, email);
-
         if (status === null) throw new BadRequestException('Account not exist');
         if (status === false) throw new ConflictException('Email has been verified');
-
-        return { message: 'Verify link sent' };
+        return;
     }
 
     @ApiOperation({ summary: 'User verify email', description: 'Verify email using a token.' })
-    @ApiResponse({ status: 201, description: `Verified` })
-    @ApiResponse({ status: 400, description: 'Wrong token' })
+    @ApiResponse({ status: 201 })
+    @ApiResponse({ status: 400, description: 'Email already binded for other account' })
     @ApiResponse({ status: 409, description: 'Token invalid/expired' })
     @Get('verify')
     async acceptVerifyEmail(@Query('token') token: string){
         const status = await this.authenService.verify(token);
-
         if (status === null) throw new BadRequestException('Token invalid/expired');
-        if (status === false) throw new ConflictException('Wrong token');
-
-        return { message: 'Verified' };
+        if (status === false) throw new ConflictException('Email already binded for other account');
+        return;
     }
 
     @ApiOperation({ summary: 'User unbind email', description: 'Unbind email.' })
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
     @ApiBearerAuth()
-    @ApiResponse({ status: 201, description: `Email unbinded successfully` })
+    @ApiResponse({ status: 201 })
     @ApiResponse({ status: 409, description: 'Token invalid/expired' })
     @Post('unbind')
     async unbindEmail(@Request() req){
         const user_id = req.user.user_id;
         const status = await this.authenService.unbind(user_id);
-
         if (status === null)    throw new BadRequestException('User not found');
         if (status === false)    throw new ConflictException(`User don't have email binded`);
-
-        return { message: 'Email unbinded successfully' };
+        return;
     }
 }

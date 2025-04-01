@@ -40,13 +40,13 @@ export class CommentController {
     summary: `Get all comments by post`,
     description: `Return all comments of a post.`,
   })
-  @ApiResponse({ status: 200, description: 'Fetch comments successfully' })
+  @ApiResponse({ status: 200, description: 'comment' })
   @ApiResponse({ status: 404, description: 'Post not found' })
   @Get(':post_id')
   async getCommentsByPost(@Param('post_id') post_id: number) {
     const comment = await this.commentService.getCommentsByPost(post_id);
     if (comment === null) throw new NotFoundException('Post not found');
-    return { message: 'Fetch comments successfully', comment: comment };
+    return { comment: comment };
   }
 
   //   @ApiOperation({ summary: `Get a comment by ID`, description: `Return a single comment by its ID.` })
@@ -63,7 +63,7 @@ export class CommentController {
     summary: `Create a new comment`,
     description: `Add a new comment to a post.`,
   })
-  @ApiResponse({ status: 201, description: 'Comment created successfully' })
+  @ApiResponse({ status: 201 })
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'image', maxCount: 1 },
@@ -101,14 +101,14 @@ export class CommentController {
       commentDto,
       files,
     );
-    if (status) return { message: 'Comment created successfully' };
+    if (status) return;
   }
 
   @ApiOperation({
     summary: `Update a comment`,
     description: `Authenticate user, check authorization, and update comment content.`,
   })
-  @ApiResponse({ status: 200, description: 'Comment updated successfully' })
+  @ApiResponse({ status: 200 })
   @ApiResponse({ status: 404, description: 'Comment not found' })
   @ApiResponse({ status: 409, description: 'Not allowed' })
   @UseInterceptors(
@@ -151,14 +151,14 @@ export class CommentController {
     );
     if (status === null) throw new NotFoundException('Comment not found');
     if (status === false) throw new ForbiddenException('Not allowed');
-    return { message: 'Comment updated successfully' };
+    return;
   }
 
   @ApiOperation({
     summary: `Delete a comment`,
     description: `Authenticate user, check authorization, and delete a comment.`,
   })
-  @ApiResponse({ status: 200, description: 'Comment deleted successfully' })
+  @ApiResponse({ status: 200 })
   @ApiResponse({ status: 404, description: 'Comment not found' })
   @ApiResponse({ status: 409, description: 'Not allowed' })
   @Delete('post_id/:comment_id')
@@ -175,6 +175,6 @@ export class CommentController {
     );
     if (status === null) throw new NotFoundException('Comment not found');
     if (status === false) throw new ForbiddenException('Not allowed');
-    return { message: 'Comment updated successfully' };
+    return;
   }
 }

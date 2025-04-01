@@ -40,7 +40,7 @@ export class ProfileController {
   })
   @ApiResponse({
     status: 201,
-    description: 'Fetch successfully from user_id: <user_id> + profile',
+    description: 'profile',
   })
   @ApiResponse({ status: 400, description: 'User not found' })
   @Get('view-profile')
@@ -48,7 +48,6 @@ export class ProfileController {
     const profile = await this.profileService.getProfile(user_id);
     if (!profile) throw new BadRequestException({ message: 'User not found' });
     return {
-      message: `Fetch successfully from user_id: ${user_id}`,
       profile: profile,
     };
   }
@@ -80,7 +79,7 @@ export class ProfileController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 201 })
   @ApiResponse({ status: 404, description: 'User profile not found' })
   @Patch('edit-profile')
   async editProfile(
@@ -91,6 +90,6 @@ export class ProfileController {
     const user: number = req.user.user_id;
     const status = await this.profileService.editProfile(user, body, files);
     if (status == false) return new NotFoundException('User profile not found');
-    return { message: 'Profile updated successfully' };
+    return;
   }
 }

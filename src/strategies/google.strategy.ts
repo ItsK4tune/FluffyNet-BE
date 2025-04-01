@@ -69,7 +69,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       email: email,
       role: user.role,
     };
-    const token = this.jwtService.sign({ jwtPayload, jit: uuidv4() });
+    const token = this.jwtService.sign({ user: jwtPayload, jit: uuidv4() });
 
     return done(null, { ...jwtPayload, token });
   }
