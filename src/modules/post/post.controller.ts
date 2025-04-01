@@ -122,7 +122,7 @@ export class PostController {
   @ApiResponse({ status: 201, description: 'Post created successfully' })
   @ApiResponse({ status: 400, description: 'Repost_id invalid' })
   @ApiResponse({ status: 400, description: 'Require body/image/video' })
-  @Post('')
+  @Post()
   async createPost(@Request() req, @Body() postDto: PostDto, @UploadedFiles() files: { image?: any, video?: any }) {
     const user_id = req.user.user_id;
     const newPost = await this.postService.createPost(user_id, postDto, files);

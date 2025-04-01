@@ -21,6 +21,6 @@ import { ProfileModule } from '../profile/profile.module';
   ],
   controllers: [PostController],
   providers: [PostService, PostUtil],
-  exports: [PostService]
+  exports: [PostService, PostUtil]
 })
 export class PostModule {}

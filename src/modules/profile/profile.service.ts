@@ -55,19 +55,29 @@ export class ProfileService {
     let userProfile = await this.profileUtil.getProfileByUserId(user_id);
     if (!userProfile) return false;
 
+    const oldAvatarUrl = userProfile.avatar;
+    const oldBackgroundUrl = userProfile.background;
+
+    let newAvatarUrl: string | null = userProfile.avatar;
+    let newBackgroundUrl: string | null = userProfile.background;
+
     if (files?.avatar?.[0]) {
-      const uploadedAvatar = await this.minioClientService.upload(
+      newAvatarUrl = await this.minioClientService.upload(
         files.avatar[0],
         MinioEnum.avatars,
       );
-      userProfile.avatar = uploadedAvatar;
+      if (oldAvatarUrl && newAvatarUrl) 
+       this.minioClientService.delete(oldAvatarUrl);
+      userProfile.background = newAvatarUrl;
     }
     if (files?.background?.[0]) {
-      const uploadedBackground = await this.minioClientService.upload(
+      newBackgroundUrl = await this.minioClientService.upload(
         files.background[0],
         MinioEnum.backgrounds,
       );
-      userProfile.background = uploadedBackground;
+      if (oldBackgroundUrl && newBackgroundUrl) 
+        this.minioClientService.delete(oldBackgroundUrl);
+      userProfile.background = newBackgroundUrl;
     }
 
     const userAccount = await this.accountUtil.findByUserID(user_id);

@@ -17,14 +17,9 @@ export class FollowService {
     private readonly profileService: ProfileService,
   ) {}
 
-  async getStatus(
-    user_id: number,
-    target_id: number,
-  ): Promise<number | boolean> {
+  async getStatus(user_id: number, target_id: number): Promise<number | boolean> {
     if (user_id === target_id) return 409;
-
-    const target = this.profileUtil.getProfileByUserId(target_id);
-
+    const target = await this.profileUtil.getProfileByUserId(target_id);
     if (!target)
       return 400;
 
@@ -33,28 +28,28 @@ export class FollowService {
   }
 
   async followTarget(user_id: number, target_id: number): Promise<boolean> {
-    const log = await this.getStatus(user_id, target_id);
-    
-    let status: boolean;
-    if (log) status = await this.followUtil.deleteFollowing(user_id, target_id);
-    else status = await this.followUtil.createFollow(user_id, target_id);
+    const isCurrentlyFollowing = await this.followUtil.findFollow(user_id, target_id);
 
-    if (status) {
-      const profile = await this.profileService.getProfile(target_id);
-      if (profile) {
-        const notification = await this.notificationService.createNotification(
-          target_id,
-          'follow',
-          {
-            profile: profile,
-            message: `${user_id} started following you`,	
-            user_id: user_id,
-          }
-        );
+    let operationSuccess: boolean;
+    let isNewFollow: boolean;
+
+    if (isCurrentlyFollowing) {
+      operationSuccess = await this.followUtil.deleteFollowing(user_id, target_id);
+      isNewFollow = false;
+    } else {
+      const targetProfile = await this.profileUtil.getProfileByUserId(target_id);
+      if (!targetProfile) {
+        return null; 
       }
+      operationSuccess = await this.followUtil.createFollow(user_id, target_id);
+      isNewFollow = true;
     }
 
-    return status;
+    if (operationSuccess && isNewFollow) {
+      await this.sendFollowNotification(user_id, target_id);
+    }
+
+    return operationSuccess;
   }
 
   async followingList(user_id: number): Promise<Follow[]> {
@@ -99,12 +94,51 @@ export class FollowService {
     const selectedSuggestions = this.getRandomElements(finalSuggestions, y);
 
     let suggestionList: Profile[] = [];
-    for (const follow of selectedSuggestions) {
-      const profile = await this.profileUtil.getProfileByUserId(follow);
-      suggestionList.push(profile);
+    for (const suggestionId of selectedSuggestions) {
+      try {
+        const profile = await this.profileUtil.getProfileByUserId(suggestionId);
+        if (profile) { 
+            suggestionList.push(profile);
+        }
+      } catch (error) {
+        continue;;
+      }
     }
-
     return suggestionList;
+  }
+
+  async isFollowing(user_id: number, target_id: number): Promise<boolean> {
+    const log = await this.followUtil.findFollow(user_id, target_id);
+    return !!log;
+  }
+
+  private async sendFollowNotification(follower_id: number, followed_id: number): Promise<void> {
+    try {
+      const followerProfile = await this.profileService.getProfile(follower_id) as Profile;
+      if (!followerProfile) {
+        return;
+      }
+
+      const notificationType = 'FOLLOW'; 
+      const notificationBody = {
+        follower: { 
+            user_id: followerProfile.user_id,
+            displayName: followerProfile.name,
+            avatarUrl: followerProfile.avatar, 
+        },
+        message: `${followerProfile.name || `User ${follower_id}`} started following you.`, 
+        followedAt: new Date().toISOString(), 
+      };
+        
+      await this.notificationService.createNotification(
+        followed_id,      
+        notificationType,
+        notificationBody,
+      );
+
+    } catch (error) {
+        // TODO: implement retry mechanism
+    }
   }
 
   private async getRandomProfiles(user_id: number, n: number): Promise<Profile[]> {
@@ -115,10 +149,5 @@ export class FollowService {
   private getRandomElements<T>(arr: T[], k: number): T[] {
     const shuffled = [...arr].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, k);
-  }
-
-  async isFollowing(user_id: number, target_id: number): Promise<boolean> {
-    const log = await this.followUtil.findFollow(user_id, target_id);
-    return !!log;
   }
 }

@@ -66,7 +66,9 @@ export class FollowController {
     @Post('')
     async setStatus(@Request() req: any, @Body('target_id') target_id: number) {
         const user_id: number = req.user.user_id;
+        if (user_id === target_id)  throw new ConflictException('Cannot follow yourself');
         const status = await this.followService.followTarget(user_id, target_id);
+        if (status === null)    throw new BadRequestException('User not found');
         if (status) return { message: "Followed" };
         return { message: "Unfollowed" };
     }

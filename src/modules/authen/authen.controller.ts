@@ -42,7 +42,7 @@ export class AuthenController {
             required: ['username', 'password'], 
         },
     })
-    @ApiResponse({ status: 201, description: 'User created successfully' })
+    @ApiResponse({ status: 201, description: 'Created successfully' })
     @ApiResponse({ status: 400, description: 'Only username allowed' })
     @ApiResponse({ status: 409, description: 'Username already exists' })
     @Post('register')
@@ -50,10 +50,9 @@ export class AuthenController {
         if (authenDTO.email) {
             throw new BadRequestException('Only username allowed');
         }
-
         const status = await this.authenService.createUser(authenDTO);
         if (status) throw new ConflictException('Username already exists');
-        return { message: 'User created successfully'};
+        return { message: 'Created successfully'};
     }
 
     @ApiOperation({ summary: 'User login', description: 'Authenticate user and return JWT token.' })
@@ -72,7 +71,7 @@ export class AuthenController {
             ],
         },
     })
-    @ApiResponse({ status: 201, description: `User created successfully + user's jwt token` })
+    @ApiResponse({ status: 201, description: `user's jwt token` })
     @ApiResponse({ status: 400, description: 'Wrong username/email or password' })
     @ApiResponse({ status: 400, description: 'Only one allowed: username or email' })
     @Post('login')
@@ -83,14 +82,13 @@ export class AuthenController {
 
         const user = await this.authenService.login(authenDTO);
         if (!user) throw new BadRequestException('Wrong username/email or password');
-        return { message: "Login successfully", token: user };
+        return { token: user };
     }
 
     @ApiOperation({ summary: 'User logout', description: 'Withdraw JWT token and logout' })
     @ApiResponse({ status: 201, description: `Logout successfully` })
     @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('user', 'admin')
+    @UseGuards(JwtAuthGuard)
     @Get('logout')
     async logout(@Request() req) {
         const jit = req.user.jit; 
@@ -144,7 +142,7 @@ export class AuthenController {
             required: ['newPassword'],
         },
     })
-    @ApiResponse({ status: 201, description: `New password set` })
+    @ApiResponse({ status: 201, description: `Password reset successfully` })
     @ApiResponse({ status: 400, description: 'Wrong token' })
     @ApiResponse({ status: 409, description: 'Token invalid/expired' })
     @Post('reset-password')
@@ -154,7 +152,7 @@ export class AuthenController {
         if (status === null) throw new BadRequestException('Wrong token');
         if (status === false) throw new ConflictException('Token invalid/expired');
 
-        return { message: 'New password set' };
+        return { message: 'Password reset successfully' };
     }
 
     @ApiOperation({ summary: 'User verify email', description: 'Check email and send url to verify email.' })
@@ -202,9 +200,9 @@ export class AuthenController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
     @ApiBearerAuth()
-    @ApiResponse({ status: 201, description: `Unbinded` })
+    @ApiResponse({ status: 201, description: `Email unbinded successfully` })
     @ApiResponse({ status: 409, description: 'Token invalid/expired' })
-    @Get('unbind')
+    @Post('unbind')
     async unbindEmail(@Request() req){
         const user_id = req.user.user_id;
         const status = await this.authenService.unbind(user_id);
@@ -212,6 +210,6 @@ export class AuthenController {
         if (status === null)    throw new BadRequestException('User not found');
         if (status === false)    throw new ConflictException(`User don't have email binded`);
 
-        return { message: 'Unbinded' };
+        return { message: 'Email unbinded successfully' };
     }
 }
