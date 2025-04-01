@@ -13,7 +13,7 @@ export class NotificationController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('admin', 'user')
     @ApiBearerAuth()
-    @Get('/notifications')
+    @Get('')
     async getUserNotifications(@Req() req) {
         const user_id = req.user.user_id;
         return await this.notificationService.getUserNotifications(user_id);

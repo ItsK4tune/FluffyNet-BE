@@ -9,6 +9,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   DNS: z.string().default('http://localhost:3000'),
   FE_DNS: z.string().default('http://localhost:5173'),
+  ALLOWED_ORIGINS: z.string().default('_'),
 
   JWT_SECRET: z.string().default('Secret-string'),
   JWT_TIME: z.string().default('1h'),
@@ -50,6 +51,7 @@ export const env = {
   port: envVars.PORT,
   dns: envVars.DNS,
   fe: envVars.FE_DNS,
+  cors:envVars.ALLOWED_ORIGINS,
   jwt: {
     secret: envVars.JWT_SECRET,
     time: envVars.JWT_TIME,

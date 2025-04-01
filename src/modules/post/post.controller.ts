@@ -28,7 +28,7 @@ import { Roles } from 'src/decorators/role.decorator';
 import { PostDto } from './dto/post.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
-@Controller('posts')
+@Controller('post')
 export class PostController {
   constructor(
     private readonly postService: PostService,
@@ -81,7 +81,7 @@ export class PostController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('user', 'admin')
   @ApiBearerAuth()
-  @Get('post/:post_id')
+  @Get('/:post_id')
   async getPostById(@Param('post_id') post_id: number) {
     const post = await this.postService.findOneById(post_id);
     if (post) {
@@ -122,7 +122,7 @@ export class PostController {
   @ApiResponse({ status: 201, description: 'Post created successfully' })
   @ApiResponse({ status: 400, description: 'Repost_id invalid' })
   @ApiResponse({ status: 400, description: 'Require body/image/video' })
-  @Post('post')
+  @Post('')
   async createPost(@Request() req, @Body() postDto: PostDto, @UploadedFiles() files: { image?: any, video?: any }) {
     const user_id = req.user.user_id;
     const newPost = await this.postService.createPost(user_id, postDto, files);
@@ -158,7 +158,7 @@ export class PostController {
   @ApiResponse({ status: 200, description: 'Post updated successfully ' })
   @ApiResponse({ status: 404, description: 'Input not valid' })
   @ApiResponse({ status: 409, description: 'User is not the owner' })
-  @Patch('post/:post_id')
+  @Patch('/:post_id')
   async updatePost(@Request() req, @Param('post_id') post_id: number, @Body() postDto: PostDto, @UploadedFiles() files: { image?: any, video?: any }) {
     const user_id = req.user.user_id;
     const updatedPost = await this.postService.updatePost(user_id, post_id, postDto, files);
@@ -176,7 +176,7 @@ export class PostController {
   @ApiResponse({ status: 200, description: 'Post deleted successfully ' })
   @ApiResponse({ status: 404, description: 'Post not found' })
   @ApiResponse({ status: 409, description: 'User is not the owner of this post' })
-  @Delete('post/:post_id')
+  @Delete('/:post_id')
   async deletePost(@Request() req, @Param('post_id') post_id: number) {
     const user_id = req.user.user_id;
     const result = await this.postService.deletePost(user_id, post_id);

@@ -63,7 +63,7 @@ export class FollowController {
     @ApiResponse({ status: 201, description: 'Unfollowed' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @ApiResponse({ status: 409, description: 'Cannot follow yourself' })
-    @Post('follow')
+    @Post('')
     async setStatus(@Request() req: any, @Body('target_id') target_id: number) {
         const user_id: number = req.user.user_id;
         const status = await this.followService.followTarget(user_id, target_id);

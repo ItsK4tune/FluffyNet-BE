@@ -7,25 +7,77 @@ import * as compression from 'compression';
 import * as cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import * as morgan from 'morgan';
+import { Request } from 'express';
 
 import { env } from './config';
 import { AppModule } from './modules/app.module';
 
-const setMiddleware = (app: NestExpressApplication) => {
-  app.use(
-    rateLimit({
-      windowMs: 60 * 1000,
-      max: 10,
-      message: 'Too many requests, please try again later.',
-    })
-  );
+interface AuthenticatedUser {
+  user_id: number;
+  email: string;
+  role: string; 
+  jit: string; 
+}
 
-  app.use(helmet());
+declare global {
+  namespace Express {
+    interface User {
+      user_id: number;
+      email: string;
+      role: string;
+      jit: string;
+    }
+  }
+}
+
+const setMiddleware = (app: NestExpressApplication) => {
+  const allowedOriginsEnv = env.cors;
+  const allowedOrigins = allowedOriginsEnv
+                         .split(',') 
+                         .map(origin => origin.trim()) 
+                         .filter(origin => origin.length > 0);
 
   app.enableCors({
     credentials: true,
-    origin: (_, callback) => callback(null, true),
+    origin: (origin, callback) => {
+      console.log(`[CORS Check] Received Origin Header: ${origin}`);
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.error(`CORS Error: Origin ${origin} not allowed.`); 
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization', 
+      'Accept',
+      'Origin', 
+    ],
+    preflightContinue: false, 
+    optionsSuccessStatus: 204 
   });
+
+  app.use(helmet());
+
+  app.use(
+    rateLimit({
+      windowMs: 60 * 1000, 
+      limit: 10, 
+      message: 'Too many requests from this source, please try again later.',
+      standardHeaders: 'draft-7',
+	    legacyHeaders: false, 
+
+      keyGenerator: (req: Request): string => {
+        if (req.user && req.user.user_id) {
+          return `user:${req.user.user_id}`;
+        } else {
+          return `ip:${req.ip}`;
+        }
+     },
+    })
+  );
 
   app.use(morgan('combined'));
 
@@ -48,6 +100,8 @@ async function bootstrap() {
   app.useLogger(new Logger('APP'));
   const logger = new Logger('APP');
 
+  app.set('trust proxy', 1);
+  
   app.setGlobalPrefix('api');
   setMiddleware(app);
 

@@ -79,7 +79,7 @@ export class LikeController {
     @ApiOperation({ summary: 'User like post', description: 'Authen, author and like' })
     @ApiResponse({ status: 201, description: 'Liked' })
     @ApiResponse({ status: 201, description: 'Unliked' })
-    @Post('like-post')
+    @Post('')
     async LikeComment(@Req() req, @Body('comment_id') comment_id: number) {
         const user_id = req.user.user_id;
         const status = await this.likeService.likeComment(user_id, comment_id);

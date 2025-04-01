@@ -10,7 +10,6 @@ import { RedisEnum } from 'src/utils/enums/enum';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
-  // private readonly logger = new Logger(JwtAuthGuard.name);
   constructor(private readonly redisCacheService: RedisCacheService) {
     super();
   }

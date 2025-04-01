@@ -24,7 +24,7 @@ export class MailService {
   }) {
     try {
       const mailOptions = {
-        from: `"Social Network" <${env.mailer.sender}>`,
+        from: `"Fluffy Net" <Fluffy Net>`,
         to: options.to,
         subject: options.subject,
         text: options.text,

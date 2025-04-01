@@ -10,6 +10,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { RedisCacheService } from '../redis-cache/redis-cache.service';
 import { RedisEnum } from 'src/utils/enums/enum';
 import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
+import * as path from 'path';
+import { promises as fsPromises } from 'fs';
 
 @Injectable()
 export class AuthenService {
@@ -77,20 +79,18 @@ export class AuthenService {
     const payload = { email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
 
-    const resetLink = `${env.dns}/reset-password?token=${token}`;
+    const resetLink = `${env.fe}/reset-password?token=${token}`;
+    const templatePath = path.join(__dirname, '..', '..', '..', 'src', 'static', 'reset-mail.html');
+    const htmlTemplate = await fsPromises.readFile(templatePath, 'utf-8');
+    let htmlContent = htmlTemplate.replace(/{{resetLink}}/g, resetLink);
+    htmlContent = htmlContent.replace(/{{env.mailer.time}}/g, env.mailer.time);
+    htmlContent = htmlContent.replace(/{{year}}/g, new Date().getFullYear().toString());
+    
     await this.mailService.sendMail({
       to: email,
       subject: 'Reset password',
       text: `Dear user,\n\nWe received a request to reset your password...`,
-      html: `
-                <h1>Dear user,</h1>
-                <p>We received a request to reset your password. If you did not make this request, please ignore this email.</p>
-                <p>To reset your password, click the link below:</p>
-                <p><a href="${resetLink}">${resetLink}</a></p>
-                <p>This link will expire in <strong>${env.mailer.time}</strong> for security reasons.</p>
-                <p>If you have any issues, please contact our support team.</p>
-                <p>Best regards,<br>Your Website Team</p>
-            `,
+      html: htmlContent,
     });
 
     return true;
@@ -118,20 +118,18 @@ export class AuthenService {
     const payload = { user_id, email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
 
-    const verifyLink = `${env.dns}/verify?token=${token}`;
+    const verifyLink = `${env.fe}/verify?token=${token}`;
+    const templatePath = path.join(__dirname, '..', '..', '..', 'src', 'static', 'verify-mail.html');
+    const htmlTemplate = await fsPromises.readFile(templatePath, 'utf-8');
+    let htmlContent = htmlTemplate.replace(/{{verifyLink}}/g, verifyLink);
+    htmlContent = htmlContent.replace(/{{env.mailer.time}}/g, env.mailer.time);
+    htmlContent = htmlContent.replace(/{{year}}/g, new Date().getFullYear().toString());
+
     await this.mailService.sendMail({
       to: email,
       subject: 'Verify email',
       text: `Dear user,\n\nWe received a request to verify your email...`,
-      html: `
-                <h1>Dear user,</h1>
-                <p>We received a request to verify your email. If you did not make this request, please ignore this email.</p>
-                <p>To verify your email, click the link below:</p>
-                <p><a href="${verifyLink}">${verifyLink}</a></p>
-                <p>This link will expire in <strong>${env.mailer.time}</strong> for security reasons.</p>
-                <p>If you have any issues, please contact our support team.</p>
-                <p>Best regards,<br>Your Website Team</p>
-            `,
+      html: htmlContent,
     });
   }
 

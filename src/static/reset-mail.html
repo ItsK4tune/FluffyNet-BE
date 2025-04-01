@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluffyNet Password Reset Sparkle!</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #555;
+            background-color: #fff7f9; /* Very light pink background */
+            margin: 0;
+            padding: 0;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border: 1px solid #ffcce0; /* Light pink border */
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(255, 182, 193, 0.2); /* Pink shadow */
+        }
+        .header {
+            background-color: #ffb6c1; /* Slightly deeper pink header */
+            color: #ffffff;
+            padding: 25px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: bold;
+        }
+        .content {
+            padding: 30px;
+            color: #665d60; /* Slightly darker text for readability */
+        }
+        .content p {
+            margin-bottom: 18px;
+        }
+        .button-link {
+            display: inline-block;
+            background-color: #ff8fab; /* Bright pink button */
+            color: #ffffff !important; /* Ensure white text */
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 25px; /* Very rounded */
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 2px 5px rgba(255, 105, 180, 0.3);
+        }
+        .button-link:hover {
+            background-color: #ff7096; /* Darker pink on hover */
+        }
+        .link-text {
+             /* If you still want to show the link as text */
+             word-break: break-all;
+             color: #ff8fab;
+             font-size: 0.9em;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.85em;
+            color: #aaa;
+            background-color: #fff0f5; /* Very light pink footer */
+            border-top: 1px solid #ffdde8;
+        }
+        strong {
+            color: #e17591; /* Darker pink emphasis */
+        }
+         .divider {
+            border: none;
+            height: 1px;
+            background: linear-gradient(to right, transparent, #ffcce0, transparent);
+            margin: 25px 0;
+        }
+        .emoji { /* Subtle style for emojis */
+            font-size: 1.1em;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>A Sprinkle of FluffyNet Magic! <span class="emoji">✨</span></h1>
+        </div>
+        <div class="content">
+            <p>Hello lovely FluffyNet friend,</p>
+            <p>We heard a tiny little whisper <span class="emoji">🌬️</span>... were you looking to refresh the key to your FluffyNet world?</p>
+            <p>If that whisper wasn't you, no worries at all! Just let this message gently float away like a cloud <span class="emoji">☁️</span>, and your current password will stay cozy and safe.</p>
+
+            <hr class="divider">
+
+            <p>Ready for a fresh start? Simply tap the pretty pink button below:</p>
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{{resetLink}}" class="button-link">✨ Reset My Password ✨</a>
+            </p>
+            <p style="text-align:center; font-size: 0.9em;">(If the button seems shy, you can copy and paste this link into your browser instead) <br><span class="link-text">{{resetLink}}</span></p>
+
+            <hr class="divider">
+
+            <p>Heads up! This magical link has a sparkling hourglass <span class="emoji">⏳</span> attached. For your safety, it will softly fade away in <strong>{{env.mailer.time}}</strong>. Please follow its glow soon!</p>
+            <p>If you run into a little bit of fog <span class="emoji">🌫️</span> along the way, don't hesitate to reach out to our super friendly support team!</p>
+            <p>Wishing you sweet dreams and happy adventures,</p>
+            <p><strong>The FluffyNet Team <span class="emoji">💖</span></strong></p>
+        </div>
+        <div class="footer">
+            You received this email because a password reset was requested for your FluffyNet account.
+            <br>
+            © {{year}} FluffyNet - Your world, your stories.
+        </div>
+    </div>
+</body>
+</html>
