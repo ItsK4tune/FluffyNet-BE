@@ -38,17 +38,13 @@ export class AuthenService {
       findUser = await this.accountUtil.findByUsername(username);
     }
     if (!findUser && email) {
-      const userByEmail = await this.accountUtil.findByEmail(email);
-      if (userByEmail?.verifyEmail) {
-        findUser = userByEmail;
-      }
+      findUser = await this.accountUtil.findByEmail(email);
     }
     if (!findUser) return null;
     if (await bcrypt.compare(password, findUser.password)) {
       const {
         password,
         profile,
-        verifyEmail,
         created_at,
         updated_at,
         ...user
@@ -111,8 +107,7 @@ export class AuthenService {
     const user = await this.accountUtil.findByUserID(user_id);
 
     if (!user) return null;
-    if (user.verifyEmail || (user.email != email && user.email)) return false;
-    if (!user.email)  throw new BadRequestException('No email binded to this profile');
+    if (user.email != email && user.email) return false;
 
     const payload = { user_id, email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
@@ -135,7 +130,6 @@ export class AuthenService {
   async verify(token: string): Promise<boolean> {
     try {
       const decoded = this.jwtService.verify(token);
-      
       const { user_id, email } = decoded;
 
       const user = await this.accountUtil.findByUserID(user_id);
@@ -153,7 +147,6 @@ export class AuthenService {
     if (!user.email) return false;
 
     user.email = null;
-    user.verifyEmail = null;
     await this.accountUtil.save(user);
     return true;
   }

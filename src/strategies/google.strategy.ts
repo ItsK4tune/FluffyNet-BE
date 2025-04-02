@@ -47,7 +47,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       const newUser = this.accountRepo.create({
         email,
         password: await bcrypt.hash('default-password', 12),
-        verifyEmail: true,
       });
 
       await this.accountRepo.save(newUser);

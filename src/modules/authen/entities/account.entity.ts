@@ -22,9 +22,6 @@ export class Account {
   @Column({ unique: true, nullable: true })
   email: string;
 
-  @Column({ default: false })
-  verifyEmail: boolean;
-
   @Column({ default: 'user' })
   role: string;
 

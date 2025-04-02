@@ -24,11 +24,6 @@ export class AccountUtil {
     return await this.repo.findOne({ where: { email } });
   }
 
-  async checkVerify(email: string): Promise<boolean> {
-    const user = await this.findByEmail(email);
-    return user.verifyEmail;
-  }
-
   async findByUsernameOrEmail(username: string, email: string) {
     return await this.repo.findOne({
       where: [{ username }, { email }],
@@ -41,7 +36,6 @@ export class AccountUtil {
   }
 
   async updateVerifyEmail(userAccount: Account, email: string) {
-    userAccount.verifyEmail = true;
     userAccount.email = email;
     await this.repo.save(userAccount);
   }
