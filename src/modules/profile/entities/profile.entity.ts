@@ -18,10 +18,10 @@ export class Profile {
   @PrimaryColumn()
   user_id: number;
 
-  @Column({ nullable: true, default: 'user' })
+  @Column({ nullable: true, default: 'New Fluffizen' })
   name: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   bio: string;
 
   @Column({ nullable: true })

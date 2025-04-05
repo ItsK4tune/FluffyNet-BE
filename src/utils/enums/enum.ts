@@ -4,6 +4,7 @@ export enum RedisEnum {
   follower = 'follower',
   following = 'following',
   comment = 'comment',
+  commentTree = 'commentTree',
   message = 'message',
   conversation = 'conversation',
   member = 'member',

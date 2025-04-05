@@ -17,7 +17,7 @@ export class ProfileUtil {
   }
 
   async save(userProfile: Profile) {
-    await this.repo.save(userProfile);
+    return await this.repo.save(userProfile);
   }
 
   async getAllProfilesExcludingUser(user_id: number): Promise<Profile[]> {

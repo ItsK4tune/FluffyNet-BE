@@ -1,94 +1,138 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { ProfileUtil } from './profile.util';
 import { ProfileDto } from './dtos/profile.dto';
-import { MinioEnum, RedisEnum } from 'src/utils/enums/enum';
+import { RedisEnum } from 'src/utils/enums/enum';
 import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
 import { env } from 'src/config';
 import { RedisCacheService } from '../redis-cache/redis-cache.service';
 import { MinioClientService } from '../minio-client/minio-client.service';
-import { AccountUtil } from '../authen/account.util';
+import { Profile } from "./entities/profile.entity";
 
 @Injectable()
 export class ProfileService {
   constructor(
     private readonly profileUtil: ProfileUtil,
-    private readonly accountUtil: AccountUtil,
     private readonly redisCacheService: RedisCacheService,
     private readonly minioClientService: MinioClientService,
   ) {}
 
-  async getProfile(user_id: number) {
-    const key = `${RedisEnum.profile}:${user_id}`;
-    const cache = await this.redisCacheService.hgetall(key);
+  async getProfile(user_id: number): Promise<Profile | null> {
+    const cacheKey = `${RedisEnum.profile}:${user_id}`;
 
-    if (cache && Object.keys(cache).length > 0) {
-      return Object.values(cache).map((c) => JSON.parse(c));
+    try {
+      const cachedData = await this.redisCacheService.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData) as Profile;
+      }
+    } catch (cacheError) {
+      throw new NotFoundException('Cache error');
     }
 
     const profile = await this.profileUtil.getProfileByUserId(user_id);
-    if (!profile) throw new NotFoundException('Profile not found');
-
-    if (profile.avatar) {
-      profile.avatar = this.minioClientService.getFileUrl(profile.avatar);
+    if (profile) {
+      try {
+        await this.redisCacheService.set(
+          cacheKey,
+          JSON.stringify(profile),
+          convertToSeconds(env.redis.ttl)
+        );
+      } catch (cacheSetError) {
+        throw new NotFoundException('Cache error');
+      }
     }
-
-    if (profile.background) {
-      profile.background = this.minioClientService.getFileUrl(
-        profile.background,
-      );
-    }
-
-    await this.redisCacheService.hsetall(key, profile);
-    await this.redisCacheService.expire(key, convertToSeconds(env.redis.ttl));
 
     return profile;
   }
 
-  async editProfile(
-    user_id: number,
+  async editProfileData(
+    requestingUserId: number, 
+    profileUserIdToEdit: number,
+    role: string,
     editData: ProfileDto,
-    files: { avatar?: any; background?: any },
-  ) {
-    const key = `${RedisEnum.profile}:${user_id}`;
-    await this.redisCacheService.del(key);
-
-    let userProfile = await this.profileUtil.getProfileByUserId(user_id);
-    if (!userProfile) return false;
-
-    const oldAvatarUrl = userProfile.avatar;
-    const oldBackgroundUrl = userProfile.background;
-
-    let newAvatarUrl: string | null = userProfile.avatar;
-    let newBackgroundUrl: string | null = userProfile.background;
-
-    if (files?.avatar?.[0]) {
-      newAvatarUrl = await this.minioClientService.upload(
-        files.avatar[0],
-        MinioEnum.avatars,
-      );
-      if (oldAvatarUrl && newAvatarUrl) 
-       this.minioClientService.delete(oldAvatarUrl);
-      userProfile.background = newAvatarUrl;
-    }
-    if (files?.background?.[0]) {
-      newBackgroundUrl = await this.minioClientService.upload(
-        files.background[0],
-        MinioEnum.backgrounds,
-      );
-      if (oldBackgroundUrl && newBackgroundUrl) 
-        this.minioClientService.delete(oldBackgroundUrl);
-      userProfile.background = newBackgroundUrl;
+  ): Promise<Profile> {
+    if (role == 'user' && requestingUserId !== profileUserIdToEdit) {
+      throw new ForbiddenException("You are not allowed to edit this profile.");
     }
 
-    const userAccount = await this.accountUtil.findByUserID(user_id);
+    const cacheKey = `${RedisEnum.profile}:${profileUserIdToEdit}`;
 
-    userProfile = {
-      ...userProfile,
-      ...editData,
-      avatar: userProfile.avatar,
-      background: userProfile.background,
-    };
-    await this.profileUtil.save(userProfile);
-    await this.accountUtil.save(userAccount);
+    let userProfile = await this.profileUtil.getProfileByUserId(profileUserIdToEdit);
+    if (!userProfile) {
+      throw new NotFoundException('Profile not found to edit.');
+    }
+
+    Object.keys(editData).forEach(key => {
+      if (editData[key] !== undefined && key in userProfile) {
+        userProfile[key] = editData[key];
+      }
+    });
+
+    try {
+      const updatedProfile = await this.profileUtil.save(userProfile); 
+      await this.redisCacheService.del(cacheKey);
+      return updatedProfile;
+    } catch (dbError) {
+      throw new InternalServerErrorException("Failed to update profile data.");
+    }
+  }
+
+  async updateAvatar(requestingUserId: number, profileUserIdToEdit: number, role: string, newAvatarObjectName: string | null): Promise<Profile> {
+    if (role == 'user' && requestingUserId !== profileUserIdToEdit) {
+      throw new ForbiddenException("You cannot update this user's avatar.");
+    }
+
+    const cacheKey = `${RedisEnum.profile}:${profileUserIdToEdit}`;
+
+    let userProfile = await this.profileUtil.getProfileByUserId(profileUserIdToEdit);
+    if (!userProfile) {
+      throw new NotFoundException('Profile not found to update avatar.');
+    }
+
+    const oldAvatarObjectName = userProfile.avatar;
+    userProfile.avatar = newAvatarObjectName; 
+
+    try {
+      const updatedProfile = await this.profileUtil.save(userProfile);
+
+      if (oldAvatarObjectName && oldAvatarObjectName !== newAvatarObjectName) {
+        await this.minioClientService.deleteFile(oldAvatarObjectName)
+      }
+
+      await this.redisCacheService.del(cacheKey)
+
+      return updatedProfile;
+    } catch (dbError) {
+      throw new InternalServerErrorException("Failed to update profile avatar.");
+    }
+  }
+
+  async updateBackground(requestingUserId: number, profileUserIdToEdit: number, role: string, newBackgroundObjectName: string | null): Promise<Profile> {
+    if (role == 'user' && requestingUserId !== profileUserIdToEdit) {
+      throw new ForbiddenException("You cannot update this user's background.");
+    }
+
+    const cacheKey = `${RedisEnum.profile}:${profileUserIdToEdit}`;
+
+    let userProfile = await this.profileUtil.getProfileByUserId(profileUserIdToEdit);
+    if (!userProfile) {
+      throw new NotFoundException('Profile not found to update background.');
+    }
+
+    const oldBackgroundObjectName = userProfile.background;
+    userProfile.background = newBackgroundObjectName;
+
+    try {
+      const updatedProfile = await this.profileUtil.save(userProfile);
+
+      if (oldBackgroundObjectName && oldBackgroundObjectName !== newBackgroundObjectName) {
+        await this.minioClientService.deleteFile(oldBackgroundObjectName)
+      }
+
+      await this.redisCacheService.del(cacheKey)
+
+      return updatedProfile;
+    } catch (dbError) {
+      throw new InternalServerErrorException("Failed to update profile background.");
+    }
   }
 }

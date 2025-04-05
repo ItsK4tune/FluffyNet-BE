@@ -1,13 +1,16 @@
-import { IsOptional, IsString, IsInt, Min, Max, IsUrl } from 'class-validator';
+// src/modules/profile/dtos/profile.dto.ts
+import { IsOptional, IsString, IsInt, Min, Max, IsUrl, Length } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class ProfileDto {
   @IsOptional()
   @IsString()
+  @Length(1, 50) 
   name?: string;
 
   @IsOptional()
   @IsString()
+  @Length(0, 255) 
   bio?: string;
 
   @IsOptional()
@@ -18,11 +21,11 @@ export class ProfileDto {
   age?: number;
 
   @IsOptional()
-  @IsString()
+  @IsString() 
   gender?: string;
 
   @IsOptional()
-  @IsString()
+  @IsString() 
   phoneNumber?: string;
 
   @IsOptional()
@@ -30,6 +33,7 @@ export class ProfileDto {
   hobby?: string;
 
   @IsOptional()
+  @IsString() 
   @IsUrl()
   socialLink?: string;
 }

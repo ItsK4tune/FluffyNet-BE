@@ -1,3 +1,4 @@
+import { Account } from 'src/modules/authen/entities/account.entity';
 import { Like } from 'src/modules/like/entity/like.entity';
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
@@ -9,22 +10,24 @@ export class Post {
   @Column()
   user_id: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   body: string;
 
   @Column({ nullable: true })
-  image: string;
+  image: string | null;
 
   @Column({ nullable: true })
-  video: string;
+  video: string | null;
 
   @Index()
   @Column({ nullable: true })
-  repost_id: number;
+  repost_id: number | null;
 
-  @ManyToOne(() => Post, (post) => post.reposts, { nullable: true, onDelete: "CASCADE" })
-  @JoinColumn({ name: 'repost_id' })
-  repost: Post;
+  @CreateDateColumn({ type: 'timestamp' })
+  created_at: Date;
+  
+  @CreateDateColumn({ type: 'timestamp' })
+  updated_at: Date;
 
   @OneToMany(() => Like, (like) => like.post_id)
   likes: Like[];
@@ -32,9 +35,11 @@ export class Post {
   @OneToMany(() => Post, (post) => post.repost)
   reposts: Post[];
 
-  @CreateDateColumn({ type: 'timestamp' })
-  created_at: Date;
-  
-  @CreateDateColumn({ type: 'timestamp' })
-  updated_at: Date;
+  @ManyToOne(() => Account, (account) => account.posts, { onDelete: "CASCADE" })
+  @JoinColumn({ name: 'user_id' })
+  user: Account;  
+
+  @ManyToOne(() => Post, (post) => post.reposts, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: 'repost_id' })
+  repost: Post;
 }

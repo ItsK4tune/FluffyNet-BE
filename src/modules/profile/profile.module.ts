@@ -4,7 +4,6 @@ import { ProfileService } from './profile.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Profile } from './entities/profile.entity';
 import { Account } from '../authen/entities/account.entity';
-import { AccountUtil } from 'src/modules/authen/account.util';
 import { ProfileUtil } from 'src/modules/profile/profile.util';
 import { JwtModule } from '@nestjs/jwt';
 import { env } from 'src/config';
@@ -24,7 +23,7 @@ import { MinioClientModule } from '../minio-client/minio-client.module';
     MinioClientModule,
   ],
   controllers: [ProfileController],
-  providers: [ProfileService, AccountUtil, ProfileUtil, JwtStrategy, RedisCacheService],
+  providers: [ProfileService, ProfileUtil, JwtStrategy, RedisCacheService],
   exports: [ProfileService],
 })
 export class ProfileModule {}

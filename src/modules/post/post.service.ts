@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PostUtil } from 'src/modules/post/post.util';
 import { PostDto } from './dto/post.dto';
 import { Post } from './entities/post.entity';
@@ -8,6 +8,17 @@ import { FollowService } from '../follow/follow.service';
 import { NotificationService } from '../notification/notification.service';
 import { ProfileService } from '../profile/profile.service';
 import { Profile } from '../profile/entities/profile.entity';
+
+interface CreatePostData {
+  body?: string;
+  image?: string | null; 
+  video?: string | null; 
+  repost_id?: number | null;
+}
+
+interface UpdatePostData {
+  body?: string;
+}
 
 @Injectable()
 export class PostService {
@@ -19,17 +30,14 @@ export class PostService {
     private readonly profileService: ProfileService,
   ) {}
 
-  async getAllPosts(): Promise<Post[]> {
-    return this.postUtil.getAllPosts();
+  async getAllPosts({ skip, take }): Promise<Post[]> {
+    return this.postUtil.getAllPosts({ skip, take });
   }
 
   async getPostsOfFollowing(user_id: number): Promise<Post[]> {
-    const list = await this.followService.followingList(user_id);
-
-    if (!list || list.length === 0) return [];
-
-    const follows = list.map(follow => follow.following_id);
-
+    const followingList = await this.followService.followingList(user_id);
+    if (!followingList || followingList.length === 0) return [];
+    const follows = followingList.map(follow => follow.following_id);
     return this.postUtil.getPostsOfFollowing(follows);
   }
 
@@ -37,92 +45,137 @@ export class PostService {
     return this.postUtil.getPostById(post_id);
   }
 
-  async createPost(user_id: number, data: PostDto, files: { image?: any, video?: any }): Promise<Boolean> {
-    if (!data.body && !files.image && !files.video )  return false;
-    const { repost_id } = data;
-    
-    let repost: Post | null = null;
+  async createPost(user_id: number, data: PostDto): Promise<Post> {
+    const { body, repost_id } = data;
+
+    if (!body && (repost_id === null || repost_id === undefined)) {
+      throw new BadRequestException('Post must have a body or be a repost.');
+    }
+
+    if (repost_id && body) {
+      throw new BadRequestException('A repost cannot have a new body.');
+    }
+
+    let repostOrigin: Post | null = null;
     if (repost_id) {
-      repost = await this.postUtil.getPostById(repost_id);
-      if (!repost)
-        return null;
+      repostOrigin = await this.postUtil.getPostById(repost_id);
+      if (!repostOrigin) {
+        throw new BadRequestException(`Original post (ID: ${repost_id}) not found for repost.`);
+      }
     }
-
-    let savedImage: string | null = null;
-    let savedVideo: string | null = null;
-
-    if (files?.image?.[0]) {
-      const uploadedAvatar = await this.minioClientService.upload(files.image[0], MinioEnum.image);
-      savedImage = uploadedAvatar;
-    }
-    if (files?.video?.[0]) {
-      const uploadedBackground = await this.minioClientService.upload(files.video[0], MinioEnum.video);
-      savedVideo = uploadedBackground;
-    }
-
-    const postData: Partial<PostDto> & { image?: string; video?: string } = {
-      ...data,
-      image: savedImage,
-      video: savedVideo,
-    };
 
     try {
-      const newPost = await this.postUtil.createPost(user_id, postData); 
-      await Promise.allSettled([
-          this.sendNewPostNotifications(user_id, newPost.post_id),
-           ...(repost ? [this.sendRepostNotification(user_id, repost.user_id, newPost.post_id, repost.post_id)] : [])
-      ]);
-      return true; 
+      const postData: CreatePostData = {
+        body: body || null, 
+        repost_id: repost_id,
+        image: null, 
+        video: null,
+      };
+
+      const newPost = await this.postUtil.createPost(user_id, postData);
+
+      if (repost_id) {
+        this.sendRepostNotification(user_id, repostOrigin.user_id, newPost.post_id, repostOrigin.post_id)
+      }
+      
+      this.sendNewPostNotifications(user_id, newPost.post_id);
+
+      return newPost; 
     } catch (error) {
-      return false;
+      throw new InternalServerErrorException('Failed to create post.');
     }
   }
 
-  async updatePost(user_id: number, post_id: number, data: PostDto, files: { image?: any, video?: any }) {
-    if (!data.body && !data.repost_id && !files.image && !files.video )  return null;
-    const { repost_id } = data;
+  async updatePost(requestingUserId: number, post_id: number, role: string, data: PostDto): Promise<boolean> {
     const post = await this.postUtil.getPostById(post_id);
 
-    if (!post)  return null;
-    if (post.user_id !== user_id) return false;
-
-    if (repost_id) {
-      const repost = await this.postUtil.getPostById(repost_id);
-      if (!repost)
-        return null;
+    if (!post) {
+      throw new NotFoundException(`Post with ID ${post_id} not found.`);
     }
-
-    let savedImage: string | null = null;
-    let savedVideo: string | null = null;
-
-    if (files?.image?.[0]) {
-      const uploadedAvatar = await this.minioClientService.upload(files.image[0], MinioEnum.image);
-      savedImage = uploadedAvatar;
-    }
-    if (files?.video?.[0]) {
-      const uploadedBackground = await this.minioClientService.upload(files.video[0], MinioEnum.video);
-      savedVideo = uploadedBackground;
-    }
-
-    const patchData: Partial<PostDto> & { image?: string; video?: string } = {
-      ...data,
-      image: savedImage,
-      video: savedVideo,
-    };
-
-    return this.postUtil.updatePost(post_id, patchData);
-  }
-
-  async deletePost(user_id: number, post_id: number) {
-    const post = await this.postUtil.getPostById(post_id);
-
-    if (!post)  return null;
-    if (post.user_id !== user_id) return false;
     
-    return this.postUtil.deletePost(post_id);
+    if (post.user_id !== requestingUserId && !['admin', 'superadmin'].some(r => role.includes(r))) {
+      throw new ForbiddenException('You are not allowed to update this post.');
+    }
+
+    const updateData: UpdatePostData = { body: data.body };
+
+    try {
+      const success = await this.postUtil.updatePost(post_id, updateData);
+      return success;
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to update post.');
+    }
   }
 
-  private async sendNewPostNotifications(authorId: number, postId: number): Promise<void> {
+  async attachFileToPost(requestingUserId: number, post_id: number, role: string, fileType: 'image' | 'video', objectName: string | null): Promise<boolean> {
+    const post = await this.postUtil.getPostById(post_id);
+
+    if (!post) {
+      throw new NotFoundException(`Post with ID ${post_id} not found.`);
+    }
+
+    if (post.user_id !== requestingUserId && !['admin', 'superadmin'].some(r => role.includes(r))) {
+      throw new ForbiddenException('You are not allowed to modify this post.');
+    }
+
+    if (post.repost_id) {
+      throw new BadRequestException('Cannot attach files to a repost.');
+    }
+
+    const oldObjectName = fileType === 'image' ? post.image : post.video;
+
+    let success = false;
+    try {
+      if (fileType === 'image') {
+        success = await this.postUtil.updatePostImage(post_id, objectName);
+      } else {
+        success = await this.postUtil.updatePostVideo(post_id, objectName);
+      }
+
+      if (success && oldObjectName && oldObjectName !== objectName) {
+        await this.minioClientService.deleteFile(oldObjectName)
+      }
+      return success;
+    } catch (error) {
+      if (objectName && !oldObjectName) {
+        await this.minioClientService.deleteFile(objectName)
+      }
+      throw new InternalServerErrorException(`Failed to attach ${fileType} to post.`);
+    }
+  }
+
+  async deletePost(requestingUserId: number, post_id: number, role: string): Promise<boolean> {
+    const post = await this.postUtil.getPostById(post_id);
+
+    if (!post) {
+      throw new NotFoundException(`Post with ID ${post_id} not found.`);
+    }
+    
+    if (post.user_id !== requestingUserId && !['admin', 'superadmin'].some(r => role.includes(r))) {
+      throw new ForbiddenException('You are not allowed to delete this post.');
+    }
+
+    const imageToDelete = post.image;
+    const videoToDelete = post.video;
+
+    try {
+      const success = await this.postUtil.deletePost(post_id);
+
+      if (success) {
+        if (imageToDelete) {
+          await this.minioClientService.deleteFile(imageToDelete)
+        }
+        if (videoToDelete) {
+          await this.minioClientService.deleteFile(videoToDelete)
+        }
+      }
+      return success;
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to delete post.');
+    }
+  }
+
+  private async sendNewPostNotifications(authorId: number, post_id: number): Promise<void> {
     try {
       const followers = await this.followService.followerList(authorId); 
       const followerIds = followers.map(f => f.follower_id).filter(id => id !== authorId); 
@@ -137,12 +190,12 @@ export class PostService {
       const notificationType = 'NEW_POST';
       const notificationBody = {
         author: {
-            user_id: authorProfile.user_id,
-            displayName: authorProfile.name,
-            avatarUrl: authorProfile.avatar,
+          user_id: authorProfile.user_id,
+          displayName: authorProfile.name,
+          avatarUrl: authorProfile.avatar,
         },
         post: {
-            id: postId,
+          id: post_id,
         },
         message: `${authorProfile.name || `User ${authorId}`} has shared a new post.`,
         createdAt: new Date().toISOString(),
@@ -161,23 +214,23 @@ export class PostService {
     if (reposterId === originalAuthorId) return;
 
     try {
-        const reposterProfile = await this.profileService.getProfile(reposterId) as Profile;
-        if (!reposterProfile) return;
+      const reposterProfile = await this.profileService.getProfile(reposterId) as Profile;
+      if (!reposterProfile) return;
 
-        const notificationType = 'REPOST';
-        const notificationBody = {
-            reposter: {
-                user_id: reposterProfile.user_id,
-                displayName: reposterProfile.name,
-                avatarUrl: reposterProfile.avatar,
-            },
-            originalPost: { id: originalPostId },
-            newPost: { id: newPostId },
-            message: `${reposterProfile.name || `User ${reposterId}`} reposted your post.`,
-            createdAt: new Date().toISOString(),
-        };
+      const notificationType = 'REPOST';
+      const notificationBody = {
+        reposter: {
+          user_id: reposterProfile.user_id,
+          displayName: reposterProfile.name,
+          avatarUrl: reposterProfile.avatar,
+        },
+        originalPost: { id: originalPostId },
+        newPost: { id: newPostId },
+        message: `${reposterProfile.name || `User ${reposterId}`} reposted your post.`,
+        createdAt: new Date().toISOString(),
+      };
 
-        await this.notificationService.createNotification(originalAuthorId, notificationType, notificationBody);
+      await this.notificationService.createNotification(originalAuthorId, notificationType, notificationBody);
     } catch (error) {
       // TODO: implement retry mechanism
     }

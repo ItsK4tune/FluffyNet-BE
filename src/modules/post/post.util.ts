@@ -2,67 +2,98 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Post } from 'src/modules/post/entities/post.entity';
 import { In, Repository } from 'typeorm';
-import { PostDto } from './dto/post.dto';
-import { MinioClientService } from '../minio-client/minio-client.service';
+
+interface CreatePostData {
+  body?: string;
+  image?: string | null;
+  video?: string | null; 
+  repost_id?: number | null;
+}
+
+interface UpdatePostData {
+  body?: string;
+}
 
 @Injectable()
 export class PostUtil {
   constructor(
     @InjectRepository(Post) private readonly repo: Repository<Post>,
-    private readonly minioClientService: MinioClientService,
   ) {}
 
-  async getAllPosts() {
-    const list = await this.repo.find();
+  async getAllPosts(options?: { skip?: number; take?: number; relations?: string[] }): Promise<Post[]> {
+    return this.repo.find({
+      order: { created_at: 'DESC' }, 
+      skip: options?.skip,
+      take: options?.take,
+      relations: options?.relations || ['user', 'user.profile', 'repostOrigin', 'repostOrigin.user', 'repostOrigin.user.profile', 'likes'], 
+    });
+  }
 
-    for (const post of list) {
-      if (post.image)
-        post.image = this.minioClientService.getFileUrl(post.image);
-      if (post.video)
-        post.video = this.minioClientService.getFileUrl(post.video);
+  async getPostsByUserIds(user_ids: number[], options?: { skip?: number; take?: number; relations?: string[] }): Promise<Post[]> {
+    if (!user_ids || user_ids.length === 0) {
+      return [];
+    }
+    return this.repo.find({
+      where: { user_id: In(user_ids) },
+      order: { created_at: 'DESC' },
+      skip: options?.skip,
+      take: options?.take,
+      relations: options?.relations || ['user', 'user.profile', 'repostOrigin', 'repostOrigin.user', 'repostOrigin.user.profile', 'likes'],
+    });
+  }
+
+  async getPostById(post_id: number, relations?: string[]): Promise<Post | null> {
+    return this.repo.findOne({
+      where: { post_id },
+      relations: relations || ['user', 'user.profile', 'repostOrigin', 'repostOrigin.user', 'repostOrigin.user.profile', 'likes'],
+    });
+  }
+
+  async getPostsOfFollowing(user_ids: number[], options?: { skip?: number; take?: number; relations?: string[] }): Promise<Post[]> {
+    return this.repo.find({ 
+      where: { user_id: In(user_ids) },
+      order: { created_at: 'DESC' },
+      skip: options?.skip,
+      take: options?.take,
+      relations: options?.relations || ['user', 'user.profile', 'repostOrigin', 'repostOrigin.user', 'repostOrigin.user.profile', 'likes'], 
+    });
+  }
+
+  async createPost(user_id: number, data: CreatePostData): Promise<Post> {
+    const newPost = this.repo.create({
+        ...data,
+        user_id: user_id,
+        ...(data.repost_id ? { repostOrigin: { post_id: data.repost_id } } : {})
+    });
+    return this.repo.save(newPost);
+ }
+
+  async updatePost(post_id: number, data: UpdatePostData): Promise<boolean> {
+    const updateData: Partial<Post> = {};
+    if (data.body !== undefined) {
+      updateData.body = data.body;
     }
 
-    return list;
-  }
-
-  async getPostsOfFollowing(user_ids: number[]): Promise<Post[]> {
-    const list = await this.repo.find({ where: { user_id: In(user_ids) } });
-
-    for (const post of list) {
-      if (post.image)
-        post.image = this.minioClientService.getFileUrl(post.image);
-      if (post.video)
-        post.video = this.minioClientService.getFileUrl(post.video);
+    if (Object.keys(updateData).length === 0) {
+      return true;
     }
 
-    return list;
+    const result = await this.repo.update({ post_id }, updateData);
+    return result.affected > 0; 
   }
 
-  async getPostById(post_id: number) {
-    const post = await this.repo.findOne({ where: { post_id } });
-    
-    if (!post) {
-        return null;
-    }
-
-    if (post.image)
-        post.image = this.minioClientService.getFileUrl(post.image);
-    if (post.video)
-        post.video = this.minioClientService.getFileUrl(post.video);
-
-    return post;
+  async deletePost(post_id: number): Promise<boolean> {
+    const result = await this.repo.delete({ post_id });
+    return result.affected > 0;
   }
 
-  async createPost(user_id: number, data: PostDto) {
-    const newPost = this.repo.create({...data, user_id});
-    return await this.repo.save(newPost);
+  async updatePostImage(post_id: number, imageObjectName: string | null): Promise<boolean> {
+    const result = await this.repo.update({ post_id }, { image: imageObjectName });
+    return result.affected > 0;
   }
 
-  async updatePost(post_id: number, data: PostDto) {
-    return await this.repo.update(post_id, data);
-  }
-
-  async deletePost(post_id: number) {
-    return await this.repo.delete(post_id);
+  async updatePostVideo(post_id: number, videoObjectName: string | null): Promise<boolean> {
+    const result = await this.repo.update({ post_id }, { video: videoObjectName });
+    return result.affected > 0;
   }
 }

@@ -1,180 +1,129 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
-  Body,
-  Param,
-  UseGuards,
-  Request,
-  NotFoundException,
-  ForbiddenException,
-  UseInterceptors,
-  UploadedFiles,
+  Controller, Get, Post as HttpPost, Patch, Delete, Body, Param,
+   UseGuards, Request, ParseIntPipe,
+   InternalServerErrorException,
+   BadRequestException,
+   Res,
 } from '@nestjs/common';
 import { CommentService } from './comment.service';
-import { CommentDto } from './dtos/comment.dto';
+import { CommentDto } from './dtos/comment.dto'; 
+import { CommentUploadCompleteDto } from './dtos/comment-upload.dto'
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
-import { RolesGuard } from 'src/guards/roles.guard';
-import { Roles } from 'src/decorators/role.decorator';
 import {
-  ApiBody,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiTags,
-  ApiResponse,
-  ApiConsumes,
+   ApiBody, ApiOperation, ApiBearerAuth, ApiTags, ApiResponse, ApiParam
 } from '@nestjs/swagger';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { Comment as CommentEntity } from './entities/comment.entity';
 
 @ApiTags('Comment')
 @Controller('comment')
+@UseGuards(JwtAuthGuard) 
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin', 'user')
 export class CommentController {
   constructor(private readonly commentService: CommentService) {}
 
-  @ApiOperation({
-    summary: `Get all comments by post`,
-    description: `Return all comments of a post.`,
-  })
-  @ApiResponse({ status: 200, description: 'comment' })
-  @ApiResponse({ status: 404, description: 'Post not found' })
-  @Get(':post_id')
-  async getCommentsByPost(@Param('post_id') post_id: number) {
-    const comment = await this.commentService.getCommentsByPost(post_id);
-    if (comment === null) throw new NotFoundException('Post not found');
-    return { comment: comment };
+  @ApiOperation({ summary: `Get all comments for a specific post (structured as a tree)` })
+  @ApiParam({ name: 'postId', description: 'ID of the post to get comments for' })
+  @ApiResponse({ status: 200, description: 'List of comments with replies nested' }) 
+  @ApiResponse({ status: 404, description: 'Post not found ( implicitly handled if no comments )'})
+  @Get('/post/:post_id') 
+  async getCommentsByPost(@Param('post_id', ParseIntPipe) postId: number): Promise<{ comments: any[] }> { 
+    const commentTree = await this.commentService.getCommentsByPost(postId);
+    return { comments: commentTree };
   }
 
-  //   @ApiOperation({ summary: `Get a comment by ID`, description: `Return a single comment by its ID.` })
-  //   @ApiResponse({ status: 200, description: 'Fetch comment successfully' })
-  //   @ApiResponse({ status: 404, description: 'Comment not found' })
-  //   @Get(':comment_id')
-  //   async getCommentById(@Param('comment_id') comment_id: string) {
-  //     const comment = await this.commentService.getCommentById(comment_id);
-  //     if (!comment) throw new NotFoundException({ message: 'Comment not found' });
-  //     return comment;
-  //   }
 
-  @ApiOperation({
-    summary: `Create a new comment`,
-    description: `Add a new comment to a post.`,
-  })
-  @ApiResponse({ status: 201 })
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'image', maxCount: 1 },
-      { name: 'video', maxCount: 1 },
-    ]),
-  )
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        body: { type: 'string', example: 'Post post body' },
-        image: { type: 'file', format: 'jpeg/png' },
-        video: { type: 'file', format: 'mp4' },
-        parent_id: { type: 'number', example: 1 },
-      },
-      oneOf: [
-        { required: ['body'] },
-        { required: ['image'] },
-        { required: ['video'] },
-      ],
-    },
-  })
-  @Post('/create-comment/:post_id')
+  @ApiOperation({ summary: `Create a new comment or reply on a post` })
+  @ApiParam({ name: 'postId', description: 'ID of the post to comment on' })
+  @ApiBody({ type: CommentDto, description: 'Comment content (body) and optional parent_id for replies.'})
+  @ApiResponse({ status: 201, description: 'Comment created successfully.' }) 
+  @ApiResponse({ status: 400, description: 'Invalid input (missing body, invalid parent_id, etc.).'})
+  @ApiResponse({ status: 404, description: 'Post or Parent Comment not found.'})
+  @HttpPost('/post/:post_id') 
   async createComment(
-    @Param('post_id') post_id: number,
+    @Param('post_id', ParseIntPipe) postId: number,
     @Request() req,
-    @Body() commentDto: CommentDto,
-    @UploadedFiles() files: { image?: any; video?: any },
-  ) {
-    const user_id = req.user.user_id;
-    const status = await this.commentService.createComment(
-      post_id,
-      user_id,
-      commentDto,
-      files,
-    );
-    if (status) return;
+    @Body() commentDto: CommentDto, 
+  ): Promise<{ message: string; comment: CommentEntity }> { 
+    const userId = req.user.user_id;
+    try {
+      const newComment = await this.commentService.createComment(postId, userId, commentDto);
+      return { message: 'Comment created successfully. Attach files separately if needed.', comment: newComment };
+    } catch (error) {
+      throw error; 
+    }
   }
 
-  @ApiOperation({
-    summary: `Update a comment`,
-    description: `Authenticate user, check authorization, and update comment content.`,
-  })
-  @ApiResponse({ status: 200 })
-  @ApiResponse({ status: 404, description: 'Comment not found' })
-  @ApiResponse({ status: 409, description: 'Not allowed' })
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'image', maxCount: 1 },
-      { name: 'video', maxCount: 1 },
-    ]),
-  )
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        body: { type: 'string', example: 'Updated post body' },
-        image: { type: 'file', format: 'jpeg/png' },
-        video: { type: 'file', format: 'mp4' },
-      },
-      oneOf: [
-        { required: ['body'] },
-        { required: ['image'] },
-        { required: ['video'] },
-      ],
-    },
-  })
-  @Patch(':post_id/:comment_id')
-  async updateComment(
-    @Request() req,
-    @Param('comment_id') comment_id: number,
-    @Param('post_id') post_id: number,
-    @Body() commentDto: CommentDto,
-    @UploadedFiles() files: { image?: any; video?: any },
-  ) {
-    const user_id = req.user.user_id;
-    const status = await this.commentService.updateComment(
-      post_id,
-      user_id,
-      comment_id,
-      commentDto,
-      files,
-    );
-    if (status === null) throw new NotFoundException('Comment not found');
-    if (status === false) throw new ForbiddenException('Not allowed');
-    return;
+  @ApiOperation({ summary: 'Attach an image or video to an existing comment' })
+  @ApiParam({ name: 'commentId', description: 'ID of the comment to attach file to' })
+  @ApiBody({ type: CommentUploadCompleteDto, description: 'Info about the file uploaded to MinIO (objectName, fileType).' })
+  @ApiResponse({ status: 200, description: 'File attached successfully.' }) 
+  @ApiResponse({ status: 400, description: 'Invalid input or cannot attach file to a repost.'})
+  @ApiResponse({ status: 403, description: 'Forbidden (not the comment owner).'})
+  @ApiResponse({ status: 404, description: 'Comment not found.'})
+  @HttpPost(':comment_id/attach-file') 
+  async attachFileToComment(
+      @Request() req,
+      @Param('comment_id', ParseIntPipe) commentId: number,
+      @Body() uploadCompleteDto: CommentUploadCompleteDto,
+  ): Promise<{ message: string }> {
+    const userId = req.user.user_id;
+    const { objectName, fileType } = uploadCompleteDto;
+
+    if (!objectName || !fileType) throw new BadRequestException("Missing objectName or fileType.");
+
+    try {
+      const success = await this.commentService.attachFileToComment(userId, commentId, fileType, objectName);
+      if (!success) throw new InternalServerErrorException('Failed to attach file.'); // Lỗi không mong muốn
+      return { message: `${fileType} attached successfully.` };
+    } catch (error) {
+      throw error; 
+    }
   }
 
-  @ApiOperation({
-    summary: `Delete a comment`,
-    description: `Authenticate user, check authorization, and delete a comment.`,
-  })
-  @ApiResponse({ status: 200 })
-  @ApiResponse({ status: 404, description: 'Comment not found' })
-  @ApiResponse({ status: 409, description: 'Not allowed' })
-  @Delete('post_id/:comment_id')
+  @ApiOperation({ summary: `Update the text content (body) of a comment` })
+  @ApiParam({ name: 'commentId', description: 'ID of the comment to update' })
+  @ApiBody({ type: CommentDto, description: 'Only the "body" field is used for update.' })
+  @ApiResponse({ status: 200, description: 'Comment updated successfully.' })
+  @ApiResponse({ status: 400, description: 'Comment body cannot be empty.'})
+  @ApiResponse({ status: 403, description: 'Forbidden (not the comment owner).'})
+  @ApiResponse({ status: 404, description: 'Comment not found.'})
+  @Patch(':comment_id') 
+  async updateCommentText(
+    @Request() req,
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @Body() commentDto: CommentDto,
+  ): Promise<{ message: string }> { 
+    const userId = req.user.user_id;
+    const updateData = { body: commentDto.body };
+
+    try {
+      const success = await this.commentService.updateComment(userId, commentId, updateData);
+      if (!success) throw new InternalServerErrorException('Failed to update comment.');
+      return { message: 'Comment updated successfully.' };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @ApiOperation({ summary: `Delete a comment` })
+  @ApiParam({ name: 'commentId', description: 'ID of the comment to delete' })
+  @ApiResponse({ status: 204, description: 'Comment deleted successfully.' })
+  @ApiResponse({ status: 403, description: 'Forbidden (not the comment owner).'})
+  @ApiResponse({ status: 404, description: 'Comment not found.'})
+  @Delete(':comment_id') 
   async deleteComment(
     @Request() req,
-    @Param('comment_id') comment_id: number,
-    @Param('post_id') post_id: number,
-  ) {
-    const user_id = req.user.user_id;
-    const status = await this.commentService.deleteComment(
-      post_id,
-      user_id,
-      comment_id,
-    );
-    if (status === null) throw new NotFoundException('Comment not found');
-    if (status === false) throw new ForbiddenException('Not allowed');
-    return;
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @Res() res
+  ): Promise<void> {
+    const userId = req.user.user_id;
+    const role = req.user.role
+    try {
+      const success = await this.commentService.deleteComment(userId, commentId, role);
+      if (!success) throw new InternalServerErrorException('Failed to delete comment.');
+      res.status(204).send();
+    } catch (error) {
+        throw error;
+    }
   }
 }

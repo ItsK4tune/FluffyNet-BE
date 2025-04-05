@@ -36,7 +36,7 @@ export class LikeService {
     }
 
     async getCommentLikeCount(comment_id: number): Promise<Number | String> {
-        const comment = this.commentService.findComment(comment_id);;
+        const comment = this.commentService.getCommentById(comment_id);
         if (!comment) {
             return 'No';
         }
@@ -86,7 +86,7 @@ export class LikeService {
     }
 
     async likeComment(user_id: number, comment_id: number): Promise<Boolean> {
-        const comment = await this.commentService.findComment(comment_id);
+        const comment = await this.commentService.getCommentById(comment_id);
         if (!comment) {
             return null;
         }

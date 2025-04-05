@@ -1,17 +1,50 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Comment } from './entities/comment.entity';
-import { Repository } from 'typeorm';
-import { CommentDto } from './dtos/comment.dto';
-import { MinioClientService } from '../minio-client/minio-client.service';
-import { MinioEnum } from 'src/utils/enums/enum';
+import { In, IsNull, Repository } from 'typeorm';
+
+interface CreateCommentData {
+  body?: string;
+  image?: string | null;
+  video?: string | null;
+  parent_id?: number | null;
+}
+
+interface UpdateCommentData {
+  body?: string;
+}
 
 @Injectable()
 export class CommentUtil {
   constructor(
     @InjectRepository(Comment) private readonly repo: Repository<Comment>,
-    private readonly minioClientService: MinioClientService,
   ) {}
+
+  async getRootCommentsByPost(post_id: number, relations: string[] = ['user', 'user.profile', 'likes']): Promise<Comment[]> {
+    return this.repo.find({
+      where: { post_id, parent_id: IsNull() }, 
+      order: { createdAt: 'ASC' }, 
+      relations: relations,
+    });
+  }
+
+  async getRepliesForComments(parent_ids: number[], relations: string[] = ['user', 'user.profile', 'likes']): Promise<Comment[]> {
+    if (!parent_ids || parent_ids.length === 0) {
+      return [];
+    }
+    return this.repo.find({
+      where: { parent_id: In(parent_ids) },
+      order: { createdAt: 'ASC' },
+      relations: relations,
+    });
+  }
+
+  async getCommentById(comment_id: number): Promise<Comment | null> {
+    return this.repo.findOne({
+      where: { comment_id },
+      relations: ['user', 'user.profile', 'parentComment'], 
+    });
+  }
 
   async getCommentByPost(post_id: number) {
     return await this.repo.find({
@@ -20,57 +53,47 @@ export class CommentUtil {
     });
   }
 
-  async getCommentById(comment_id: number) {
-    return await this.repo.findOne({
-      where: { comment_id },
-      order: { createdAt: 'DESC' },
-    });
+  async createComment(post_id: number, user_id: number, data: CreateCommentData): Promise<Comment> {
+    const newComment = this.repo.create({
+      body: data.body,
+      image: null,
+      video: null,
+      post_id,
+      user_id, 
+      ...(data.parent_id ? { parentComment: { comment_id: data.parent_id } } : {})
+     });
+    return this.repo.save(newComment);
   }
 
-  async createComment(
-    post_id: number,
-    user_id: number,
-    commentDto: CommentDto,
-    files,
-  ) {
-    let savedImage: string | null = null;
-    let savedVideo: string | null = null;
+  async updateCommentBody(comment_id: number, data: UpdateCommentData): Promise<boolean> {
+    const result = await this.repo.update({ comment_id }, { body: data.body });
+    return result.affected > 0;
+  }
 
-    if (files?.image?.[0]) {
-      const uploadedAvatar = await this.minioClientService.upload(
-        files.image[0],
-        MinioEnum.image,
-      );
-      savedImage = uploadedAvatar;
-    }
-    if (files?.video?.[0]) {
-      const uploadedBackground = await this.minioClientService.upload(
-        files.video[0],
-        MinioEnum.video,
-      );
-      savedVideo = uploadedBackground;
-    }
+  async updateCommentImage(commentId: number, imageObjectName: string | null): Promise<boolean> {
+    const result = await this.repo.update({ comment_id: commentId }, { image: imageObjectName });
+    return result.affected > 0;
+  }
 
-    const comment: Partial<CommentDto> & { image?: string; video?: string } = {
-      ...commentDto,
-      image: savedImage,
-      video: savedVideo,
-    };
-
-    const create = this.repo.create({
-      ...comment,
-      post_id,
-      user_id,
-    });
-
-    return await this.saveComment(create);
+  async updateCommentVideo(commentId: number, videoObjectName: string | null): Promise<boolean> {
+    const result = await this.repo.update({ comment_id: commentId }, { video: videoObjectName });
+    return result.affected > 0;
   }
 
   async saveComment(comment: Comment) {
     return await this.repo.save(comment);
   }
 
-  async deleteComment(comment_id: number) {
-    return await this.repo.delete({ comment_id });
+  async deleteComment(commentId: number): Promise<boolean> {
+    const result = await this.repo.delete({ comment_id: commentId });
+    return result.affected > 0;
+  }
+
+  async getCommentsByPostIdWithRelations(post_id: number): Promise<Comment[]> {
+    return this.repo.find({
+      where: { post_id },
+      order: { createdAt: 'ASC' }, 
+      relations: ['user', 'user.profile', 'likes'],
+    });
   }
 }
