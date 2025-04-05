@@ -44,8 +44,9 @@ import { MemberModule } from './chat_member/member.module';
     LikeModule,
   ],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(SecurityMiddleware).forRoutes('*');
-  }
-}
+// export class AppModule implements NestModule {
+//   configure(consumer: MiddlewareConsumer) {
+//     consumer.apply(SecurityMiddleware).forRoutes('*');
+//   }
+// }
+export class AppModule {}

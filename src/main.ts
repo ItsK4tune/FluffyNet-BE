@@ -12,23 +12,7 @@ import { Request } from 'express';
 import { env } from './config';
 import { AppModule } from './modules/app.module';
 
-interface AuthenticatedUser {
-  user_id: number;
-  email: string;
-  role: string; 
-  jit: string; 
-}
-
-declare global {
-  namespace Express {
-    interface User {
-      user_id: number;
-      email: string;
-      role: string;
-      jit: string;
-    }
-  }
-}
+const REFRESH_COOKIE_NAME = 'jid';
 
 const setMiddleware = (app: NestExpressApplication) => {
   const allowedOriginsEnv = env.cors;
@@ -37,14 +21,14 @@ const setMiddleware = (app: NestExpressApplication) => {
                          .map(origin => origin.trim()) 
                          .filter(origin => origin.length > 0);
 
+  app.use(cookieParser());
+
   app.enableCors({
     credentials: true,
     origin: (origin, callback) => {
-      console.log(`[CORS Check] Received Origin Header: ${origin}`);
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.error(`CORS Error: Origin ${origin} not allowed.`); 
         callback(new Error(`Origin ${origin} not allowed by CORS`));
       }
     },
@@ -64,26 +48,25 @@ const setMiddleware = (app: NestExpressApplication) => {
   app.use(
     rateLimit({
       windowMs: 60 * 1000, 
-      limit: 10, 
+      limit: 100, 
       message: 'Too many requests from this source, please try again later.',
       standardHeaders: 'draft-7',
 	    legacyHeaders: false, 
 
       keyGenerator: (req: Request): string => {
-        if (req.user && req.user.user_id) {
-          return `user:${req.user.user_id}`;
+        const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
+        if (refreshToken) {
+          return `rt:${refreshToken}`;
         } else {
           return `ip:${req.ip}`;
         }
-     },
+      },
     })
   );
 
   app.use(morgan('combined'));
 
   app.use(compression());
-
-  app.use(cookieParser());
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -115,10 +98,19 @@ async function bootstrap() {
 
     const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('swagger', app, swaggerDocument, {
+      explorer: true,
+      customSiteTitle: 'Fluffy Net API Docs',
+      swaggerOptions: {
+        docExpansion: 'none',
+        defaultModelsExpandDepth: -1,
+        filter: true,
+        url: `/api/swagger-json?v=${Date.now()}`,
+      },  
       jsonDocumentUrl: 'swagger/json',
     });
   }
 
+  
   await app.listen(env.port, () =>
     logger.warn(`> Listening on port ${env.port}`),
   );

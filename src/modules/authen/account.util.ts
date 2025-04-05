@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Account } from 'src/modules/authen/entities/account.entity';
 import * as bcrypt from 'bcrypt';
 import { Profile } from 'src/modules/profile/entities/profile.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class AccountUtil {
@@ -50,5 +50,9 @@ export class AccountUtil {
 
   async save(userAccount: Account) {
     await this.repo.save(userAccount);
+  }
+
+  async delete(userAccount: Account) {
+    await this.repo.delete(userAccount);
   }
 }

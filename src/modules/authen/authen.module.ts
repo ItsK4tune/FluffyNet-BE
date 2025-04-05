@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AuthenController } from './authen.controller';
-import { AuthenService } from './authen.service';
+import { AdminController, AuthenController, SuperAdminController } from './authen.controller';
+import { AdminAuthenService, AuthenService, SuperAdminAuthenService } from './authen.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Account } from './entities/account.entity';
 import { JwtModule } from '@nestjs/jwt';
@@ -12,23 +12,32 @@ import { MailService } from './mail.service';
 import { ProfileUtil } from 'src/modules/profile/profile.util';
 import { Profile } from '../profile/entities/profile.entity';
 import { RedisCacheService } from '../redis-cache/redis-cache.service';
+import { RefreshToken } from './entities/refresh.entity';
+import { RefreshUtil } from './refresh.util';
+import { JwtStrategy } from 'src/strategies/jwt.strategy';
+import { RefreshJwtStrategy } from 'src/strategies/refresh-jwt.strategy';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Account, Profile]),
+    TypeOrmModule.forFeature([Account, RefreshToken, Profile]),
     PassportModule,
     JwtModule.register({
       secret: env.jwt.secret,
       signOptions: { expiresIn: env.jwt.time },
     }),
   ],
-  controllers: [AuthenController],
+  controllers: [AuthenController, AdminController, SuperAdminController],
   providers: [
     AuthenService,
+    AdminAuthenService,
+    SuperAdminAuthenService,
     MailService,
     AccountUtil,
     ProfileUtil,
+    RefreshUtil,
     GoogleStrategy,
+    JwtStrategy,
+    RefreshJwtStrategy,
     RedisCacheService,
   ],
 })

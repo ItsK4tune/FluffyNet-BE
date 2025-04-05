@@ -10,7 +10,7 @@ import {
   Query,
   ConflictException,
   Res,
-  InternalServerErrorException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -18,20 +18,34 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiCookieAuth,
 } from '@nestjs/swagger';
-import { AuthenService } from './authen.service';
+import { AdminAuthenService, AuthenService, SuperAdminAuthenService } from './authen.service';
 import { AuthenDTO } from './dtos/authen.dto';
 import { GoogleAuthGuard } from '../../guards/google.guard';
 import { Roles } from 'src/decorators/role.decorator';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
 import { env } from 'src/config';
+import { RefreshJwtAuthGuard } from 'src/guards/refresh-jwt.guard';
+
+const REFRESH_COOKIE_NAME = 'jid'; 
+const REFRESH_COOKIE_OPTIONS = {
+    httpOnly: true,
+    secure: true, 
+    path: '/', 
+    sameSite: 'strict' as const, 
+    domain: '.fluffynet.site' 
+};
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthenController {
-  constructor(private readonly authenService: AuthenService) {}
+    constructor(
+        private readonly authenService: AuthenService,
+    ) {}
 
+    // For User
     @ApiOperation({ summary: 'User register', description: 'Create user for further using.' })
     @ApiBody({
         schema: {
@@ -75,23 +89,90 @@ export class AuthenController {
     @ApiResponse({ status: 201, description: `User's token` })
     @ApiResponse({ status: 400, description: 'Wrong username/email or password' })
     @Post('login')
-    async login(@Body() authenDTO: AuthenDTO) {
-        const token = await this.authenService.login(authenDTO);
-        if (!token) throw new BadRequestException('Wrong username/email or password');
-        return { token: token };
+    async login(@Body() authenDTO: AuthenDTO, @Res({ passthrough: true }) res) {
+        const tokens = await this.authenService.login(authenDTO);
+        if (!tokens) throw new BadRequestException('Wrong username/email or password');
+        res.cookie(REFRESH_COOKIE_NAME, tokens.refreshToken, REFRESH_COOKIE_OPTIONS);
+        return { accessToken: tokens.accessToken };
+    }
+
+    @ApiOperation({ summary: 'Refresh access token', description: 'Provides a new access token using a valid refresh token from cookie.' })
+    @ApiResponse({ status: 200, description: 'New access token generated.' })
+    @ApiResponse({ status: 401, description: 'Refresh token is invalid or expired.' })
+    @UseGuards(RefreshJwtAuthGuard) 
+    @ApiCookieAuth() 
+    @Get('refresh') 
+    async refreshToken(@Req() req, @Res({ passthrough: true }) res) {
+        const user_id = req.user.user_id;
+        const refreshToken = req.cookies[REFRESH_COOKIE_NAME];
+
+        if (!refreshToken) {
+            this.authenService.revokeAllUserTokens(user_id);
+            throw new UnauthorizedException('Refresh token cookie not found.');
+        }
+
+        try {
+            const result = await this.authenService.refreshToken(user_id, refreshToken);
+
+            if (result.newRefreshToken) {
+                res.cookie(REFRESH_COOKIE_NAME, result.newRefreshToken, REFRESH_COOKIE_OPTIONS);
+            }
+
+            return { accessToken: result.accessToken }; 
+        } catch (error) {
+            res.clearCookie(REFRESH_COOKIE_NAME, {
+                httpOnly: REFRESH_COOKIE_OPTIONS.httpOnly,
+                secure: REFRESH_COOKIE_OPTIONS.secure,
+                path: REFRESH_COOKIE_OPTIONS.path,
+                sameSite: REFRESH_COOKIE_OPTIONS.sameSite,
+                domain: REFRESH_COOKIE_OPTIONS.domain 
+            });
+            if (error instanceof UnauthorizedException) {
+                throw error;
+            } else {
+                throw new UnauthorizedException('Could not refresh token due to server error.');
+            }
+        }
+    }
+
+    @ApiOperation({ summary: 'Check current authentication status', description: 'Returns minimal user info if the JWT cookie is valid and received.' })
+    @ApiResponse({ status: 200, description: 'User is currently authenticated.' })
+    @ApiResponse({ status: 401, description: 'User is not authenticated (no valid cookie).' })
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth() 
+    @Get('status')       
+    checkStatus(@Request() req) {
+        return {
+            isAuthenticated: true,
+            user: { 
+                user_id: req.user.user_id, 
+                role: req.user.roles 
+            }  
+        };
     }
 
     @ApiOperation({ summary: 'User logout', description: 'Withdraw JWT token and logout' })
-    @ApiResponse({ status: 201 })
+    @ApiResponse({ status: 204 })
     @ApiResponse({ status: 500, description: 'An unexpected error occurred during logout' })
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
+    @UseGuards(RefreshJwtAuthGuard)
+    @ApiCookieAuth()
     @Get('logout')
-    async logout(@Request() req) {
-        const jit = req.user.jit; 
-        const status = await this.authenService.logout(jit);
-        if (status) return;
-        throw new InternalServerErrorException('An unexpected error occurred during logout');
+    async logout(@Request() req, @Res({ passthrough: true }) res) {
+        const refreshToken = req.cookies[REFRESH_COOKIE_NAME];
+        const user_id = req.user?.user_id;
+
+        if (user_id) { 
+            await this.authenService.logout(user_id, refreshToken);
+        } 
+
+        res.clearCookie(REFRESH_COOKIE_NAME, {
+            httpOnly: REFRESH_COOKIE_OPTIONS.httpOnly,
+            secure: REFRESH_COOKIE_OPTIONS.secure,
+            path: REFRESH_COOKIE_OPTIONS.path,
+            sameSite: REFRESH_COOKIE_OPTIONS.sameSite,
+            domain: REFRESH_COOKIE_OPTIONS.domain 
+        });
+        return;
     }
 
     @ApiOperation({
@@ -103,12 +184,23 @@ export class AuthenController {
     async googleAuth() {}
 
     @ApiOperation({ summary: 'Callback url for Google Oauth' })
-    @UseGuards(GoogleAuthGuard)
     @ApiResponse({ status: 201 })
+    @UseGuards(GoogleAuthGuard)
     @Get('google/callback')
     async googleAuthRedirect(@Req() req, @Res() res) {
-        const token = req.user.token;
-        return res.redirect(`${env.fe}/auth/callback?token=${token}`);
+        const accessToken = req.user?.accessToken;
+        const refreshToken = req.user?.refreshToken;
+        const userInfo = req.user?.user;
+
+        if (!refreshToken || !accessToken || !userInfo) {
+            return res.redirect(`${env.fe}/auth/error?message=oauth_callback_error`);
+        }
+        res.cookie(REFRESH_COOKIE_NAME, refreshToken, REFRESH_COOKIE_OPTIONS);
+        
+        const feRedirectUrl = new URL(`${env.fe}/callback`);
+        feRedirectUrl.searchParams.append('accessToken', accessToken);
+
+        return res.redirect(feRedirectUrl.toString());
     }
 
     @ApiOperation({ summary: 'User forgot password', description: 'Send a password reset email.' })
@@ -152,14 +244,11 @@ export class AuthenController {
     }
 
     @ApiOperation({ summary: 'User verify email', description: 'Check email and send url to verify email.' })
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'user')
-    @ApiBearerAuth()
     @ApiBody({
         schema: {
             type: 'object',
             properties: {
-            email: { type: 'string', example: 'user@example.com' },
+                email: { type: 'string', example: 'user@example.com' },
             },
             required: ['email'],
         },
@@ -168,6 +257,8 @@ export class AuthenController {
     @ApiResponse({ status: 400, description: 'Account not exist' })
     @ApiResponse({ status: 400, description: 'No email binded to this profile' })
     @ApiResponse({ status: 409, description: 'Email has been verified' })
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @Post('verify-email')
     async verifyEmail(@Request() req, @Body('email') email: string){
         const user_id = req.user.user_id;
@@ -190,8 +281,7 @@ export class AuthenController {
     }
 
     @ApiOperation({ summary: 'User unbind email', description: 'Unbind email.' })
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'user')
+    @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
     @ApiResponse({ status: 201 })
     @ApiResponse({ status: 409, description: 'Token invalid/expired' })
@@ -201,6 +291,90 @@ export class AuthenController {
         const status = await this.authenService.unbind(user_id);
         if (status === null)    throw new BadRequestException('User not found');
         if (status === false)    throw new ConflictException(`User don't have email binded`);
+        return;
+    }
+    
+}
+
+@ApiTags('Authentication - Admin')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin', 'superadmin')
+@ApiBearerAuth()
+@Controller('admin-auth')
+export class AdminController {
+    constructor(
+        private readonly adminService: AdminAuthenService,
+    ) {}
+
+    // For Admin and Super Admin
+    @ApiOperation({ summary: 'Admin get user info', description: 'Get user info by username or email.' })
+    @Post('get-user')
+    async getUser(@Body() authenDTO: AuthenDTO) {
+        const user = await this.adminService.getUser(authenDTO);
+        if (!user) throw new BadRequestException('User not found');
+        return user;
+    }
+
+    @ApiOperation({ summary: 'Admin ban user', description: 'Ban user by username or email.' })
+    @Post('ban')
+    async banUser(@Req() req, @Body('user_id') user_id: number) {
+        const status = await this.adminService.banUser(user_id, req.user.role);
+        if (status === null) throw new BadRequestException('User not found');
+        if (status === false) throw new ConflictException('User already banned');
+        return;
+    }
+
+    @ApiOperation({ summary: 'Admin unban user', description: 'Unban user by username or email.' })
+    @Post('unban')
+    async unbanUser(@Req() req, @Body('user_id') user_id: number) {
+        const status = await this.adminService.unbanUser(user_id, req.user.role);
+        if (status === null) throw new BadRequestException('User not found');
+        if (status === false) throw new ConflictException('User already unbanned');
+        return;
+    }
+
+    @ApiOperation({ summary: 'Admin verify user', description: 'Verify user by username or email.' })
+    @Post('verify')
+    async verifyUser(@Req() req, @Body('user_id') user_id: number) {
+        const status = await this.adminService.verifyUser(user_id, req.user.role);
+        if (status === null) throw new BadRequestException('User not found');
+        if (status === false) throw new ConflictException('User already verified');
+        return;
+    }
+
+    @ApiOperation({ summary: 'Admin delete user', description: 'Delete user by username or email.' })    
+    @Post('delete')
+    async deleteUser(@Req() req, @Body('user_id') user_id: number) {
+        const status = await this.adminService.deleteUser(user_id, req.user.role);
+        if (status === null) throw new BadRequestException('User not found');
+        return;
+    }
+}
+
+@ApiTags('Authentication - Super Admin')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('superadmin')
+@ApiBearerAuth()
+@Controller('superadmin-auth')
+export class SuperAdminController {
+    constructor(
+        private readonly superAdminService: SuperAdminAuthenService,
+    ) {}
+
+    // For Super Admin only
+    @ApiOperation({ summary: 'Super Admin create new admin', description: 'Create new admin account.' })
+    @Post('create-admin')
+    async createAdmin(@Body() authenDTO: AuthenDTO) {
+        const status = await this.superAdminService.createAdmin(authenDTO);
+        if (status) throw new ConflictException('Username already exists');
+        return;
+    }
+
+    @ApiOperation({ summary: 'Super Admin change role for account', description: 'Change role for account' })
+    @Post('change-role')
+    async changeRole(@Req() req, @Body('user_id') user_id: number) {
+        const status = await this.superAdminService.changeRole(user_id, req.user.role);
+        if (status === null) throw new BadRequestException('User not found');
         return;
     }
 }

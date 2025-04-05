@@ -2,13 +2,12 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { env } from 'src/config';
-import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Account } from '../modules/authen/entities/account.entity';
 import * as bcrypt from 'bcrypt';
 import { Profile } from 'src/modules/profile/entities/profile.entity';
-import { v4 as uuidv4 } from 'uuid';
+import { AuthenService } from 'src/modules/authen/authen.service';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
@@ -17,7 +16,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     private readonly accountRepo: Repository<Account>,
     @InjectRepository(Profile)
     private readonly profileRepo: Repository<Profile>,
-    private readonly jwtService: JwtService,
+    private readonly authenService: AuthenService,
   ) {
     super({
       clientID: env.google.id,
@@ -28,18 +27,19 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   }
 
   async validate(
-    accessToken: string,
-    refreshToken: string,
+    _accessToken: string,
+    _refreshToken: string,
     profile: any,
     done: VerifyCallback,
   ): Promise<any> {
     const { displayName, emails, photos } = profile;
 
     if (!emails || !emails.length || !emails[0].value) {
-      throw new BadRequestException('Email unavailable');
+      return done(new BadRequestException('Email not available from Google profile.'), false);
     }
 
     const email = emails[0].value;
+    const avatarUrl = photos?.[0]?.value;
 
     let user = await this.accountRepo.findOne({ where: { email } });
 
@@ -62,14 +62,15 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       user = await this.accountRepo.findOne({ where: { email } });
     }
 
-    const jwtPayload = {
-      user_id: user.user_id,
-      username: user.username,
-      email: email,
-      role: user.role,
-    };
-    const token = this.jwtService.sign({ user: jwtPayload, jit: uuidv4() });
+    const { accessToken, refreshToken } = await this.authenService.handleOAuthLogin(user);
 
-    return done(null, { ...jwtPayload, token });
+    const userPayloadForDone = {
+      userId: user.user_id,
+      username: user.username,  
+      email: user.email,
+      role: user.role, 
+    };
+    
+    return done(null, { user: userPayloadForDone, accessToken, refreshToken });
   }
 }

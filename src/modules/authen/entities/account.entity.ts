@@ -6,7 +6,9 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { RefreshToken } from './refresh.entity';
 
 @Entity('account')
 export class Account {
@@ -25,6 +27,12 @@ export class Account {
   @Column({ default: 'user' })
   role: string;
 
+  @Column({ default: false })
+  is_banned: boolean;
+
+  @Column({ default: false })
+  is_verified: boolean;
+
   @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;
 
@@ -33,4 +41,7 @@ export class Account {
 
   @OneToOne(() => Profile, (profile) => profile.user, { cascade: true })
   profile: Profile;
+
+  @OneToMany(() => RefreshToken, refreshToken => refreshToken.user)
+  refreshTokens: RefreshToken[];
 }

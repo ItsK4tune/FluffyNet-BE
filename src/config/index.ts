@@ -13,6 +13,8 @@ const envSchema = z.object({
 
   JWT_SECRET: z.string().default('Secret-string'),
   JWT_TIME: z.string().default('1h'),
+  JWT_REFRESH_SECRET: z.string().default('Secret-string'),
+  JWT_REFRESH_TIME: z.string().default('7d'),
 
   GOOGLE_CLIENT_ID: z.string(),
   GOOGLE_CLIENT_SECRET: z.string(),
@@ -55,6 +57,8 @@ export const env = {
   jwt: {
     secret: envVars.JWT_SECRET,
     time: envVars.JWT_TIME,
+    refreshSecret: envVars.JWT_REFRESH_SECRET,
+    refreshTime: envVars.JWT_REFRESH_TIME,
   },
   google: {
     id: envVars.GOOGLE_CLIENT_ID,
