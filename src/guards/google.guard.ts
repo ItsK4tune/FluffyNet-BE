@@ -1,4 +1,4 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
 import { env } from 'src/config';
@@ -13,6 +13,23 @@ export class GoogleAuthGuard extends AuthGuard('google') {
       return response.redirect(`${env.fe}/login`);
     }
 
-    return user;
+    if (err) {
+      const feRedirectUrl = new URL(`${env.fe}/login`);
+      if (err.response.type == 'ban') {
+        feRedirectUrl.searchParams.append('type', err.response.type);
+        feRedirectUrl.searchParams.append('message', err.response.reason);
+      } else if (err.response.type == 'suspend') {
+        feRedirectUrl.searchParams.append('type', err.response.type);
+        feRedirectUrl.searchParams.append('message', err.response.reason);
+        feRedirectUrl.searchParams.append('until', err.response.until);
+      } else {
+        feRedirectUrl.searchParams.append('type', 'unknown');
+      }
+      console.log(feRedirectUrl.toString());
+      return response.redirect(feRedirectUrl.toString());
+    }
+
+    if (user)
+      return user;
   }
 }

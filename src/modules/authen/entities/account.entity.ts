@@ -31,6 +31,18 @@ export class Account {
   @Column({ default: false })
   is_banned: boolean;
 
+  @Column({ type: 'text', nullable: true })
+  ban_reason: string;
+  
+  @Column({ default: false })
+  is_suspended: boolean;
+  
+  @Column({ default: null })
+  suspended_until: Date;
+  
+  @Column({ type: 'text', nullable: true })
+  suspend_reason: string;
+
   @Column({ default: false })
   is_verified: boolean;
 

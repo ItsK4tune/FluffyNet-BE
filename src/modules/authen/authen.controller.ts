@@ -190,11 +190,9 @@ export class AuthenController {
     async googleAuthRedirect(@Req() req, @Res() res) {
         const accessToken = req.user?.accessToken;
         const refreshToken = req.user?.refreshToken;
-        const userInfo = req.user?.user;
 
-        if (!refreshToken || !accessToken || !userInfo) {
-            return res.redirect(`${env.fe}/auth/error?message=oauth_callback_error`);
-        }
+        if (!accessToken || !refreshToken)  return;
+
         res.cookie(REFRESH_COOKIE_NAME, refreshToken, REFRESH_COOKIE_OPTIONS);
         
         const feRedirectUrl = new URL(`${env.fe}/callback`);
@@ -317,8 +315,9 @@ export class AdminController {
 
     @ApiOperation({ summary: 'Admin ban user', description: 'Ban user by username or email.' })
     @Post('ban')
-    async banUser(@Req() req, @Body('user_id') user_id: number) {
-        const status = await this.adminService.banUser(user_id, req.user.role);
+    async banUser(@Req() req, @Body() body: { user_id: number; reason: string }) {
+        const { user_id, reason } = body;
+        const status = await this.adminService.banUser(user_id, req.user.role, reason);
         if (status === null) throw new BadRequestException('User not found');
         if (status === false) throw new ConflictException('User already banned');
         return;
@@ -330,6 +329,25 @@ export class AdminController {
         const status = await this.adminService.unbanUser(user_id, req.user.role);
         if (status === null) throw new BadRequestException('User not found');
         if (status === false) throw new ConflictException('User already unbanned');
+        return;
+    }
+
+    @ApiOperation({ summary: 'Admin suspend user', description: 'Suspend user by user ID.' })
+    @Post('suspend')
+    async suspendUser(@Req() req, @Body('user_id') body: { user_id: number, duration: string, reason: string }) {
+        const { user_id, duration, reason } = body
+        const status = await this.adminService.suspendUser(user_id, req.user.role, duration, reason);
+        if (status === null) throw new BadRequestException('User not found');
+        if (status === false) throw new ConflictException('User already suspended');
+        return;
+    }
+
+    @ApiOperation({ summary: 'Admin unsuspend user', description: 'Unsuspend user by user ID.' })
+    @Post('unsuspend')
+    async unsuspendUser(@Req() req, @Body('user_id') user_id: number) {
+        const status = await this.adminService.unsuspendUser(user_id, req.user.role);
+        if (status === null) throw new BadRequestException('User not found');
+        if (status === false) throw new ConflictException('User is not suspended');
         return;
     }
 

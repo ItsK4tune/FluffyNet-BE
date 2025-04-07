@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { env } from 'src/config';
@@ -39,9 +39,16 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     }
 
     const email = emails[0].value;
-    const avatarUrl = photos?.[0]?.value;
 
     let user = await this.accountRepo.findOne({ where: { email } });
+
+    if (user.is_banned) {
+      return done(new ForbiddenException({type: 'ban', reason: user.ban_reason}), false);
+    }
+
+    if (user.is_suspended) {
+      return done(new ForbiddenException({type: 'suspend', reason: user.suspend_reason, until: user.suspended_until}), false);
+    }
 
     if (!user) {
       const newUser = this.accountRepo.create({

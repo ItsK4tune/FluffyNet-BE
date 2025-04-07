@@ -11,6 +11,7 @@ import { promises as fsPromises } from 'fs';
 import { RefreshUtil } from './refresh.util';
 import { RefreshToken } from './entities/refresh.entity';
 import { AdminDTO } from './dtos/admin.dto';
+import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
 
 @Injectable()
 export class AuthenService {
@@ -43,7 +44,21 @@ export class AuthenService {
     if (!user) return null;
 
     if (user.is_banned) {
-      throw new BadRequestException('Account is banned.');
+      throw new ForbiddenException(user.ban_reason);
+    }
+
+    if (user.is_suspended) {
+      if (user.suspended_until && new Date() < user.suspended_until) {
+        throw new ForbiddenException({
+          reason: user.suspend_reason,
+          until: user.suspended_until,
+        });
+      } else {
+        user.is_suspended = false;
+        user.suspended_until = null;
+        user.suspend_reason = null;
+        await this.accountUtil.save(user);
+      }
     }
 
     if (await bcrypt.compare(password, user.password)) {
@@ -304,13 +319,14 @@ export class AdminAuthenService{
     return user;
   }
 
-  async banUser(user_id: number, role: string): Promise<boolean> {
+  async banUser(user_id: number, role: string, reason: string): Promise<boolean> {
     const user = await this.accountUtil.findByUserID(user_id);
     if (!user) return null;
     if (user.is_banned) return false;
     if (user.role == role)  throw new ForbiddenException('Insufficient privileges');
 
     user.is_banned = true;
+    user.ban_reason = reason
     await this.accountUtil.save(user);
     return true;
   }
@@ -322,6 +338,34 @@ export class AdminAuthenService{
     if (user.role == role)  throw new ForbiddenException('Insufficient privileges');
 
     user.is_banned = false;
+    user.ban_reason = null;
+    await this.accountUtil.save(user);
+    return true;
+  }
+
+  async suspendUser(user_id: number, role: string, duration: string, reason: string): Promise<boolean> {
+    const user = await this.accountUtil.findByUserID(user_id);
+    if (!user) return null;
+    if (user.is_suspended) return false;
+    if (user.role == role) throw new ForbiddenException('Insufficient privileges');
+
+    user.is_suspended = true;
+    user.suspend_reason = reason;
+    user.suspended_until = new Date();
+    user.suspended_until.setTime(user.suspended_until.getTime() + convertToSeconds(duration) * 1000);
+    await this.accountUtil.save(user);
+    return true;
+  }
+
+  async unsuspendUser(user_id: number, role: string): Promise<boolean> {
+    const user = await this.accountUtil.findByUserID(user_id);
+    if (!user) return null;
+    if (!user.is_suspended) return false;
+    if (user.role == role) throw new ForbiddenException('Insufficient privileges');
+
+    user.is_suspended = false;
+    user.suspend_reason = null;
+    user.suspended_until = null;
     await this.accountUtil.save(user);
     return true;
   }
