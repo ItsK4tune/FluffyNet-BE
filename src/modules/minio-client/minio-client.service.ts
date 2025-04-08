@@ -51,9 +51,9 @@ export class MinioClientService implements OnModuleInit {
       const uniqueObjectName = `${prefix}${uuidv4()}${fileExtension}`;
 
       const presignedUrl = await this.minioClient.presignedPutObject(
-          this.baseBucket,
-          uniqueObjectName,
-          expiry,
+        this.baseBucket,
+        uniqueObjectName,
+        expiry,
       );
 
       return { presignedUrl, objectName: uniqueObjectName };

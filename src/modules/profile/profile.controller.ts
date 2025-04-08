@@ -8,6 +8,9 @@ import {
   Query,
   Patch,
   Post,
+  ParseIntPipe,
+  Param,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { ProfileService } from './profile.service';
@@ -19,13 +22,20 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { ProfileDto } from './dtos/profile.dto';
+import { ProfileUploadPresignDto } from './dtos/profile.upload.dto';
+import { MinioClientService } from '../minio-client/minio-client.service';
+import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
+import { env } from 'src/config';
 
 @ApiTags('Profile')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller('profile')
 export class ProfileController {
-  constructor(private readonly profileService: ProfileService) {}
+  constructor(
+    private readonly profileService: ProfileService,
+    private readonly minioClientService: MinioClientService,
+  ) {}
 
   @ApiOperation({
     summary: `Get user's profile`,
@@ -34,8 +44,8 @@ export class ProfileController {
   @ApiResponse({ status: 200, description: 'profile' }) 
   @ApiResponse({ status: 404, description: 'Profile not found' })
   @ApiResponse({ status: 404, description: 'Cache error' })
-  @Get('view-profile')
-  async viewProfile(@Query('user_id') user_id: number) {
+  @Get(':user_id')
+  async viewProfile(@Param('user_id', ParseIntPipe) user_id: number) {
     const profile = await this.profileService.getProfile(user_id);
     if (!profile) throw new BadRequestException({ message: 'User not found' });
     return {
@@ -109,7 +119,7 @@ export class ProfileController {
   @ApiResponse({ status: 200, description: 'Background updated.', })
   @ApiResponse({ status: 404, description: 'Profile not found.'})
   @ApiResponse({ status: 400, description: 'Missing objectName.'})
-  @Post('update-avatar') 
+  @Post('update-background') 
   async setBackground(
     @Query('target_id') target_id: number,
     @Request() req,
@@ -121,11 +131,42 @@ export class ProfileController {
       throw new BadRequestException('Missing objectName in request body.');
     }
     try {
-      const updatedProfile = await this.profileService.updateAvatar(user_id, target_id, role, objectName);
+      const updatedProfile = await this.profileService.updateBackground(user_id, target_id, role, objectName);
       const message = objectName ? 'Background updated successfully.' : 'Background removed successfully.';
       return { message, profile: updatedProfile };
     } catch (error) {
       throw error; 
+    }
+  }
+
+  @ApiOperation({ summary: 'Get presigned URL for uploading avatar or background' })
+  @ApiResponse({ status: 201, description: 'Presigned URL generated.', schema: { properties: { presignedUrl: { type: 'string' }, objectName: { type: 'string' } } } })
+  @ApiResponse({ status: 400, description: 'Invalid input (e.g., invalid mime type or imageType).'})
+  @Post('generate-upload-url')
+  async getPresignedUploadUrl(
+    @Request() req,
+    @Body() uploadPresignDto: ProfileUploadPresignDto
+  ): Promise<{ presignedUrl: string; objectName: string }> {
+    const { filename, contentType, imageType } = uploadPresignDto;
+    const userId = req.user.user_id;
+
+    // const fileExtension = filename.split('.').pop() || '';
+    const prefix = `profiles/user_${userId}/${imageType}s/`; 
+
+    try {
+      const result = await this.minioClientService.generatePresignedUploadUrl(
+        filename,
+        contentType,
+        prefix,
+        convertToSeconds(env.minio.time)
+      );
+      return result;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      console.error("Error generating profile upload URL:", error);
+      throw new InternalServerErrorException('Could not generate profile image upload URL.');
     }
   }
 }

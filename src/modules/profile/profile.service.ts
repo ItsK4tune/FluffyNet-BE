@@ -18,17 +18,18 @@ export class ProfileService {
 
   async getProfile(user_id: number): Promise<Profile | null> {
     const cacheKey = `${RedisEnum.profile}:${user_id}`;
+    let profile: Profile | null = null;
 
     try {
       const cachedData = await this.redisCacheService.get(cacheKey);
       if (cachedData) {
-        return JSON.parse(cachedData) as Profile;
+        profile = JSON.parse(cachedData) as Profile;
       }
     } catch (cacheError) {
       throw new NotFoundException('Cache error');
     }
 
-    const profile = await this.profileUtil.getProfileByUserId(user_id);
+    profile = await this.profileUtil.getProfileByUserId(user_id);
     if (profile) {
       try {
         await this.redisCacheService.set(
@@ -41,7 +42,7 @@ export class ProfileService {
       }
     }
 
-    return profile;
+    return await this.enrichProfileWithMediaUrls(profile);
   }
 
   async editProfileData(
@@ -70,7 +71,7 @@ export class ProfileService {
     try {
       const updatedProfile = await this.profileUtil.save(userProfile); 
       await this.redisCacheService.del(cacheKey);
-      return updatedProfile;
+      return await this.enrichProfileWithMediaUrls(updatedProfile);
     } catch (dbError) {
       throw new InternalServerErrorException("Failed to update profile data.");
     }
@@ -89,6 +90,9 @@ export class ProfileService {
     }
 
     const oldAvatarObjectName = userProfile.avatar;
+    if (oldAvatarObjectName === newAvatarObjectName) {
+      return await this.enrichProfileWithMediaUrls(userProfile); 
+    }
     userProfile.avatar = newAvatarObjectName; 
 
     try {
@@ -100,7 +104,7 @@ export class ProfileService {
 
       await this.redisCacheService.del(cacheKey)
 
-      return updatedProfile;
+      return await this.enrichProfileWithMediaUrls(updatedProfile);
     } catch (dbError) {
       throw new InternalServerErrorException("Failed to update profile avatar.");
     }
@@ -119,6 +123,9 @@ export class ProfileService {
     }
 
     const oldBackgroundObjectName = userProfile.background;
+    if (oldBackgroundObjectName === newBackgroundObjectName) {
+      return await this.enrichProfileWithMediaUrls(userProfile); 
+    }
     userProfile.background = newBackgroundObjectName;
 
     try {
@@ -130,9 +137,39 @@ export class ProfileService {
 
       await this.redisCacheService.del(cacheKey)
 
-      return updatedProfile;
+      return await this.enrichProfileWithMediaUrls(updatedProfile);
     } catch (dbError) {
       throw new InternalServerErrorException("Failed to update profile background.");
     }
+  }
+
+  private async enrichProfileWithMediaUrls(profile: Profile | null): Promise<Profile | null> {
+    if (!profile) return null;
+
+    const enriched: Profile = { ...profile }; 
+
+    if (profile.avatar) {
+      try {
+        enriched.avatar = await this.minioClientService.generatePresignedDownloadUrl(profile.avatar, convertToSeconds(env.minio.time));
+      } catch (error) {
+        console.error(`Failed to get download URL for avatar ${profile.avatar}:`, error);
+        enriched.avatar = null; 
+      }
+    } else {
+        enriched.avatar = null;
+    }
+
+    if (profile.background) {
+      try {
+        enriched.background = await this.minioClientService.generatePresignedDownloadUrl(profile.background, convertToSeconds(env.minio.time));
+      } catch (error) {
+        console.error(`Failed to get download URL for background ${profile.background}:`, error);
+        enriched.background = null;
+      }
+    } else {
+        enriched.background = null;
+    }
+
+    return enriched;
   }
 }

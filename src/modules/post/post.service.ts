@@ -3,7 +3,6 @@ import { PostUtil } from 'src/modules/post/post.util';
 import { PostDto } from './dto/post.dto';
 import { Post } from './entities/post.entity';
 import { MinioClientService } from '../minio-client/minio-client.service';
-import { MinioEnum } from 'src/utils/enums/enum';
 import { FollowService } from '../follow/follow.service';
 import { NotificationService } from '../notification/notification.service';
 import { ProfileService } from '../profile/profile.service';
@@ -31,18 +30,19 @@ export class PostService {
   ) {}
 
   async getAllPosts({ skip, take }): Promise<Post[]> {
-    return this.postUtil.getAllPosts({ skip, take });
+    return await Promise.all((await this.postUtil.getAllPosts({ skip, take })).map(post => this.enrichPostWithMediaUrls(post)));
   }
 
   async getPostsOfFollowing(user_id: number): Promise<Post[]> {
     const followingList = await this.followService.followingList(user_id);
     if (!followingList || followingList.length === 0) return [];
     const follows = followingList.map(follow => follow.following_id);
-    return this.postUtil.getPostsOfFollowing(follows);
+    const posts = await this.postUtil.getPostsOfFollowing(follows);
+    return await Promise.all(posts.map(post => this.enrichPostWithMediaUrls(post)));
   }
 
   async findOneById(post_id: number): Promise<Post> {
-    return this.postUtil.getPostById(post_id);
+    return await this.enrichPostWithMediaUrls(await this.postUtil.getPostById(post_id));
   }
 
   async createPost(user_id: number, data: PostDto): Promise<Post> {
@@ -80,7 +80,7 @@ export class PostService {
       
       this.sendNewPostNotifications(user_id, newPost.post_id);
 
-      return newPost; 
+      return await this.enrichPostWithMediaUrls(newPost); 
     } catch (error) {
       throw new InternalServerErrorException('Failed to create post.');
     }
@@ -233,6 +233,34 @@ export class PostService {
       await this.notificationService.createNotification(originalAuthorId, notificationType, notificationBody);
     } catch (error) {
       // TODO: implement retry mechanism
+    }
+  }
+
+  private async enrichPostWithMediaUrls(post: Post | null): Promise<Post | null> {
+    if (!post) return null;
+
+    const enrichedPost: Post = { ...post }; 
+
+    if (post.image) {
+      try {
+        enrichedPost.image = await this.minioClientService.generatePresignedDownloadUrl(post.image, 60 * 60);
+      } catch (error) {
+        console.error(`Failed to get download URL for image ${post.image}:`, error);
+        enrichedPost.image = null; 
+      }
+    } else {
+        enrichedPost.image = null;
+    }
+
+    if (post.video) {
+      try {
+        enrichedPost.video = await this.minioClientService.generatePresignedDownloadUrl(post.video, 60 * 60);
+      } catch (error) {
+        console.error(`Failed to get download URL for video ${post.video}:`, error);
+        enrichedPost.video = null;
+      }
+    } else {
+      enrichedPost.video = null;
     }
   }
 }

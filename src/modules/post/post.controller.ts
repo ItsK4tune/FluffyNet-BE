@@ -27,6 +27,10 @@ import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { PostDto } from './dto/post.dto';
 import type { Post } from './entities/post.entity';
 import { PostUploadCompleteDto } from './dto/post-upload.dto';
+import { MinioClientService } from '../minio-client/minio-client.service';
+import { PostUploadPresignDto } from './dto/post-upload.dto';
+import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
+import { env } from 'src/config';
 
 @ApiTags('Post')
 @UseGuards(JwtAuthGuard)
@@ -35,6 +39,7 @@ import { PostUploadCompleteDto } from './dto/post-upload.dto';
 export class PostController {
   constructor(
     private readonly postService: PostService,
+    private readonly minioClientService: MinioClientService,
   ) {}
 
   @ApiOperation({ summary: 'Get all posts' })
@@ -83,6 +88,37 @@ export class PostController {
     }
   }
 
+  @ApiOperation({ summary: 'Get presigned URL for uploading a post file' })
+  @ApiResponse({ status: 201, description: 'Presigned URL generated.'})
+  @ApiResponse({ status: 400, description: 'Invalid input (e.g., invalid mime type).'})
+  @HttpPost('generate-upload-url') // Endpoint mới
+  async getPresignedUploadUrl(
+    @Request() req,
+    @Body() uploadPresignDto: PostUploadPresignDto 
+  ): Promise<{ presignedUrl: string; objectName: string }> {
+      const { filename, contentType } = uploadPresignDto;
+      const user_id = req.user.user_id; 
+      
+      // const fileExtension = filename.split('.').pop() || '';
+      const fileTypePrefix = contentType.startsWith('image/') ? 'images' : (contentType.startsWith('video/') ? 'videos' : 'others');
+      const prefix = `posts/user_${user_id}/${fileTypePrefix}/`;
+
+      try {
+        const result = await this.minioClientService.generatePresignedUploadUrl(
+          filename, 
+          contentType,
+          prefix, 
+          convertToSeconds(env.minio.time),
+        );
+        return result;
+      } catch (error) {
+        if (error instanceof BadRequestException) {
+          throw error;
+        }
+        throw new InternalServerErrorException('Could not generate upload URL.');
+      }
+  }
+
   @ApiOperation({ summary: 'Attach an image or video to an existing post' })
   @ApiBody({ description: 'Information about the uploaded file.' }) 
   @ApiResponse({ status: 200, description: 'File attached successfully.' }) 
@@ -104,14 +140,14 @@ export class PostController {
       try {
         const success = await this.postService.attachFileToPost(user_id, postId, role, fileType, objectName);
         if (!success) {
-            throw new InternalServerErrorException('Failed to update post with attachment.');
+          throw new InternalServerErrorException('Failed to update post with attachment.');
         }
         const updatedPost = await this.postService.findOneById(postId);
-        if (!updatedPost) throw new NotFoundException("Post not found after attachment update."); // Nên có
+        if (!updatedPost) throw new NotFoundException("Post not found after attachment update.");
 
         return { message: `${fileType} attached successfully.`, post: updatedPost };
     } catch (error) {
-        throw error;
+      throw error;
     }
   }
 
@@ -122,12 +158,12 @@ export class PostController {
   @ApiResponse({ status: 403, description: 'Forbidden (not the post owner).'})
   @Patch(':post_id') 
   async updatePostText(@Request() req, @Param('post_id', ParseIntPipe) postId: number, @Body() postDto: PostDto): Promise<{ message: string; post: Post }> {
-    const userId = req.user.user_id;
+    const user_id = req.user.user_id;
     const role = req.user.role;
     const updateData: Partial<PostDto> = { body: postDto.body };
 
     try {
-      const success = await this.postService.updatePost(userId, postId, role, updateData);
+      const success = await this.postService.updatePost(user_id, postId, role, updateData);
       if (!success) {
           throw new InternalServerErrorException('Post update failed for an unknown reason.');
       }
@@ -146,10 +182,10 @@ export class PostController {
   @ApiResponse({ status: 403, description: 'Forbidden (not the post owner).'})
   @Delete(':post_id')
   async deletePost(@Request() req, @Param('post_id', ParseIntPipe) postId: number, @Res() res): Promise<void> {
-    const userId = req.user.user_id;
+    const user_id = req.user.user_id;
     const role = req.user.role; 
     try {
-      const success = await this.postService.deletePost(userId, postId, role);
+      const success = await this.postService.deletePost(user_id, postId, role);
       if (!success) {
         throw new InternalServerErrorException('Post deletion failed for an unknown reason.');
       }

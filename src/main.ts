@@ -86,6 +86,7 @@ async function bootstrap() {
   app.set('trust proxy', 1);
   
   app.setGlobalPrefix('api');
+  
   setMiddleware(app);
 
   if (process.env.NODE_ENV !== 'production') {
@@ -116,4 +117,8 @@ async function bootstrap() {
   );
 }
 
-bootstrap();
+try {
+  bootstrap();
+} catch (err) {
+  console.log(err.message);
+}

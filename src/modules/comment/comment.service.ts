@@ -19,10 +19,6 @@ interface CreateCommentData {
   parent_id?: number | null;
 }
 
-interface UpdateCommentData {
-  body?: string;
-}
-
 interface CommentWithChildren extends Comment {
   children?: CommentWithChildren[];
   imageUrl?: string | null;
@@ -41,23 +37,7 @@ export class CommentService {
   ) {}
 
   async getCommentById(comment_id: number): Promise<Comment> {
-    return this.commentUtil.getCommentById(comment_id);
-  }
-
-  private async enrichCommentWithMediaUrls(comment: Comment): Promise<CommentWithChildren> {
-    const enrichedComment: CommentWithChildren = { ...comment };
-      if (comment.image) {
-        enrichedComment.imageUrl = await this.minioClientService.generatePresignedDownloadUrl(comment.image);
-      }
-      if (comment.video) {
-          enrichedComment.videoUrl = await this.minioClientService.generatePresignedDownloadUrl(comment.video);
-      }
-      if (comment.user?.avatar) {
-        if (!enrichedComment.user) enrichedComment.user = {} as Profile; 
-        (enrichedComment.user as any).avatarUrl = await this.minioClientService.generatePresignedDownloadUrl(comment.user.avatar);
-      }
-
-    return enrichedComment;
+    return await this.enrichCommentWithMediaUrls(await this.commentUtil.getCommentById(comment_id));
   }
 
   async getCommentsByPost(post_id: number): Promise<CommentWithChildren[]> {
@@ -66,12 +46,11 @@ export class CommentService {
     try {
       const cachedTree = await this.redisCacheService.get(cacheKey);
       if (cachedTree) {
-        console.log(`[Comment Service] Cache hit for comment tree: ${post_id}`);
         const parsedTree = JSON.parse(cachedTree) as CommentWithChildren[];
         const enrichNode = async (node: CommentWithChildren): Promise<CommentWithChildren> => {
           const enrichedNode = await this.enrichCommentWithMediaUrls(node);
           if (node.children && node.children.length > 0) {
-              enrichedNode.children = await Promise.all(node.children.map(enrichNode));
+            enrichedNode.children = await Promise.all(node.children.map(enrichNode));
           }
           return enrichedNode;
         };
@@ -143,8 +122,9 @@ export class CommentService {
       
       this.sendNotificationsAfterComment(userId, newComment, postExists.user_id, parent_id)
 
+      return await this.enrichCommentWithMediaUrls(newComment);
     } catch (error) {
-        throw new InternalServerErrorException('Failed to create comment.');
+      throw new InternalServerErrorException('Failed to create comment.');
     }
   }
 
@@ -316,5 +296,21 @@ export class CommentService {
             ...(comment as any).get({ plain: true }),
             children: this.buildCommentTree(comments, comment.comment_id),
       }));
+  }
+
+  private async enrichCommentWithMediaUrls(comment: Comment): Promise<CommentWithChildren> {
+    const enrichedComment: CommentWithChildren = { ...comment };
+      if (comment.image) {
+        enrichedComment.imageUrl = await this.minioClientService.generatePresignedDownloadUrl(comment.image);
+      }
+      if (comment.video) {
+          enrichedComment.videoUrl = await this.minioClientService.generatePresignedDownloadUrl(comment.video);
+      }
+      if (comment.user?.avatar) {
+        if (!enrichedComment.user) enrichedComment.user = {} as Profile; 
+        (enrichedComment.user as any).avatarUrl = await this.minioClientService.generatePresignedDownloadUrl(comment.user.avatar);
+      }
+
+    return enrichedComment;
   }
 }

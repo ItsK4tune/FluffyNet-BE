@@ -42,14 +42,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
     let user = await this.accountRepo.findOne({ where: { email } });
 
-    if (user.is_banned) {
-      return done(new ForbiddenException({type: 'ban', reason: user.ban_reason}), false);
-    }
-
-    if (user.is_suspended) {
-      return done(new ForbiddenException({type: 'suspend', reason: user.suspend_reason, until: user.suspended_until}), false);
-    }
-
     if (!user) {
       const newUser = this.accountRepo.create({
         email,
@@ -67,6 +59,14 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       await this.profileRepo.save(newProfile);
 
       user = await this.accountRepo.findOne({ where: { email } });
+    } else {
+      if (user.is_banned) {
+        return done(new ForbiddenException({type: 'ban', reason: user.ban_reason}), false);
+      }
+  
+      if (user.is_suspended) {
+        return done(new ForbiddenException({type: 'suspend', reason: user.suspend_reason, until: user.suspended_until}), false);
+      }
     }
 
     const { accessToken, refreshToken } = await this.authenService.handleOAuthLogin(user);

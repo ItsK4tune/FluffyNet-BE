@@ -37,6 +37,7 @@ const envSchema = z.object({
   MINIO_SECRET_KEY: z.string(),
   MINIO_BUCKET: z.string().default('uploads'),
   MINIO_REGION: z.string().default('asia-southeast1'),
+  MINIO_PRESIGNED_TIME: z.string().default('5m'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -88,5 +89,6 @@ export const env = {
     secretKey: envVars.MINIO_SECRET_KEY,
     bucket: envVars.MINIO_BUCKET,
     region: envVars.MINIO_REGION,
+    time: envVars.MINIO_PRESIGNED_TIME,
   },
 };
