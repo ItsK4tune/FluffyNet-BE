@@ -25,7 +25,13 @@ export class PostUtil {
       order: { created_at: 'DESC' }, 
       skip: options?.skip,
       take: options?.take,
-      relations: options?.relations || ['user', 'user.profile', 'repostOrigin', 'repostOrigin.user', 'repostOrigin.user.profile', 'likes'], 
+      relations: options?.relations || [
+        'user',
+        'user.profile',
+        'repostOrigin',
+        'repostOrigin.user',
+        'repostOrigin.user.profile',
+      ],
     });
   }
 
@@ -38,14 +44,21 @@ export class PostUtil {
       order: { created_at: 'DESC' },
       skip: options?.skip,
       take: options?.take,
-      relations: options?.relations || ['user', 'user.profile', 'repostOrigin', 'repostOrigin.user', 'repostOrigin.user.profile', 'likes'],
+      relations: options?.relations || [
+        'user',
+        'user.profile',
+        'repostOrigin',
+        'repostOrigin.user',
+        'repostOrigin.user.profile',
+        'likes',
+      ],
     });
   }
 
   async getPostById(post_id: number, relations?: string[]): Promise<Post | null> {
     return this.repo.findOne({
       where: { post_id },
-      relations: relations || ['user', 'user.profile', 'repostOrigin', 'repostOrigin.user', 'repostOrigin.user.profile', 'likes'],
+      relations: relations || ['user', 'user.profile', 'repostOrigin', 'repostOrigin.user', 'repostOrigin.user.profile'],
     });
   }
 
