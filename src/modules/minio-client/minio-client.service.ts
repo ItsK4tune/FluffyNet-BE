@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { env } from 'src/config';
 import { Client } from 'minio';
 import path from 'path';
+import { extname } from 'path';
 
 const allowedMimeTypes = [
   'image/jpeg',
@@ -47,7 +48,7 @@ export class MinioClientService implements OnModuleInit {
   ): Promise<{ presignedUrl: string; objectName: string }> {
     checkValidMineType(contentType); 
     try {
-      const fileExtension = path.extname(originalFilename);
+      const fileExtension = extname(originalFilename);
       const uniqueObjectName = `${prefix}${uuidv4()}${fileExtension}`;
 
       const presignedUrl = await this.minioClient.presignedPutObject(

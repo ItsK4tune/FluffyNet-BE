@@ -3,7 +3,6 @@ import { PostUtil } from 'src/modules/post/post.util';
 import { PostDto } from './dto/post.dto';
 import { Post } from './entities/post.entity';
 import { MinioClientService } from '../minio-client/minio-client.service';
-import { MinioEnum } from 'src/utils/enums/enum';
 import { FollowService } from '../follow/follow.service';
 import { NotificationService } from '../notification/notification.service';
 import { ProfileService } from '../profile/profile.service';
@@ -11,8 +10,8 @@ import { Profile } from '../profile/entities/profile.entity';
 
 interface CreatePostData {
   body?: string;
-  image?: string | null; 
-  video?: string | null; 
+  image?: string | null;
+  video?: string | null;
   repost_id?: number | null;
 }
 
@@ -28,7 +27,7 @@ export class PostService {
     private readonly followService: FollowService,
     private readonly notificationService: NotificationService,
     private readonly profileService: ProfileService,
-  ) {}
+  ) { }
 
   async getAllPosts({ skip, take }): Promise<Post[]> {
     return this.postUtil.getAllPosts({ skip, take });
@@ -66,9 +65,9 @@ export class PostService {
 
     try {
       const postData: CreatePostData = {
-        body: body || null, 
+        body: body || null,
         repost_id: repost_id,
-        image: null, 
+        image: null,
         video: null,
       };
 
@@ -77,10 +76,10 @@ export class PostService {
       if (repost_id) {
         this.sendRepostNotification(user_id, repostOrigin.user_id, newPost.post_id, repostOrigin.post_id)
       }
-      
+
       this.sendNewPostNotifications(user_id, newPost.post_id);
 
-      return newPost; 
+      return newPost;
     } catch (error) {
       throw new InternalServerErrorException('Failed to create post.');
     }
@@ -92,7 +91,7 @@ export class PostService {
     if (!post) {
       throw new NotFoundException(`Post with ID ${post_id} not found.`);
     }
-    
+
     if (post.user_id !== requestingUserId && !['admin', 'superadmin'].some(r => role.includes(r))) {
       throw new ForbiddenException('You are not allowed to update this post.');
     }
@@ -144,13 +143,62 @@ export class PostService {
     }
   }
 
+  async generateUploadUrl(
+    originalFilename: string,
+    contentType: string,
+    fileType: 'image' | 'video',
+  ): Promise<{ uploadUrl: string; objectName: string }> {
+    if (!originalFilename || !contentType || !fileType) {
+      throw new BadRequestException(
+        'Filename, content type, and file type are required.',
+      );
+    }
+
+    try {
+      const prefix = `post/${fileType}/`;
+
+      const { presignedUrl, objectName } =
+        await this.minioClientService.generatePresignedUploadUrl(
+          originalFilename,
+          contentType,
+          prefix,
+        );
+
+      return {
+        uploadUrl: presignedUrl,
+        objectName,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to generate upload URL.');
+    }
+  }
+
+  async generateDownLoadUrl(objectName: string): Promise<string | null> {
+    if (!objectName) {
+      throw new BadRequestException('Object name is required.');
+    }
+
+    try {
+      const url =
+        await this.minioClientService.generatePresignedDownloadUrl(objectName);
+
+      if (!url) {
+        throw new NotFoundException('File not found.');
+      }
+
+      return url;
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to generate download URL.');
+    }
+  }
+
   async deletePost(requestingUserId: number, post_id: number, role: string): Promise<boolean> {
     const post = await this.postUtil.getPostById(post_id);
 
     if (!post) {
       throw new NotFoundException(`Post with ID ${post_id} not found.`);
     }
-    
+
     if (post.user_id !== requestingUserId && !['admin', 'superadmin'].some(r => role.includes(r))) {
       throw new ForbiddenException('You are not allowed to delete this post.');
     }
@@ -177,15 +225,15 @@ export class PostService {
 
   private async sendNewPostNotifications(authorId: number, post_id: number): Promise<void> {
     try {
-      const followers = await this.followService.followerList(authorId); 
-      const followerIds = followers.map(f => f.follower_id).filter(id => id !== authorId); 
+      const followers = await this.followService.followerList(authorId);
+      const followerIds = followers.map(f => f.follower_id).filter(id => id !== authorId);
 
       if (followerIds.length === 0) {
-        return; 
+        return;
       }
 
       const authorProfile = await this.profileService.getProfile(authorId) as Profile;
-      if (!authorProfile) return; 
+      if (!authorProfile) return;
 
       const notificationType = 'NEW_POST';
       const notificationBody = {
@@ -204,7 +252,7 @@ export class PostService {
       const notificationPromises = followerIds.map(followerId =>
         this.notificationService.createNotification(followerId, notificationType, notificationBody)
       );
-      await Promise.allSettled(notificationPromises); 
+      await Promise.allSettled(notificationPromises);
     } catch (error) {
       // TODO: implement retry mechanism
     }
