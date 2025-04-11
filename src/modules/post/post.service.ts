@@ -10,8 +10,8 @@ import { Profile } from '../profile/entities/profile.entity';
 
 interface CreatePostData {
   body?: string;
-  image?: string | null; 
-  video?: string | null; 
+  image?: string | null;
+  video?: string | null;
   repost_id?: number | null;
 }
 
@@ -27,7 +27,7 @@ export class PostService {
     private readonly followService: FollowService,
     private readonly notificationService: NotificationService,
     private readonly profileService: ProfileService,
-  ) {}
+  ) { }
 
   async getAllPosts({ skip, take }): Promise<Post[]> {
     return await Promise.all((await this.postUtil.getAllPosts({ skip, take })).map(post => this.enrichPostWithMediaUrls(post)));
@@ -66,9 +66,9 @@ export class PostService {
 
     try {
       const postData: CreatePostData = {
-        body: body || null, 
+        body: body || null,
         repost_id: repost_id,
-        image: null, 
+        image: null,
         video: null,
       };
 
@@ -77,10 +77,10 @@ export class PostService {
       if (repost_id) {
         this.sendRepostNotification(user_id, repostOrigin.user_id, newPost.post_id, repostOrigin.post_id)
       }
-      
+
       this.sendNewPostNotifications(user_id, newPost.post_id);
 
-      return await this.enrichPostWithMediaUrls(newPost); 
+      return await this.enrichPostWithMediaUrls(newPost);
     } catch (error) {
       throw new InternalServerErrorException('Failed to create post.');
     }
@@ -92,7 +92,7 @@ export class PostService {
     if (!post) {
       throw new NotFoundException(`Post with ID ${post_id} not found.`);
     }
-    
+
     if (post.user_id !== requestingUserId && !['admin', 'superadmin'].some(r => role.includes(r))) {
       throw new ForbiddenException('You are not allowed to update this post.');
     }
@@ -150,7 +150,7 @@ export class PostService {
     if (!post) {
       throw new NotFoundException(`Post with ID ${post_id} not found.`);
     }
-    
+
     if (post.user_id !== requestingUserId && !['admin', 'superadmin'].some(r => role.includes(r))) {
       throw new ForbiddenException('You are not allowed to delete this post.');
     }
@@ -177,15 +177,15 @@ export class PostService {
 
   private async sendNewPostNotifications(authorId: number, post_id: number): Promise<void> {
     try {
-      const followers = await this.followService.followerList(authorId); 
-      const followerIds = followers.map(f => f.follower_id).filter(id => id !== authorId); 
+      const followers = await this.followService.followerList(authorId);
+      const followerIds = followers.map(f => f.follower_id).filter(id => id !== authorId);
 
       if (followerIds.length === 0) {
-        return; 
+        return;
       }
 
       const authorProfile = await this.profileService.getProfile(authorId) as Profile;
-      if (!authorProfile) return; 
+      if (!authorProfile) return;
 
       const notificationType = 'NEW_POST';
       const notificationBody = {
@@ -204,7 +204,7 @@ export class PostService {
       const notificationPromises = followerIds.map(followerId =>
         this.notificationService.createNotification(followerId, notificationType, notificationBody)
       );
-      await Promise.allSettled(notificationPromises); 
+      await Promise.allSettled(notificationPromises);
     } catch (error) {
       // TODO: implement retry mechanism
     }
@@ -239,17 +239,17 @@ export class PostService {
   private async enrichPostWithMediaUrls(post: Post | null): Promise<Post | null> {
     if (!post) return null;
 
-    const enrichedPost: Post = { ...post }; 
+    const enrichedPost: Post = { ...post };
 
     if (post.image) {
       try {
         enrichedPost.image = await this.minioClientService.generatePresignedDownloadUrl(post.image, 60 * 60);
       } catch (error) {
         console.error(`Failed to get download URL for image ${post.image}:`, error);
-        enrichedPost.image = null; 
+        enrichedPost.image = null;
       }
     } else {
-        enrichedPost.image = null;
+      enrichedPost.image = null;
     }
 
     if (post.video) {
@@ -262,5 +262,7 @@ export class PostService {
     } else {
       enrichedPost.video = null;
     }
+
+    return enrichedPost;
   }
 }

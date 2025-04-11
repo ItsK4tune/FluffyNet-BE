@@ -97,12 +97,16 @@ export class PostController {
     @Request() req,
     @Body() uploadPresignDto: PostUploadPresignDto 
   ): Promise<{ presignedUrl: string; objectName: string }> {
+    console.log("🔥 Hit POST /api/post/generate-upload-url");
+    console.log("📦 Request Body:", uploadPresignDto);
+    console.log("🧑‍🚀 Authenticated User:", req.user);
       const { filename, contentType } = uploadPresignDto;
       const user_id = req.user.user_id; 
       
       // const fileExtension = filename.split('.').pop() || '';
       const fileTypePrefix = contentType.startsWith('image/') ? 'images' : (contentType.startsWith('video/') ? 'videos' : 'others');
       const prefix = `posts/user_${user_id}/${fileTypePrefix}/`;
+      console.log("🛠 Generating presigned URL with:", { filename, contentType, prefix });
 
       try {
         const result = await this.minioClientService.generatePresignedUploadUrl(
@@ -111,6 +115,7 @@ export class PostController {
           prefix, 
           convertToSeconds(env.minio.time),
         );
+        console.log("✅ Presigned URL Result:", result);
         return result;
       } catch (error) {
         if (error instanceof BadRequestException) {
