@@ -20,6 +20,7 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiOperation,
+  ApiParam,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -146,6 +147,26 @@ export class PostController {
         if (!updatedPost) throw new NotFoundException("Post not found after attachment update.");
 
         return { message: `${fileType} attached successfully.`, post: updatedPost };
+    } catch (error) {
+        throw error;
+    }
+  }
+  
+  @ApiOperation({ summary: 'Get a post by ID' })
+  @ApiResponse({ status: 200, description: 'Post retrieved successfully.' })
+  @ApiResponse({ status: 404, description: 'Post not found.' })
+  @ApiParam({ name: 'post_id', type: Number, description: 'ID of the post to retrieve' })
+  @Get(':post_id')
+  async getPostById(
+    @Param('post_id', ParseIntPipe) postId: number,
+  ): Promise<{ message: string; post: Post }> {
+    try {
+      const post = await this.postService.findOneById(postId);
+      if (!post) {
+        throw new NotFoundException('Post not found.');
+      }
+
+      return { message: 'Post retrieved successfully.', post };
     } catch (error) {
       throw error;
     }

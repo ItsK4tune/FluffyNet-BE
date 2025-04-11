@@ -32,7 +32,7 @@ export class Post {
   @OneToMany(() => Like, (like) => like.post_id)
   likes: Like[];
  
-  @OneToMany(() => Post, (post) => post.repost)
+  @OneToMany(() => Post, (post) => post.repostOrigin)
   reposts: Post[];
 
   @ManyToOne(() => Account, (account) => account.posts, { onDelete: "CASCADE" })
@@ -41,5 +41,5 @@ export class Post {
 
   @ManyToOne(() => Post, (post) => post.reposts, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: 'repost_id' })
-  repost: Post;
+  repostOrigin: Post;
 }
