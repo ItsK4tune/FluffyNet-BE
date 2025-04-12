@@ -73,11 +73,20 @@ export class PostUtil {
   }
 
   async createPost(user_id: number, data: CreatePostData): Promise<Post> {
+    let repostOrigin = null;
+
+    if (data.repost_id) {
+      repostOrigin = await this.repo.findOne({
+        where: { post_id: data.repost_id },
+      });
+    }
+
     const newPost = this.repo.create({
         ...data,
         user_id: user_id,
-        ...(data.repost_id ? { repostOrigin: { post_id: data.repost_id } } : {})
+        repostOrigin: repostOrigin,
     });
+
     return this.repo.save(newPost);
  }
 

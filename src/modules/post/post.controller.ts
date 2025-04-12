@@ -21,6 +21,7 @@ import {
   ApiBody,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -97,16 +98,12 @@ export class PostController {
     @Request() req,
     @Body() uploadPresignDto: PostUploadPresignDto 
   ): Promise<{ presignedUrl: string; objectName: string }> {
-    console.log("🔥 Hit POST /api/post/generate-upload-url");
-    console.log("📦 Request Body:", uploadPresignDto);
-    console.log("🧑‍🚀 Authenticated User:", req.user);
       const { filename, contentType } = uploadPresignDto;
       const user_id = req.user.user_id; 
       
       // const fileExtension = filename.split('.').pop() || '';
       const fileTypePrefix = contentType.startsWith('image/') ? 'images' : (contentType.startsWith('video/') ? 'videos' : 'others');
       const prefix = `posts/user_${user_id}/${fileTypePrefix}/`;
-      console.log("🛠 Generating presigned URL with:", { filename, contentType, prefix });
 
       try {
         const result = await this.minioClientService.generatePresignedUploadUrl(
@@ -115,7 +112,6 @@ export class PostController {
           prefix, 
           convertToSeconds(env.minio.time),
         );
-        console.log("✅ Presigned URL Result:", result);
         return result;
       } catch (error) {
         if (error instanceof BadRequestException) {
@@ -123,6 +119,30 @@ export class PostController {
         }
         throw new InternalServerErrorException('Could not generate upload URL.');
       }
+  }
+
+  @ApiOperation({ summary: 'Get presigned URL for downloading a post file' })
+  @ApiResponse({ status: 200, description: 'Presigned URL generated. '})
+  @ApiResponse({ status: 404, description: 'File not found. '})
+  @ApiQuery({ name: 'objectName', required: true, description: 'Object key/path in the bucket' })
+  @Get('generate-download-url')
+  async getPresignedDownloadUrl(
+    @Query('objectName') objectName: string,
+  ): Promise<{ url: string}> {
+    if (!objectName) {
+      throw new BadRequestException('Missing objectName in query');
+    }
+
+    try {
+      const url = await this.minioClientService.generatePresignedDownloadUrl(objectName);
+      if (!url) {
+        throw new BadRequestException('File not found or URL not be generated');
+      }
+
+      return {url};
+    } catch (error) {
+      throw new InternalServerErrorException('Could not generated download URL.');
+    }
   }
 
   @ApiOperation({ summary: 'Attach an image or video to an existing post' })
