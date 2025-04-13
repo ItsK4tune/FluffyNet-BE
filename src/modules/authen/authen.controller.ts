@@ -28,6 +28,7 @@ import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
 import { env } from 'src/config';
 import { RefreshJwtAuthGuard } from 'src/guards/refresh-jwt.guard';
+import { ProfileUtil } from '../profile/profile.util';
 
 const REFRESH_COOKIE_NAME = 'jid'; 
 const REFRESH_COOKIE_OPTIONS = {
@@ -43,6 +44,7 @@ const REFRESH_COOKIE_OPTIONS = {
 export class AuthenController {
     constructor(
         private readonly authenService: AuthenService,
+        // private readonly profileUtil: ProfileUtil,
     ) {}
 
     // For User
@@ -141,7 +143,8 @@ export class AuthenController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth() 
     @Get('status')       
-    checkStatus(@Request() req) {
+    async checkStatus(@Request() req) {
+        // const profile = await profile
         return {
             isAuthenticated: true,
             user: { 

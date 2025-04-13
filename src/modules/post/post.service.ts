@@ -29,8 +29,8 @@ export class PostService {
     private readonly profileService: ProfileService,
   ) {}
 
-  async getAllPosts({ skip, take }): Promise<Post[]> {
-    return await Promise.all((await this.postUtil.getAllPosts({ skip, take })).map(post => this.enrichPostWithMediaUrls(post)));
+  async getAllPosts({ skip, take, order }): Promise<Post[]> {
+    return Promise.all((await this.postUtil.getAllPosts({ skip, take, order})).map(post => this.enrichPostWithMediaUrls(post)));
   }
 
   async getPostsOfFollowing(user_id: number): Promise<Post[]> {
@@ -46,14 +46,10 @@ export class PostService {
   }
 
   async createPost(user_id: number, data: PostDto): Promise<Post> {
-    const { body, repost_id } = data;
+    const { body, repost_id, isPure } = data;
 
-    if (!body && (repost_id === null || repost_id === undefined)) {
+    if (!body && (repost_id === null || repost_id === undefined) && !isPure) {
       throw new BadRequestException('Post must have a body or be a repost.');
-    }
-
-    if (repost_id && body) {
-      throw new BadRequestException('A repost cannot have a new body.');
     }
 
     let repostOrigin: Post | null = null;
@@ -67,7 +63,7 @@ export class PostService {
     try {
       const postData: CreatePostData = {
         body: body || null, 
-        repost_id: repost_id,
+        repost_id: repost_id || null,
         image: null, 
         video: null,
       };
@@ -75,6 +71,7 @@ export class PostService {
       const newPost = await this.postUtil.createPost(user_id, postData);
 
       if (repost_id) {
+        this.enrichPostWithMediaUrls(newPost.repostOrigin);
         this.sendRepostNotification(user_id, repostOrigin.user_id, newPost.post_id, repostOrigin.post_id)
       }
       
@@ -237,30 +234,76 @@ export class PostService {
   }
 
   private async enrichPostWithMediaUrls(post: Post | null): Promise<Post | null> {
-    if (!post) return null;
-
-    const enrichedPost: Post = { ...post }; 
-
-    if (post.image) {
-      try {
-        enrichedPost.image = await this.minioClientService.generatePresignedDownloadUrl(post.image, 60 * 60);
-      } catch (error) {
-        console.error(`Failed to get download URL for image ${post.image}:`, error);
-        enrichedPost.image = null; 
-      }
-    } else {
-        enrichedPost.image = null;
+    if (!post) {
+      return null;
     }
 
-    if (post.video) {
-      try {
-        enrichedPost.video = await this.minioClientService.generatePresignedDownloadUrl(post.video, 60 * 60);
-      } catch (error) {
-        console.error(`Failed to get download URL for video ${post.video}:`, error);
-        enrichedPost.video = null;
-      }
-    } else {
-      enrichedPost.video = null;
+    const enrichedPost: Post = {
+      ...post,
+      image: post.image || null,
+      video: post.video || null,
+      repostOrigin: post.repostOrigin ? { ...post.repostOrigin, image: post.repostOrigin.image || null, video: post.repostOrigin.video || null } : null
+    };
+
+    const enrichmentPromises: Promise<void>[] = [];
+
+    if (enrichedPost.image) {
+      const currentImage = enrichedPost.image;
+      enrichmentPromises.push(
+        this.minioClientService.generatePresignedDownloadUrl(currentImage, 60 * 60)
+        .then(url => {
+          enrichedPost.image = url; 
+        })
+        .catch(error => {
+          enrichedPost.image = null;
+        })
+      );
     }
+
+    if (enrichedPost.video) {
+      const currentVideo = enrichedPost.video;
+        enrichmentPromises.push(
+          this.minioClientService.generatePresignedDownloadUrl(currentVideo, 60 * 60)
+          .then(url => {
+            enrichedPost.video = url;
+          })
+          .catch(error => {
+            enrichedPost.video = null;
+          })
+      );
+    }
+
+    if (enrichedPost.repostOrigin) {
+      const origin = enrichedPost.repostOrigin; 
+
+      if (origin.image) {
+        const originImage = origin.image;
+        enrichmentPromises.push(
+          this.minioClientService.generatePresignedDownloadUrl(originImage, 60 * 60)
+          .then(url => {
+            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.image = url;
+          })
+          .catch(error => {
+            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.image = null;
+          })
+        );
+      }
+
+      if (origin.video) {
+        const originVideo = origin.video;
+          enrichmentPromises.push(
+          this.minioClientService.generatePresignedDownloadUrl(originVideo, 60 * 60)
+          .then(url => {
+              if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video = url;
+          })
+          .catch(error => {
+                if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video = null;
+          })
+        );
+      }
+    }
+
+    await Promise.allSettled(enrichmentPromises);
+    return enrichedPost;
   }
 }
