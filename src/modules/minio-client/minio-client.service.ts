@@ -40,8 +40,6 @@ export class MinioClientService implements OnModuleInit {
         useSSL: publicUrl.protocol === 'https:',
         accessKey: env.minio.accessKey,
         secretKey: env.minio.secretKey,
-        // accessKey: 'fluffynetUploader',
-        // secretKey: '123456789',
       });
     } catch (error) {
       throw new InternalServerErrorException('Failed to initialize Minio Client configuration.');
