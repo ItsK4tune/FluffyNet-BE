@@ -6,7 +6,6 @@ export enum RedisEnum {
   comment = 'comment',
   commentTree = 'commentTree',
   message = 'message',
-  conversation = 'conversation',
   member = 'member',
 }
 
