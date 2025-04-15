@@ -20,7 +20,6 @@ import { MessageModule } from './message/message.module';
 import { ChatroomModule } from './chat-room/chatroom.module';
 import { MemberModule } from './chat-member/member.module';
 import { GatewayModule } from './gateway/gateway.module';
-import { SecurityMiddleware } from './security';
 
 @Module({
   imports: [
