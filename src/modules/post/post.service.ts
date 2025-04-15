@@ -306,4 +306,10 @@ export class PostService {
     await Promise.allSettled(enrichmentPromises);
     return enrichedPost;
   }
+
+  async countPostsByUser(user_id: number): Promise<number> {
+    return this.postUtil.countPostsByUser(user_id);
+  }
+  
+  
 }

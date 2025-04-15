@@ -274,4 +274,11 @@ export class PostUtil {
     const result = await this.repo.update({ post_id }, { video: videoObjectName });
     return result.affected > 0;
   }
+
+  async countPostsByUser(user_id: number): Promise<number> {
+    return this.repo.count({
+      where: { user_id },
+    });
+  }
+  
 }
