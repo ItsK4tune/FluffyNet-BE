@@ -6,7 +6,7 @@ import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
 import { env } from 'src/config';
 import { RedisCacheService } from '../redis-cache/redis-cache.service';
 import { MinioClientService } from '../minio-client/minio-client.service';
-import { Profile } from "./entities/profile.entity";
+import { Profile } from './entities/profile.entity';
 
 @Injectable()
 export class ProfileService {
