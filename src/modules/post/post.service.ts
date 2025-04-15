@@ -29,15 +29,15 @@ export class PostService {
     private readonly profileService: ProfileService,
   ) { }
 
-  async getAllPosts({ skip, take, order }): Promise<Post[]> {
-    return Promise.all((await this.postUtil.getAllPosts({ skip, take, order})).map(post => this.enrichPostWithMediaUrls(post)));
+  async getAllPosts(user_id: number, { skip, take, order }): Promise<Post[]> {
+    return Promise.all((await this.postUtil.getAllPosts(user_id, { skip, take, order})).map(post => this.enrichPostWithMediaUrls(post)));
   }
 
-  async getPostsOfFollowing(user_id: number): Promise<Post[]> {
+  async getPostsOfFollowing(user_id: number, { skip, take, order }): Promise<Post[]> {
     const followingList = await this.followService.followingList(user_id);
     if (!followingList || followingList.length === 0) return [];
     const follows = followingList.map(follow => follow.following_id);
-    const posts = await this.postUtil.getPostsOfFollowing(follows);
+    const posts = await this.postUtil.getPostsOfFollowing(follows, user_id, { skip, take, order});
     return await Promise.all(posts.map(post => this.enrichPostWithMediaUrls(post)));
   }
 

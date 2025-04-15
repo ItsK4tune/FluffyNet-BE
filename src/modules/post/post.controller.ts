@@ -14,6 +14,7 @@ import {
   UseGuards,
   InternalServerErrorException,
   Res,
+  Req,
 } from '@nestjs/common';
 import { PostService } from './post.service';
 import {
@@ -49,22 +50,22 @@ export class PostController {
     description: 'post',
   })
   @Get('list/all')
-  async getAllPosts(@Query('page') page: number = 1, @Query('limit') limit: number = 10, @Query('order') order?: string ) {
+  async getAllPosts(@Req() req, @Query('page') page: number = 1, @Query('limit') limit: number = 10, @Query('order') order?: string ) {
+    const user_id = req.user.user_id;
     const take = limit > 50 ? 50 : limit;
     const skip = (page - 1) * take;
-    const posts = await this.postService.getAllPosts({ skip, take, order });
+    const posts = await this.postService.getAllPosts(user_id, { skip, take, order });
     return { posts };
   }
 
   @ApiOperation({ summary: 'Get posts from users you follow (paginated)' })
   @ApiResponse({ status: 200, description: 'List of posts from following users.' }) 
   @Get('list/following')
-  async getPostsOfFollowing(@Request() req, @Query('page') page: number = 1, @Query('limit') limit: number = 10) {
+  async getPostsOfFollowing(@Request() req, @Query('page') page: number = 1, @Query('limit') limit: number = 10, @Query('order') order?: string ) {
     const user_id = req.user.user_id;
     const take = limit > 50 ? 50 : limit;
     const skip = (page - 1) * take;
-    // Cần sửa PostService.getPostsOfFollowing để nhận skip/take
-    const posts = await this.postService.getPostsOfFollowing(user_id /*, { skip, take } */);
+    const posts = await this.postService.getPostsOfFollowing(user_id, { skip, take, order });
     return { posts };
   }
 

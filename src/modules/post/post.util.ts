@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Post } from 'src/modules/post/entities/post.entity';
 import { FindOptionsOrderValue, In, Repository } from 'typeorm';
+import { Like } from '../like/entity/like.entity';
 
 interface CreatePostData {
   body?: string;
@@ -18,10 +19,11 @@ interface UpdatePostData {
 export class PostUtil {
   constructor(
     @InjectRepository(Post) private readonly repo: Repository<Post>,
+    @InjectRepository(Like) private readonly likeRepo: Repository<Like>,
   ) {}
 
-  async getAllPosts(options?: { skip?: number; take?: number; order?: string}): Promise<Post[]> {
-    return await this.repo.find({
+  async getAllPosts(user_id: number, options?: { skip?: number; take?: number; order?: string}): Promise<Post[]> {
+    const posts = await this.repo.find({
       order: { created_at: options?.order as FindOptionsOrderValue }, 
       skip: options?.skip,
       take: options?.take,
@@ -61,6 +63,23 @@ export class PostUtil {
         }
       }
     });
+
+    const postIds = posts.map(post => post.post_id);
+
+    const likedPosts = await this.likeRepo.find({
+      where: {
+        user_id: user_id,
+        post_id: In(postIds),
+      },
+      select: ['post_id'],
+    });
+
+    const likedPostIds = new Set(likedPosts.map(lp => lp.post_id));
+
+    return posts.map(post => ({
+      ...post,
+      liked: likedPostIds.has(post.post_id),
+    }));
   }
 
   async getPostsByUserIds(user_ids: number[], options?: { skip?: number; take?: number; relations?: string[] }): Promise<Post[]> {
@@ -118,14 +137,65 @@ export class PostUtil {
     });
   }
 
-  async getPostsOfFollowing(user_ids: number[], options?: { skip?: number; take?: number; relations?: string[] }): Promise<Post[]> {
-    return this.repo.find({ 
+  async getPostsOfFollowing(user_ids: number[], user_id: number, options?: { skip?: number; take?: number; order?: string }): Promise<Post[]> {
+    const posts = await this.repo.find({
       where: { user_id: In(user_ids) },
-      order: { created_at: 'DESC' },
+      order: { created_at: options?.order as FindOptionsOrderValue }, 
       skip: options?.skip,
       take: options?.take,
-      relations: options?.relations || ['user', 'user.profile', 'repostOrigin', 'repostOrigin.user', 'repostOrigin.user.profile', 'likes'], 
+      relations: [
+        'user',
+        'user.profile',
+        'repostOrigin',
+        'repostOrigin.user',
+        'repostOrigin.user.profile',
+      ],
+      select: {
+        post_id: true,
+        user_id: true, 
+        body: true,
+        image: true,
+        video: true,
+        repost_id: true, 
+        created_at: true,
+        updated_at: true,
+        user: { 
+          user_id: true, 
+          profile: { user_id: true, name: true, avatar: true }, 
+        },
+        repostOrigin: {
+          post_id: true,
+          user_id: true,
+          body: true,
+          image: true,
+          video: true,
+          repost_id: true,
+          created_at: true,
+          updated_at: true,
+          user: {
+            user_id: true,
+            profile: { user_id: true, name: true, avatar: true },
+          }
+        }
+      }
     });
+
+    const postIds = posts.map(post => post.post_id);
+
+    const likedPosts = await this.likeRepo.find({
+      where: {
+        user_id: user_id,
+        post_id: In(postIds),
+      },
+      select: ['post_id'],
+    });
+
+    const likedPostIds = new Set(likedPosts.map(lp => lp.post_id));
+
+    return posts.map(post => ({
+      ...post,
+      liked: likedPostIds.has(post.post_id),
+    }));
   }
 
   async createPost(user_id: number, data: CreatePostData): Promise<Post> {
@@ -136,11 +206,14 @@ export class PostUtil {
     });
     const savedPost = await this.repo.save(newPost);
 
-    return this.repo.findOne({
+    return await this.repo.findOne({
       where: { post_id: savedPost.post_id },
       relations: [
+        'user',
+        'user.profile',
         'repostOrigin',
         'repostOrigin.user',
+        'repostOrigin.user.profile',
       ],
       select: {
         post_id: true,

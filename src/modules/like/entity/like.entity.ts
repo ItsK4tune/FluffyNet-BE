@@ -29,7 +29,7 @@ export class Like {
     @JoinColumn({ name: "user_id" }) 
     profile: Profile;
 
-    @ManyToOne(() => Post, (post) => post.post_id, { eager: true, onDelete: 'CASCADE' })
+    @ManyToOne(() => Post, (post) => post.likes, { eager: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: "post_id" }) 
     post: Post;
 

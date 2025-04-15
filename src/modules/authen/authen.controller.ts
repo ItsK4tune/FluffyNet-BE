@@ -144,12 +144,18 @@ export class AuthenController {
     @ApiBearerAuth() 
     @Get('status')       
     async checkStatus(@Request() req) {
-        // const profile = await profile
+        const user_id = req.user.user_id;
+        const profile = await this.authenService.getStatus(user_id);
+
         return {
             isAuthenticated: true,
             user: { 
-                user_id: req.user.user_id, 
-                role: req.user.roles 
+                user_id: user_id, 
+                role: req.user.role,
+                profile: {
+                    name: profile.name,
+                    avatar: profile.avatar,
+                }
             }  
         };
     }
