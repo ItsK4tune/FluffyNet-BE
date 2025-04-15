@@ -18,7 +18,7 @@ export class Profile {
   @PrimaryColumn()
   user_id: number;
 
-  @Column({ nullable: true, default: 'New Fluffizen' })
+  @Column({ nullable: true })
   name: string;
 
   @Column({ type: 'text', nullable: true })

@@ -38,6 +38,7 @@ const envSchema = z.object({
   MINIO_BUCKET: z.string().default('uploads'),
   MINIO_REGION: z.string().default('asia-southeast1'),
   MINIO_PRESIGNED_TIME: z.string().default('5m'),
+  MINIO_PUBLIC_URL: z.string().default('https://minio.fluffynet.site'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -90,5 +91,6 @@ export const env = {
     bucket: envVars.MINIO_BUCKET,
     region: envVars.MINIO_REGION,
     time: envVars.MINIO_PRESIGNED_TIME,
+    url: envVars.MINIO_PUBLIC_URL,
   },
 };

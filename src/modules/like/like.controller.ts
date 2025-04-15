@@ -19,7 +19,7 @@ export class LikeController {
     @ApiResponse({ status: 201, description: 'false' })
     @Post('post-status')
     async getPostLikeStatus(@Req() req, @Body('post_id') post_id: number) {
-        const user_id = req.user.user.id;
+        const user_id = req.user.user_id;
         const status = await this.likeService.getPostLikeStatus(user_id, post_id);
         return { status: status};
     }
@@ -64,13 +64,13 @@ export class LikeController {
     async LikePost(@Req() req, @Body('post_id') post_id: number) {
         const user_id = req.user.user_id;
         const status = await this.likeService.likePost(user_id, post_id);
-        return { status: status };
+        return status;
     }
 
     @ApiOperation({ summary: 'User like post', description: 'Authen, author and like' })
     @ApiResponse({ status: 201, description: 'true' })
     @ApiResponse({ status: 201, description: 'false' })
-    @Post('')
+    @Post('like-comment')
     async LikeComment(@Req() req, @Body('comment_id') comment_id: number) {
         const user_id = req.user.user_id;
         const status = await this.likeService.likeComment(user_id, comment_id);

@@ -12,6 +12,7 @@ import { RefreshUtil } from './refresh.util';
 import { RefreshToken } from './entities/refresh.entity';
 import { AdminDTO } from './dtos/admin.dto';
 import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
+import { ProfileUtil } from '../profile/profile.util';
 
 @Injectable()
 export class AuthenService {
@@ -19,6 +20,7 @@ export class AuthenService {
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
     private readonly accountUtil: AccountUtil,
+    private readonly profileUtil: ProfileUtil,
     private readonly refreshUtil: RefreshUtil,
   ) {}
 
@@ -76,6 +78,10 @@ export class AuthenService {
       return tokens;
     }
     return null;
+  }
+
+  async getStatus(user_id: number) {
+    return await this.profileUtil.getProfileByUserId(user_id);
   }
 
   async refreshToken(user_id: number, currentRefreshToken: string): Promise<{ accessToken: string; newRefreshToken?: string }> {

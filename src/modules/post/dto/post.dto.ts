@@ -19,5 +19,5 @@ export class PostDto {
   repost_id?: number | null;
 
   @ValidateIf(o => o.repost_id !== null && o.repost_id !== undefined)
-  isPureRepost?: boolean; 
+  isPure?: boolean; 
 }

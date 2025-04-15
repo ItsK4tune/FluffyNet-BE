@@ -14,6 +14,7 @@ import {
   UseGuards,
   InternalServerErrorException,
   Res,
+  Req,
 } from '@nestjs/common';
 import { PostService } from './post.service';
 import {
@@ -49,22 +50,22 @@ export class PostController {
     description: 'post',
   })
   @Get('list/all')
-  async getAllPosts(@Query('page') page: number = 1, @Query('limit') limit: number = 10) {
+  async getAllPosts(@Req() req, @Query('page') page: number = 1, @Query('limit') limit: number = 10, @Query('order') order?: string ) {
+    const user_id = req.user.user_id;
     const take = limit > 50 ? 50 : limit;
     const skip = (page - 1) * take;
-    const posts = await this.postService.getAllPosts({ skip, take });
+    const posts = await this.postService.getAllPosts(user_id, { skip, take, order });
     return { posts };
   }
 
   @ApiOperation({ summary: 'Get posts from users you follow (paginated)' })
   @ApiResponse({ status: 200, description: 'List of posts from following users.' }) 
   @Get('list/following')
-  async getPostsOfFollowing(@Request() req, @Query('page') page: number = 1, @Query('limit') limit: number = 10) {
+  async getPostsOfFollowing(@Request() req, @Query('page') page: number = 1, @Query('limit') limit: number = 10, @Query('order') order?: string ) {
     const user_id = req.user.user_id;
     const take = limit > 50 ? 50 : limit;
     const skip = (page - 1) * take;
-    // Cần sửa PostService.getPostsOfFollowing để nhận skip/take
-    const posts = await this.postService.getPostsOfFollowing(user_id /*, { skip, take } */);
+    const posts = await this.postService.getPostsOfFollowing(user_id, { skip, take, order });
     return { posts };
   }
 
@@ -75,12 +76,7 @@ export class PostController {
   @HttpPost()
   async createPost(@Request() req, @Body() postDto: PostDto): Promise<{ message: string; post: Post }> {
     const user_id = req.user.user_id;
-    const { image, video, ...restDto } = postDto as any; 
-    
-    if (Object.keys(restDto).length === 0 || (!restDto.body && !restDto.repost_id)) {
-      throw new BadRequestException("Post requires either 'body' or 'repost_id'.");
-    }
-    
+    const { image, video, ...restDto } = postDto as any;
     try {
       const newPost = await this.postService.createPost(user_id, restDto);
       return { message: 'Post created successfully. Upload files separately if needed.', post: newPost };
@@ -92,37 +88,33 @@ export class PostController {
   @ApiOperation({ summary: 'Get presigned URL for uploading a post file' })
   @ApiResponse({ status: 201, description: 'Presigned URL generated.'})
   @ApiResponse({ status: 400, description: 'Invalid input (e.g., invalid mime type).'})
-  @HttpPost('generate-upload-url') // Endpoint mới
+  @HttpPost('generate-upload-url') 
   async getPresignedUploadUrl(
     @Request() req,
     @Body() uploadPresignDto: PostUploadPresignDto 
   ): Promise<{ presignedUrl: string; objectName: string }> {
-    console.log("🔥 Hit POST /api/post/generate-upload-url");
-    console.log("📦 Request Body:", uploadPresignDto);
-    console.log("🧑‍🚀 Authenticated User:", req.user);
-      const { filename, contentType } = uploadPresignDto;
-      const user_id = req.user.user_id; 
-      
-      // const fileExtension = filename.split('.').pop() || '';
-      const fileTypePrefix = contentType.startsWith('image/') ? 'images' : (contentType.startsWith('video/') ? 'videos' : 'others');
-      const prefix = `posts/user_${user_id}/${fileTypePrefix}/`;
-      console.log("🛠 Generating presigned URL with:", { filename, contentType, prefix });
+    const { filename, contentType } = uploadPresignDto;
+    const user_id = req.user.user_id; 
+    
+    // const fileExtension = filename.split('.').pop() || '';
+    const fileTypePrefix = contentType.startsWith('image/') ? 'images' : (contentType.startsWith('video/') ? 'videos' : 'others');
+    const prefix = `posts/user_${user_id}/${fileTypePrefix}/`;
 
-      try {
-        const result = await this.minioClientService.generatePresignedUploadUrl(
-          filename, 
-          contentType,
-          prefix, 
-          convertToSeconds(env.minio.time),
-        );
-        console.log("✅ Presigned URL Result:", result);
-        return result;
-      } catch (error) {
-        if (error instanceof BadRequestException) {
-          throw error;
-        }
-        throw new InternalServerErrorException('Could not generate upload URL.');
+    try {
+      const result = await this.minioClientService.generatePresignedUploadUrl(
+        filename, 
+        contentType,
+        prefix, 
+        convertToSeconds(env.minio.time),
+      );
+      return result;
+    } catch (error) {
+      console.log('error in Controller');
+      if (error instanceof BadRequestException) {
+        throw error;
       }
+      throw new InternalServerErrorException('Could not generate upload URL.');
+    }
   }
 
   @ApiOperation({ summary: 'Attach an image or video to an existing post' })
@@ -137,23 +129,23 @@ export class PostController {
     @Param('post_id', ParseIntPipe) postId: number,
     @Body() uploadCompleteDto: PostUploadCompleteDto 
   ): Promise<{ message: string; post: Post }> {
-      const user_id = req.user.user_id;
-      const role = req.user.role; 
-      const { objectName, fileType } = uploadCompleteDto;
+    const user_id = req.user.user_id;
+    const role = req.user.role; 
+    const { objectName, fileType } = uploadCompleteDto;
 
-      if (!objectName || !fileType) throw new BadRequestException("Missing objectName or fileType.");
+    if (!objectName || !fileType) throw new BadRequestException("Missing objectName or fileType.");
 
-      try {
-        const success = await this.postService.attachFileToPost(user_id, postId, role, fileType, objectName);
-        if (!success) {
-          throw new InternalServerErrorException('Failed to update post with attachment.');
-        }
-        const updatedPost = await this.postService.findOneById(postId);
-        if (!updatedPost) throw new NotFoundException("Post not found after attachment update.");
+    try {
+      const success = await this.postService.attachFileToPost(user_id, postId, role, fileType, objectName);
+      if (!success) {
+        throw new InternalServerErrorException('Failed to update post with attachment.');
+      }
+      const updatedPost = await this.postService.findOneById(postId);
+      if (!updatedPost) throw new NotFoundException("Post not found after attachment update.");
 
-        return { message: `${fileType} attached successfully.`, post: updatedPost };
+      return { message: `${fileType} attached successfully.`, post: updatedPost };
     } catch (error) {
-        throw error;
+      throw error;
     }
   }
   

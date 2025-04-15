@@ -9,10 +9,11 @@ import { RedisCacheModule } from '../redis-cache/redis-cache.module';
 import { FollowModule } from '../follow/follow.module';
 import { NotificationModule } from '../notification/notification.module';
 import { ProfileModule } from '../profile/profile.module';
+import { Like } from '../like/entity/like.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Post]),
+    TypeOrmModule.forFeature([Post, Like]),
     MinioClientModule,
     RedisCacheModule,
     FollowModule,

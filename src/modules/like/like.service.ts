@@ -44,7 +44,7 @@ export class LikeService {
         return likeCount;
     }
 
-    async likePost(user_id: number, post_id: number): Promise<Boolean> {
+    async likePost(user_id: number, post_id: number): Promise<{ status: boolean, total: Number | String}> {
         const post = await this.postService.findOneById(post_id);
         if (!post) {
             return null;
@@ -82,7 +82,9 @@ export class LikeService {
             }
         }
 
-        return success;
+        const total = await this.getPostLikeCount(post_id);
+
+        return { status: success, total };
     }
 
     async likeComment(user_id: number, comment_id: number): Promise<Boolean> {

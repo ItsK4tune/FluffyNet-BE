@@ -1,6 +1,6 @@
 import { Account } from 'src/modules/authen/entities/account.entity';
 import { Like } from 'src/modules/like/entity/like.entity';
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, RelationCount } from 'typeorm';
 
 @Entity('post')
 export class Post {
@@ -29,8 +29,11 @@ export class Post {
   @CreateDateColumn({ type: 'timestamp' })
   updated_at: Date;
 
-  @OneToMany(() => Like, (like) => like.post_id)
+  @OneToMany(() => Like, (like) => like.post)
   likes: Like[];
+
+  @RelationCount((post: Post) => post.likes)
+  like_count: number;
  
   @OneToMany(() => Post, (post) => post.repostOrigin)
   reposts: Post[];

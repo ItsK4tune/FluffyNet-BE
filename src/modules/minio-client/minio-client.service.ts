@@ -4,12 +4,10 @@ import {
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { MinioService } from 'nestjs-minio-client';
 import { v4 as uuidv4 } from 'uuid';
 import { env } from 'src/config';
 import { Client } from 'minio';
-import path from 'path';
-import { extname } from 'path';
+import * as path from 'path';
 
 const allowedMimeTypes = [
   'image/jpeg',
@@ -32,8 +30,20 @@ export class MinioClientService implements OnModuleInit {
   private readonly baseBucket = env.minio.bucket;
   private minioClient: Client;
 
-  constructor(private readonly minio: MinioService) {
-    this.minioClient = this.minio.client as unknown as Client;
+  constructor() {
+    try {
+      const publicUrl = new URL(env.minio.url);
+
+      this.minioClient = new Client({
+        endPoint: publicUrl.hostname,
+        port: publicUrl.port ? parseInt(publicUrl.port, 10) : undefined,
+        useSSL: publicUrl.protocol === 'https:',
+        accessKey: env.minio.accessKey,
+        secretKey: env.minio.secretKey,
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to initialize Minio Client configuration.');
+    }
   }
 
   async onModuleInit() {
@@ -48,7 +58,7 @@ export class MinioClientService implements OnModuleInit {
   ): Promise<{ presignedUrl: string; objectName: string }> {
     checkValidMineType(contentType); 
     try {
-      const fileExtension = extname(originalFilename);
+      const fileExtension = path.extname(originalFilename);
       const uniqueObjectName = `${prefix}${uuidv4()}${fileExtension}`;
 
       const presignedUrl = await this.minioClient.presignedPutObject(
@@ -58,10 +68,9 @@ export class MinioClientService implements OnModuleInit {
       );
 
       return { presignedUrl, objectName: uniqueObjectName };
-      } catch (error) {
-        console.error("❌ generatePresignedUploadUrl error:", error);
-        throw new InternalServerErrorException('Could not generate upload URL.');
-      }
+    } catch (error) {
+      throw new InternalServerErrorException('Could not generate upload URL.');
+    }
   }
 
   async generatePresignedDownloadUrl(
@@ -72,22 +81,13 @@ export class MinioClientService implements OnModuleInit {
       return null; 
     }
     try {
-      try {
-        await this.minioClient.statObject(this.baseBucket, objectName);
-      } catch (statError) {
-        if ((statError as any)?.code === 'NotFound' || (statError as any)?.code === 'NoSuchKey') {
-        return null; 
-      }
-      throw statError; 
-    }
-
-    const url = await this.minioClient.presignedGetObject(
-      this.baseBucket,
-      objectName,
-      expiry
-    );
-    return url;
-
+      const url = await this.minioClient.presignedGetObject(
+        this.baseBucket,
+        objectName,
+        expiry
+      );
+      
+      return url;
     } catch (error) {
       return null;
     }
@@ -116,5 +116,5 @@ export class MinioClientService implements OnModuleInit {
     } catch (error) {
       throw new InternalServerErrorException(`Failed to ensure MinIO bucket "${this.baseBucket}" exists.`);
     }
-}
+  }
 }
