@@ -17,8 +17,10 @@ import { NotificationModule } from './notification/notification.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { LikeModule } from './like/like.module';
 import { MessageModule } from './message/message.module';
-import { ConversationModule } from './chat/conversation.module';
-import { MemberModule } from './chat_member/member.module';
+import { ChatroomModule } from './chat-room/chatroom.module';
+import { MemberModule } from './chat-member/member.module';
+import { GatewayModule } from './gateway/gateway.module';
+import { SecurityMiddleware } from './security';
 
 @Module({
   imports: [
@@ -34,9 +36,10 @@ import { MemberModule } from './chat_member/member.module';
     ProfileModule,
     FollowModule,
     PostModule,
-    // MessageModule,
-    // ConversationModule,
-    // MemberModule,
+    MessageModule,
+    ChatroomModule,
+    MemberModule,
+    GatewayModule,
     CommentModule,
     RedisCacheModule,
     MinioClientModule,
