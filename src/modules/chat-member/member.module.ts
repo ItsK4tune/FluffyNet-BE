@@ -6,12 +6,14 @@ import { MemberRepository } from './member.repository';
 import { MemberService } from './member.service';
 import { ProfileModule } from '../profile/profile.module';
 import { RedisCacheModule } from '../redis-cache/redis-cache.module';
+import { GatewayModule } from '../gateway/gateway.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Member]),
     ProfileModule,
     RedisCacheModule,
+    GatewayModule,
   ],
   controllers: [MemberController],
   providers: [MemberService, MemberRepository],

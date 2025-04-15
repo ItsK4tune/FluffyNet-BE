@@ -1,49 +1,54 @@
 import {
-  Column, CreateDateColumn,
+  Column,
+  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { Conversation } from '../../chat/entities/conversation.entity';
+import { ChatRoom } from '../../chat-room/entities/room.entity';
 import { Message } from '../../message/entities/message.entity';
 import { Profile } from '../../profile/entities/profile.entity';
 
 @Entity('member')
 export class Member {
   @PrimaryGeneratedColumn()
-  id: number;
+  member_id: number;
 
   @Column()
   user_id: number;
 
   @Column()
-  conversation_id: number;
+  room_id: number;
 
   @Column({ nullable: true })
   nickname: string;
 
-  @Column()
+  @Column({ default: 'member' })
   role: string; // 'admin' | 'member'
 
-  @Column()
+  @Column({ default: 'active' })
   type: string; // 'active' | 'pending' | 'removed' | 'left' | 'blocked'
 
   @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;
 
+  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  updated_at: Date;
+
   @ManyToOne(() => Profile, (user) => user.members)
   @JoinColumn({ name: 'user_id' })
   user: Profile;
 
-  @ManyToOne(() => Conversation, (conversation) => conversation.members, {
+  @ManyToOne(() => ChatRoom, (chatRoom) => chatRoom.members, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'conversation_id' })
-  conversation: Conversation;
+  @JoinColumn({ name: 'room_id' })
+  chatRoom: ChatRoom;
 
-  @OneToMany(() => Message, (message) => message.sender, {
+  @OneToMany(() => Message, (message) => message.member, {
     onDelete: 'CASCADE',
   })
   messages: Message[];

@@ -1,6 +1,6 @@
 import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class CreateConversationDto {
+export class CreateRoomDto {
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -10,7 +10,7 @@ export class CreateConversationDto {
   userIds?: number[];
 }
 
-export class UpdateConversationDto {
+export class UpdateRoomDto {
   @IsString()
   @IsNotEmpty()
   name?: string;

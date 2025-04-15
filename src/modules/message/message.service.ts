@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { MessageRepository } from './message.repository';
 import { Message } from './entities/message.entity';
-import { MinioClientService } from '../minio-client/minio-client.service';
-import { MemberService } from '../chat_member/member.service';
-import { MinioEnum } from '../../utils/enums/enum';
+import { MemberService } from '../chat-member/member.service';
+import { ChatGateway } from '../gateway/chat.gateway';
+import { CreateMessageDto, UpdateMessageDto } from './dtos/message.dtos';
 
 @Injectable()
 export class MessageService {
@@ -16,173 +16,112 @@ export class MessageService {
   constructor(
     private readonly messageRepository: MessageRepository,
     private readonly memberService: MemberService,
-    private readonly minioService: MinioClientService,
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   // -> websockets
-  async create(
-    conversation_id: number,
-    body: string,
-    userId: number,
-    files: { image?: any; video?: any; audio?: any; file?: any },
-  ): Promise<Message> {
-    const member = await this.memberService.getMemberByConversationIdAndUserId(
-      conversation_id,
+  async createMessage(createMessageDto: CreateMessageDto, userId: number) {
+    if (
+      !(await this.memberService.isActiveMember(
+        createMessageDto.roomId,
+        userId,
+      ))
+    )
+      throw new UnauthorizedException(
+        'You are not an active member of this room',
+      );
+
+    const member = await this.memberService.getMemberByRoomIdAndUserId(
+      createMessageDto.roomId,
       userId,
     );
 
-    if (!member || member.type !== 'active') {
-      throw new UnauthorizedException(
-        'You are not an active member of this conversation',
-      );
-    }
-
     const message = Object.assign(new Message(), {
-      conversation_id: conversation_id,
-      sender_id: member.id,
-      created_at: new Date(),
+      room_id: createMessageDto.roomId,
+      member_id: member.member_id,
+      body: createMessageDto.body,
+      file: createMessageDto.file,
     });
-    // save files to minio
-    if (files.image)
-      message.image = await this.minioService.upload(
-        files.image[0],
-        MinioEnum.image,
-      );
+    await this.messageRepository.saveMessage(message);
 
-    if (files.video)
-      message.video = await this.minioService.upload(
-        files.video[0],
-        MinioEnum.video,
-      );
-    // if (files.audio)
-    //   message.audio = await this.minioService.upload(files.audio[0], MinioEnum.audio);
-    // if (files.file)
-    //   message.file = await this.minioService.upload(files.file[0], 'file');
-    message.body = body;
-    return await this.messageRepository.saveMessage(message);
+    await this.chatGateway.handleSendMessage(message);
   }
 
   // -> websockets
   async updateMessage(
     id: number,
-    body: string,
-    files: { image?: any; video?: any; audio?: any; file?: any },
+    updateMessageDto: UpdateMessageDto,
     userId: number,
   ) {
-    const message = await this.getMessageById(id);
-    if (!message) throw new NotFoundException('Message not found');
+    const message = await this.canImpact(id, userId);
 
-    if (message.created_at.getTime() - new Date().getTime() > 1000 * 60 * 5) {
-      throw new UnauthorizedException(
-        'You can only edit messages that are less than 5 minutes old',
-      );
-    }
-
-    const member = await this.memberService.getMemberByConversationIdAndUserId(
-      message.conversation_id,
-      userId,
-    );
-
-    if (
-      !member ||
-      member.type !== 'active' ||
-      member.id !== message.sender_id
-    ) {
-      throw new UnauthorizedException(
-        'You are not allowed to edit this message',
-      );
-    }
-
-    if (body) message.body = body;
+    if (updateMessageDto.body) message.body = updateMessageDto.body;
     else message.body = null;
 
-    // delete old files
-    if (message.image) await this.minioService.delete(message.image);
-    if (message.video) await this.minioService.delete(message.video);
-    // if (message.file) await this.minioService.delete(message.file);
-    // if (message.audio) await this.minioService.delete(message.audio);
-
-    // save new files
-    if (files.image)
-      message.image = await this.minioService.upload(
-        files.image[0],
-        MinioEnum.image,
-      );
-    else message.image = null;
-    if (files.video)
-      message.video = await this.minioService.upload(
-        files.video[0],
-        MinioEnum.video,
-      );
-    else message.video = null;
-    // if (files.audio)
-    //   message.audio = await this.minioService.upload(files.audio, 'audio');
-    // else message.audio = null;
-    // if (files.file)
-    //   message.file = await this.minioService.upload(files.file, 'file');
-    // else message.file = null;
-
-    return await this.messageRepository.saveMessage(message);
+    await this.messageRepository.saveMessage(message);
+    await this.chatGateway.handleUpdateMessage(message);
   }
 
   // -> websocket
   async deleteMessage(id: number, userId: number) {
-    const message = await this.getMessageById(id);
-    if (!message) throw new NotFoundException('Message not found');
+    const message = await this.canImpact(id, userId);
+    // if (message.file) await this.minioService.deleteFile(message.file);
+    await this.messageRepository.deleteMessage(id);
 
-    if (message.created_at.getTime() - new Date().getTime() > 1000 * 60 * 5) {
-      throw new UnauthorizedException(
-        'You can only delete messages that are less than 5 minutes old',
-      );
-    }
-
-    const member = await this.memberService.getMemberByConversationIdAndUserId(
-      message.conversation_id,
-      userId,
+    await this.chatGateway.handleDeleteMessage(
+      message.room_id,
+      message.message_id,
     );
-
-    if (
-      !member ||
-      member.type !== 'active' ||
-      member.id !== message.sender_id
-    ) {
-      throw new UnauthorizedException(
-        'You are not allowed to delete this message',
-      );
-    }
-
-    if (message.image) await this.minioService.delete(message.image);
-    if (message.video) await this.minioService.delete(message.video);
-    if (message.file) await this.minioService.delete(message.file);
-    if (message.audio) await this.minioService.delete(message.audio);
-    return await this.messageRepository.deleteMessage(id);
   }
 
   // -> restAPI // chưa test
   // too complex to cache, client's local storage is my in memory cache
   async getMessages(
-    requestUserId: number,
-    conversationId: number,
+    userId: number,
+    roomId: number,
     lastMessageCreateAt?: Date,
     limit?: number,
   ) {
-    if (
-      !(await this.memberService.isActiveMember(conversationId, requestUserId))
-    ) {
+    if (!(await this.memberService.isActiveMember(roomId, userId)))
       throw new UnauthorizedException(
-        'You are not an active member of this conversation',
+        'You are not an active member of this room',
       );
-    }
 
-    return await this.messageRepository.getMessages(
-      conversationId,
+    const messages = await this.messageRepository.getMessages(
+      roomId,
       lastMessageCreateAt,
       limit,
     );
+
+    if (messages.length == 0)
+      throw new NotFoundException('No more messages in this room');
+
+    return messages;
   }
 
   // private methods
   private async getMessageById(id: number) {
     return this.messageRepository.getMessageById(id);
+  }
+
+  private async canImpact(id: number, userId: number) {
+    const message = await this.getMessageById(id);
+    if (!message) throw new NotFoundException('Message not found');
+
+    if (message.created_at.getTime() - new Date().getTime() > 1000 * 60 * 5)
+      throw new UnauthorizedException(
+        'You can only delete messages that are less than 5 minutes old',
+      );
+
+    const member = await this.memberService.getMemberByRoomIdAndUserId(
+      message.room_id,
+      userId,
+    );
+
+    if (!member || member.member_id !== message.member_id)
+      throw new UnauthorizedException(
+        'You are not allowed to delete this message',
+      );
+    return message;
   }
 }

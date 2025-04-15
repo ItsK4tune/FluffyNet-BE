@@ -4,48 +4,42 @@ import {
   Column,
   PrimaryGeneratedColumn,
   JoinColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { Conversation } from '../../chat/entities/conversation.entity';
-import { Member } from '../../chat_member/entities/member.entity';
+import { Member } from '../../chat-member/entities/member.entity';
+import { ChatRoom } from '../../chat-room/entities/room.entity';
 
 @Entity('message')
 export class Message {
   @PrimaryGeneratedColumn()
-  id: number;
+  message_id: number;
 
   @Column()
-  conversation_id: number;
+  room_id: number;
 
   @Column()
-  sender_id: number;
+  member_id: number;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, default: null })
   body: string;
 
-  @Column({ nullable: true })
-  image: string;
-
-  @Column({ nullable: true })
-  video: string;
-
-  @Column({ nullable: true })
-  audio: string;
-
-  @Column({ nullable: true })
+  @Column({ nullable: true, default: null })
   file: string;
 
-  @Column()
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;
 
-  @ManyToOne(() => Conversation, (conversation) => conversation.messages, {
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'conversation_id' })
-  conversation: Conversation;
+  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  updated_at: Date;
 
-  @ManyToOne(() => Member, (member) => member.messages, {
+  @ManyToOne(() => Member, (member) => member.messages)
+  @JoinColumn({ name: 'member_id' })
+  member: Member;
+
+  @ManyToOne(() => ChatRoom, (chatRoom) => chatRoom.messages, {
     onDelete: 'CASCADE',
+    // cascade: true,
   })
-  @JoinColumn({ name: 'sender_id' })
-  sender: Member;
+  @JoinColumn({ name: 'room_id' })
+  chatRoom: ChatRoom;
 }

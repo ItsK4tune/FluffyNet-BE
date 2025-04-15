@@ -13,15 +13,14 @@ export class MessageRepository {
   }
 
   async getMessages(
-    conversation_id: number,
-    lastMessageId: Date,
+    room_id: number,
+    lastMessageCreateAt: Date,
     limit: number = 20,
   ) {
-    const whereCondition: any = { conversation_id };
+    const whereCondition: any = { room_id };
 
-    if (lastMessageId) {
-      whereCondition.created_at = LessThan(lastMessageId);
-    }
+    if (lastMessageCreateAt)
+      whereCondition.created_at = LessThan(lastMessageCreateAt);
 
     return this.repo.find({
       where: whereCondition,
@@ -30,11 +29,11 @@ export class MessageRepository {
     });
   }
 
-  async deleteMessage(id: number) {
-    return await this.repo.delete(id);
+  async deleteMessage(message_id: number) {
+    return await this.repo.delete({ message_id });
   }
 
-  async getMessageById(id: number) {
-    return await this.repo.findOne({ where: { id } });
+  async getMessageById(message_id: number) {
+    return await this.repo.findOne({ where: { message_id } });
   }
 }

@@ -15,7 +15,7 @@
 //   cors: {
 //     origin: '*',
 //   },
-//   namespace: '/chat',
+//   namespace: '/call',
 // })
 // export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
 //   @WebSocketServer() server: Server;

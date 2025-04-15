@@ -8,18 +8,19 @@ import {
   UseGuards,
   Query,
   Delete,
-  UseInterceptors,
-  UploadedFiles,
   Patch,
   Logger,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { MessageService } from './message.service';
-import { GetMessagesDto } from './dtos/message.dtos';
+import {
+  CreateMessageDto,
+  GetMessagesDto,
+  UpdateMessageDto,
+} from './dtos/message.dtos';
 import {
   ApiBearerAuth,
   ApiBody,
-  ApiConsumes,
-  ApiExtraModels,
   ApiOperation,
   ApiParam,
   ApiResponse,
@@ -30,7 +31,6 @@ import { Message } from './entities/message.entity';
 import { JwtAuthGuard } from '../../guards/jwt.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/role.decorator';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'user')
@@ -42,144 +42,85 @@ export class MessageController {
   constructor(private readonly messageService: MessageService) {}
 
   // -> websockets
-  @ApiOperation({ summary: 'Create new message' })
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'image', maxCount: 1 },
-      { name: 'video', maxCount: 1 },
-      { name: 'audio', maxCount: 1 },
-      { name: 'file', maxCount: 1 },
-    ]),
-  )
-  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'send message' })
+  @ApiResponse({ status: 201, description: 'Message created successfully' })
+  @ApiResponse({
+    status: 401,
+    description: 'You are not an active member of this room',
+  })
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
+        roomId: {
+          type: 'number',
+          description: 'ID of the room',
+        },
         body: {
           type: 'string',
-          example: 'Hello',
-        },
-        image: {
-          type: 'file',
-          format: 'jpeg/png',
-        },
-        video: {
-          type: 'file',
-          format: 'video/mp4',
-        },
-        audio: {
-          type: 'file',
-          format: 'audio/mpeg',
+          description: 'Message body',
         },
         file: {
-          type: 'file',
-          format: 'application/pdf',
+          type: 'string',
+          description: 'Files to upload',
         },
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Message created successfully' })
-  @ApiResponse({ status: 404, description: 'Conversation not found' })
-  @Post(':conversation_id/send')
-  async createMessage(
-    @Req() req,
-    @Param('conversation_id') conversation_id: number,
-    @Body('body') body: string,
-    @UploadedFiles()
-    files: { image?: any; video?: any; audio?: any; file?: any },
-  ) {
+  @Post('send')
+  async create(@Req() req, @Body() createMessageDto: CreateMessageDto) {
     const user_id = req.user.user_id;
 
-    const message = await this.messageService.create(
-      conversation_id,
-      body,
-      user_id,
-      files,
-    );
+    await this.messageService.createMessage(createMessageDto, user_id);
     return {
       statusCode: 201,
       description: 'Message created successfully',
-      data: message,
     };
   }
 
-  @ApiConsumes('multipart/form-data')
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'image', maxCount: 1 },
-      { name: 'video', maxCount: 1 },
-      { name: 'audio', maxCount: 1 },
-      { name: 'file', maxCount: 1 },
-    ]),
-  )
+  // -> websockets
+  @ApiOperation({ summary: 'Update a message' })
+  @ApiResponse({ status: 201, description: 'Message updated successfully' })
+  @ApiResponse({ status: 404, description: 'Message not found' })
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
         body: {
           type: 'string',
-          example: 'Hello',
-        },
-        image: {
-          type: 'file',
-          format: 'jpeg/png',
-        },
-        video: {
-          type: 'file',
-          format: 'video/mp4',
-        },
-        audio: {
-          type: 'file',
-          format: 'audio/mpeg',
-        },
-        file: {
-          type: 'file',
-          format: 'application/pdf',
+          description: 'Message body',
         },
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Message updated successfully' })
-  @ApiResponse({ status: 404, description: 'Message not found' })
-  @Patch(':id/update')
-  async updateMessage(
+  @Patch('update/:id')
+  async update(
     @Param('id') id: number,
-    @Body('body') body: string,
+    @Body() updateMessageDto: UpdateMessageDto,
     @Req() req,
-    @UploadedFiles()
-    files: { image?: any; video?: any; audio?: any; file?: any },
   ) {
-    const message = await this.messageService.updateMessage(
+    await this.messageService.updateMessage(
       id,
-      body,
-      files,
+      updateMessageDto,
       req.user.user_id,
     );
     return {
       statusCode: 201,
       description: 'Message updated successfully',
-      data: message,
     };
   }
 
   // -> websockets
   @ApiOperation({ summary: 'Delete a message' })
   @ApiParam({ name: 'id', description: 'Message ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Message deleted successfully',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Message not found',
-  })
+  @ApiResponse({ status: 200, description: 'Message deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Message not found' })
   @ApiResponse({
     status: 401,
     description: 'You are not allowed to delete this message',
   })
   @Delete('delete/:id')
-  async deleteMessage(@Param('id') id: number, @Req() req) {
+  async delete(@Param('id', ParseIntPipe) id: number, @Req() req) {
     await this.messageService.deleteMessage(id, req.user.user_id);
     return {
       statusCode: 200,
@@ -187,14 +128,14 @@ export class MessageController {
     };
   }
 
-  @ApiOperation({ summary: 'Get all messages in a conversation' })
+  @ApiOperation({ summary: 'Get messages in a room' })
   @ApiResponse({
-    status: 200,
+    status: 201,
     description: 'Messages retrieved successfully',
     schema: {
       type: 'object',
       properties: {
-        statusCode: { type: 'number', example: 200 },
+        statusCode: { type: 'number', example: 201 },
         description: {
           type: 'string',
           example: 'Messages retrieved successfully',
@@ -210,16 +151,16 @@ export class MessageController {
     status: 401,
     description: 'You are not an active member of this conversation',
   })
-  @Get('conversation')
-  async getMessagesByConversation(@Query() query: GetMessagesDto, @Req() req) {
+  @Get()
+  async getMessagesByRoom(@Query() query: GetMessagesDto, @Req() req) {
     const messages = await this.messageService.getMessages(
       req.user.user_id,
-      query.conversation_id,
+      query.roomId,
       query.lastMessageCreatedAt,
       query.limit,
     );
     return {
-      statusCode: 200,
+      statusCode: 201,
       description: 'Messages retrieved successfully',
       data: messages,
     };

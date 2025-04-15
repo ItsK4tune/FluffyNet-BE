@@ -4,32 +4,35 @@ import {
   Entity,
   OneToMany,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Message } from '../../message/entities/message.entity';
-import { Member } from '../../chat_member/entities/member.entity';
-// import { ConversationEnum } from '../../../utils/enums/message.enum';
+import { Member } from '../../chat-member/entities/member.entity';
 
-@Entity('conversations')
-export class Conversation {
+@Entity('chat_room')
+export class ChatRoom {
   @PrimaryGeneratedColumn()
-  id: number;
+  room_id: number;
 
-  @Column()
+  @Column({ default: 'Direct' })
   name: string;
 
-  @Column()
+  @Column({ default: 'direct' })
   type: string; // 'group' | 'direct'
 
   @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;
 
-  @OneToMany(() => Message, (message) => message.conversation, {
+  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  updated_at: Date;
+
+  @OneToMany(() => Message, (message) => message.chatRoom, {
     cascade: true,
     onDelete: 'CASCADE',
   })
   messages: Message[];
 
-  @OneToMany(() => Member, (member) => member.conversation, {
+  @OneToMany(() => Member, (member) => member.chatRoom, {
     cascade: true,
     onDelete: 'CASCADE',
   })

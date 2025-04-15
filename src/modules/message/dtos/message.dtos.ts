@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 
 export class GetMessagesDto {
   @IsNumber()
-  conversation_id: number;
+  roomId: number;
 
   @IsOptional()
   @Type(() => Date)
@@ -14,4 +14,23 @@ export class GetMessagesDto {
   @IsInt()
   @Min(1)
   limit?: number = 20; // Số tin nhắn tối đa mỗi lần gọi API
+}
+
+export class CreateMessageDto {
+  @IsNumber()
+  roomId: number;
+
+  @IsOptional()
+  body?: string;
+
+  @IsOptional()
+  file?: string;
+}
+
+export class UpdateMessageDto {
+  @IsOptional()
+  body?: string;
+
+  @IsOptional()
+  file?: string;
 }
