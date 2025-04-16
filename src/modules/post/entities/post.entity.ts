@@ -23,6 +23,9 @@ export class Post {
   @Column({ nullable: true })
   repost_id: number | null;
 
+  @Column({ type: 'boolean', default: false })
+  is_repost_deleted: boolean;
+
   @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;
   

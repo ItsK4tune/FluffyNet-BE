@@ -18,4 +18,15 @@ export class NotificationController {
         const user_id = req.user.user_id;
         return await this.notificationService.getUserNotifications(user_id);
     }
+
+    @Get('test')
+    async test() {
+        await this.notificationService.createNotification(0, 'test', 'This is a test record!');
+        return { message: 'success'};
+    }
+
+    @Get('test/:user_id')
+    async testGet(@Query('user_id') user_id: number) {
+        return await this.notificationService.getUserNotifications(user_id);
+    }
 }

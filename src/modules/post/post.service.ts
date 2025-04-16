@@ -143,6 +143,7 @@ export class PostService {
 
   async deletePost(requestingUserId: number, post_id: number, role: string): Promise<boolean> {
     const post = await this.postUtil.getPostById(post_id);
+    const postRepost = await this.postUtil.getPostsByRepostId(post_id);
 
     if (!post) {
       throw new NotFoundException(`Post with ID ${post_id} not found.`);
@@ -156,6 +157,13 @@ export class PostService {
     const videoToDelete = post.video;
 
     try {
+      if (postRepost.length) {
+        for (const repost of postRepost) {
+          repost.is_repost_deleted = true;
+          await this.postUtil.save(repost);
+        }
+      }
+
       const success = await this.postUtil.deletePost(post_id);
 
       if (success) {
@@ -166,6 +174,7 @@ export class PostService {
           await this.minioClientService.deleteFile(videoToDelete)
         }
       }
+
       return success;
     } catch (error) {
       throw new InternalServerErrorException('Failed to delete post.');

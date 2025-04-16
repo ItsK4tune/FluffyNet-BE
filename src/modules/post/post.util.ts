@@ -47,6 +47,7 @@ export class PostUtil {
           user_id: true, 
           profile: { user_id: true, name: true, avatar: true }, 
         },
+        is_repost_deleted: true,
         repostOrigin: {
           post_id: true,
           user_id: true,
@@ -112,6 +113,7 @@ export class PostUtil {
           user_id: true, 
           profile: { user_id: true, name: true, avatar: true }, 
         },
+        is_repost_deleted: true,
         repostOrigin: {
           post_id: true,
           user_id: true,
@@ -134,6 +136,12 @@ export class PostUtil {
     return this.repo.findOne({
       where: { post_id },
       relations: relations || ['user', 'user.profile', 'repostOrigin', 'repostOrigin.user', 'repostOrigin.user.profile'],
+    });
+  }
+
+  async getPostsByRepostId(repost_id: number): Promise<Post[] | null> {
+    return this.repo.find({
+      where: { repost_id },
     });
   }
 
@@ -163,6 +171,7 @@ export class PostUtil {
           user_id: true, 
           profile: { user_id: true, name: true, avatar: true }, 
         },
+        is_repost_deleted: true,
         repostOrigin: {
           post_id: true,
           user_id: true,
@@ -228,6 +237,7 @@ export class PostUtil {
           user_id: true, 
           profile: { user_id: true, name: true, avatar: true }, 
         },
+        is_repost_deleted: true,
         repostOrigin: {
           post_id: true,
           user_id: true,
@@ -273,5 +283,13 @@ export class PostUtil {
   async updatePostVideo(post_id: number, videoObjectName: string | null): Promise<boolean> {
     const result = await this.repo.update({ post_id }, { video: videoObjectName });
     return result.affected > 0;
+  }
+
+  async save(post: Post) {
+    try {
+      await this.repo.save(post);
+    } catch (err) {
+      throw err;
+    }
   }
 }

@@ -220,7 +220,7 @@ export class AuthenController {
             required: ['email'],
         },
     })
-    @ApiResponse({ status: 201 })
+    @ApiResponse({ status: 201 })   
     @ApiResponse({ status: 409, description: 'Account not exist' })
     @Post('forgot-password')
     async forgotPassword(@Body('email') email: string) {
