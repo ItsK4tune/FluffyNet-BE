@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ProfileController } from './profile.controller';
 import { ProfileService } from './profile.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -20,7 +20,7 @@ import { MinioClientModule } from '../minio-client/minio-client.module';
       secret: env.jwt.secret,
       signOptions: { expiresIn: env.jwt.time },
     }),
-    MinioClientModule,
+    forwardRef(() => MinioClientModule),
   ],
   controllers: [ProfileController],
   providers: [ProfileService, ProfileUtil, JwtStrategy, RedisCacheService],

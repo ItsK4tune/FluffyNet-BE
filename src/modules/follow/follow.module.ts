@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { FollowController } from './follow.controller';
 import { FollowService } from './follow.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -23,7 +23,7 @@ import { ProfileModule } from '../profile/profile.module';
     }),
     RedisCacheModule,
     NotificationModule,
-    ProfileModule,
+    forwardRef(() => ProfileModule)
   ],
   controllers: [FollowController],
   providers: [FollowService, FollowUtil, ProfileUtil],
