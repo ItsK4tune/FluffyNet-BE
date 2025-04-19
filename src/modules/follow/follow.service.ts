@@ -123,10 +123,10 @@ export class FollowService {
       const notificationBody = {
         follower: { 
             user_id: followerProfile.user_id,
-            displayName: followerProfile.name,
+            displayName: followerProfile.nickname,
             avatarUrl: followerProfile.avatar, 
         },
-        message: `${followerProfile.name || `User ${follower_id}`} started following you.`, 
+        message: `${followerProfile.nickname || `User ${follower_id}`} started following you.`, 
         followedAt: new Date().toISOString(), 
       };
         

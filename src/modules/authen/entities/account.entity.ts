@@ -9,7 +9,6 @@ import {
   OneToMany,
 } from 'typeorm';
 import { RefreshToken } from './refresh.entity';
-import { Post } from 'src/modules/post/entities/post.entity';
 
 @Entity('account')
 export class Account {
@@ -57,7 +56,4 @@ export class Account {
 
   @OneToMany(() => RefreshToken, refreshToken => refreshToken.user)
   refreshTokens: RefreshToken[];
-
-  @OneToMany(() => Post, (post) => post.user, { cascade: true })
-  posts: Post[];
 }

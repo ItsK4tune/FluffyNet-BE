@@ -51,7 +51,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       await this.accountRepo.save(newUser);
 
       const newProfile = this.profileRepo.create({
-        name: displayName,
+        nickname: displayName,
         avatar: photos[0].value,
         user: newUser,
       });

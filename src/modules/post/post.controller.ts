@@ -33,6 +33,8 @@ import { MinioClientService } from '../minio-client/minio-client.service';
 import { PostUploadPresignDto } from './dto/post-upload.dto';
 import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
 import { env } from 'src/config';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bullmq';
 
 @ApiTags('Post')
 @UseGuards(JwtAuthGuard)
@@ -42,7 +44,22 @@ export class PostController {
   constructor(
     private readonly postService: PostService,
     private readonly minioClientService: MinioClientService,
+    @InjectQueue('video-conversion') private readonly videoQueue: Queue,
   ) {}
+
+  @ApiOperation({ summary: 'Get all posts of target' })
+  @ApiResponse({
+    status: 201,
+    description: 'post',
+  })
+  @Get('list/target/:target_id')
+  async getPostsByUserId(@Req() req, @Param('target_id') target_id: number, @Query('page') page: number = 1, @Query('limit') limit: number = 10, @Query('order') order?: string ) {
+    const user_id = req.user.user_id;
+    const take = limit > 50 ? 50 : limit;
+    const skip = (page - 1) * take;
+    const posts = await this.postService.getPostsByUserId(user_id, target_id, { skip, take, order });
+    return { posts };
+  }
 
   @ApiOperation({ summary: 'Get all posts' })
   @ApiResponse({
@@ -55,7 +72,7 @@ export class PostController {
     const take = limit > 50 ? 50 : limit;
     const skip = (page - 1) * take;
     const posts = await this.postService.getAllPosts(user_id, { skip, take, order });
-    return { posts };
+    return { message: 'hello', posts };
   }
 
   @ApiOperation({ summary: 'Get posts from users you follow (paginated)' })
@@ -126,7 +143,7 @@ export class PostController {
   @HttpPost(':post_id/attach-file') 
   async attachFile(
     @Request() req,
-    @Param('post_id', ParseIntPipe) postId: number,
+    @Param('post_id', ParseIntPipe) post_id: number,
     @Body() uploadCompleteDto: PostUploadCompleteDto 
   ): Promise<{ message: string; post: Post }> {
     const user_id = req.user.user_id;
@@ -134,13 +151,29 @@ export class PostController {
     const { objectName, fileType } = uploadCompleteDto;
 
     if (!objectName || !fileType) throw new BadRequestException("Missing objectName or fileType.");
-
+    
     try {
-      const success = await this.postService.attachFileToPost(user_id, postId, role, fileType, objectName);
+      let convertedHlsObjectName: string = objectName;
+      if (fileType === 'video') {
+        convertedHlsObjectName = `posts/user_${user_id}/hlses/post_${post_id}/index.m3u8`
+        
+        await this.videoQueue.add(
+          'convert-hls', 
+          {
+            category: 'posts',
+            post_id: post_id,
+            user_id: user_id,
+            objectName: objectName,
+          },
+          { jobId: `video-post_${post_id}-${Date.now()}` }
+        );
+      }
+
+      const success = await this.postService.attachFileToPost(user_id, post_id, role, fileType, convertedHlsObjectName);
       if (!success) {
         throw new InternalServerErrorException('Failed to update post with attachment.');
       }
-      const updatedPost = await this.postService.findOneById(postId);
+      const updatedPost = await this.postService.findOneById(post_id);
       if (!updatedPost) throw new NotFoundException("Post not found after attachment update.");
 
       return { message: `${fileType} attached successfully.`, post: updatedPost };

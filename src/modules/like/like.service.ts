@@ -65,11 +65,11 @@ export class LikeService {
                         const notificationBody = {
                         liker: {
                             user_id: likerProfile.user_id,
-                            displayName: likerProfile.name,
+                            displayName: likerProfile.nickname,
                             avatarUrl: likerProfile.avatar,
                         },
                             post: { id: post_id },
-                            message: `${likerProfile.name || `User ${user_id}`} liked your post.`,
+                            message: `${likerProfile.nickname || `User ${user_id}`} liked your post.`,
                             createdAt: new Date().toISOString(),
                         };
                         this.notificationService.createNotification(postOwnerId, notificationType, notificationBody);
@@ -108,11 +108,11 @@ export class LikeService {
                         const notificationBody = {
                             liker: {
                                 user_id: likerProfile.user_id,
-                                displayName: likerProfile.name,
+                                displayName: likerProfile.nickname,
                                 avatarUrl: likerProfile.avatar,
                         },
                         comment: { id: comment_id },
-                        message: `${likerProfile.name || `User ${user_id}`} liked your comment.`,
+                        message: `${likerProfile.nickname || `User ${user_id}`} liked your comment.`,
                             createdAt: new Date().toISOString(),
                         };
 

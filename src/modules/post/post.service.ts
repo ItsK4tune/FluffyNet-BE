@@ -27,7 +27,11 @@ export class PostService {
     private readonly followService: FollowService,
     private readonly notificationService: NotificationService,
     private readonly profileService: ProfileService,
-  ) { }
+  ) {}
+
+  async getPostsByUserId(user_id: number, target_id: number, { skip, take, order }): Promise<Post[]> {
+    return Promise.all((await this.postUtil.getPostByUserId(user_id, target_id, { skip, take, order})).map(post => this.enrichPostWithMediaUrls(post)));
+  }
 
   async getAllPosts(user_id: number, { skip, take, order }): Promise<Post[]> {
     return Promise.all((await this.postUtil.getAllPosts(user_id, { skip, take, order})).map(post => this.enrichPostWithMediaUrls(post)));
@@ -104,7 +108,7 @@ export class PostService {
     }
   }
 
-  async attachFileToPost(requestingUserId: number, post_id: number, role: string, fileType: 'image' | 'video', objectName: string | null): Promise<boolean> {
+  async attachFileToPost(requestingUserId: number, post_id: number, role: string, fileType: 'image' | 'video', objectName: string | null, thumbnail: string | null = null): Promise<boolean> {
     const post = await this.postUtil.getPostById(post_id);
 
     if (!post) {
@@ -126,7 +130,7 @@ export class PostService {
       if (fileType === 'image') {
         success = await this.postUtil.updatePostImage(post_id, objectName);
       } else {
-        success = await this.postUtil.updatePostVideo(post_id, objectName);
+        success = await this.postUtil.updatePostVideo(post_id, objectName, thumbnail);
       }
 
       if (success && oldObjectName && oldObjectName !== objectName) {
@@ -138,6 +142,14 @@ export class PostService {
         await this.minioClientService.deleteFile(objectName)
       }
       throw new InternalServerErrorException(`Failed to attach ${fileType} to post.`);
+    }
+  }
+
+  async setStatus(post_id: number, status: string) {
+    try {
+      return await this.postUtil.updateStatus(post_id, status);
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -155,6 +167,7 @@ export class PostService {
 
     const imageToDelete = post.image;
     const videoToDelete = post.video;
+    const target = `posts/user_${post.user_id}/hlses/post_${post_id}`;
 
     try {
       if (postRepost.length) {
@@ -168,10 +181,10 @@ export class PostService {
 
       if (success) {
         if (imageToDelete) {
-          await this.minioClientService.deleteFile(imageToDelete)
+          await this.minioClientService.deleteFile(imageToDelete);;
         }
         if (videoToDelete) {
-          await this.minioClientService.deleteFile(videoToDelete)
+          await this.minioClientService.deleteFolder(target);
         }
       }
 
@@ -197,13 +210,13 @@ export class PostService {
       const notificationBody = {
         author: {
           user_id: authorProfile.user_id,
-          displayName: authorProfile.name,
+          displayName: authorProfile.nickname,
           avatarUrl: authorProfile.avatar,
         },
         post: {
           id: post_id,
         },
-        message: `${authorProfile.name || `User ${authorId}`} has shared a new post.`,
+        message: `${authorProfile.nickname || `User ${authorId}`} has shared a new post.`,
         createdAt: new Date().toISOString(),
       };
 
@@ -227,12 +240,12 @@ export class PostService {
       const notificationBody = {
         reposter: {
           user_id: reposterProfile.user_id,
-          displayName: reposterProfile.name,
+          displayName: reposterProfile.nickname,
           avatarUrl: reposterProfile.avatar,
         },
         originalPost: { id: originalPostId },
         newPost: { id: newPostId },
-        message: `${reposterProfile.name || `User ${reposterId}`} reposted your post.`,
+        message: `${reposterProfile.nickname || `User ${reposterId}`} reposted your post.`,
         createdAt: new Date().toISOString(),
       };
 
@@ -251,7 +264,8 @@ export class PostService {
       ...post,
       image: post.image || null,
       video: post.video || null,
-      repostOrigin: post.repostOrigin ? { ...post.repostOrigin, image: post.repostOrigin.image || null, video: post.repostOrigin.video || null } : null
+      video_thumbnail: post.video_thumbnail || null,
+      repostOrigin: post.repostOrigin ? { ...post.repostOrigin, image: post.repostOrigin.image || null, video: post.repostOrigin.video || null, video_thumbnail: post.repostOrigin.video_thumbnail || null } : null
     };
 
     const enrichmentPromises: Promise<void>[] = [];
@@ -271,14 +285,27 @@ export class PostService {
 
     if (enrichedPost.video) {
       const currentVideo = enrichedPost.video;
-        enrichmentPromises.push(
-          this.minioClientService.generatePresignedDownloadUrl(currentVideo, 60 * 60)
-          .then(url => {
-            enrichedPost.video = url;
-          })
-          .catch(error => {
-            enrichedPost.video = null;
-          })
+      enrichmentPromises.push(
+        this.minioClientService.generatePresignedDownloadUrl(currentVideo, 60 * 60)
+        .then(url => {
+          enrichedPost.video = url;
+        })
+        .catch(error => {
+          enrichedPost.video = null;
+        })
+      );
+    }
+
+    if (enrichedPost.video_thumbnail) {
+      const currentThumbnail = enrichedPost.video_thumbnail;
+      enrichmentPromises.push(
+        this.minioClientService.generatePresignedDownloadUrl(currentThumbnail, 60 * 60)
+        .then(url => {
+          enrichedPost.video_thumbnail = url;
+        })
+        .catch(error => {
+          enrichedPost.video_thumbnail = null;
+        })
       );
     }
 
@@ -300,13 +327,26 @@ export class PostService {
 
       if (origin.video) {
         const originVideo = origin.video;
-          enrichmentPromises.push(
+        enrichmentPromises.push(
           this.minioClientService.generatePresignedDownloadUrl(originVideo, 60 * 60)
           .then(url => {
-              if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video = url;
+            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video = url;
           })
           .catch(error => {
-                if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video = null;
+            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video = null;
+          })
+        );
+      }
+
+      if (origin.video_thumbnail) {
+        const originThumbnail = origin.video_thumbnail;
+        enrichmentPromises.push(
+          this.minioClientService.generatePresignedDownloadUrl(originThumbnail, 60 * 60)
+          .then(url => {
+            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video_thumbnail = url;
+          })
+          .catch(error => {
+            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video_thumbnail = null;
           })
         );
       }

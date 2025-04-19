@@ -87,12 +87,12 @@ export class CommentService {
     userId: number,
     commentDto: CommentDto,
   ): Promise<any> { 
-    const { body, parent_id } = commentDto;
-  
-    if (!body) {
-      throw new BadRequestException('Comment body cannot be empty.');
+    const { body, parent_id, isPure } = commentDto;
+
+    if (!body && (parent_id === null || parent_id === undefined) && !isPure) {
+      throw new BadRequestException('Post must have a body or be a repost.');
     }
-  
+
     const postExists = await this.postUtil.getPostById(post_id);
     if (!postExists) {
       throw new NotFoundException(`Post with ID ${post_id} not found.`);
@@ -124,6 +124,7 @@ export class CommentService {
 
       return await this.enrichCommentWithMediaUrls(newComment);
     } catch (error) {
+      console.log(error.message);
       throw new InternalServerErrorException('Failed to create comment.');
     }
   }
@@ -241,14 +242,14 @@ export class CommentService {
         const notificationBody = {
           commenter: {
             user_id: commenterProfile.user_id,
-            displayName: commenterProfile.name,
+            displayName: commenterProfile.nickname,
             avatarUrl: commenterProfile.avatar,
           },
           post: { id: newComment.post_id },
           comment: {
             id: newComment.comment_id,
           },
-          message: `${commenterProfile.name || `User ${commenterId}`} commented on your post.`,
+          message: `${commenterProfile.nickname || `User ${commenterId}`} commented on your post.`,
           createdAt: new Date().toISOString(),
         };
         notificationPromises.push(
@@ -263,7 +264,7 @@ export class CommentService {
           const notificationBody = {
             replier: {
               user_id: commenterProfile.user_id,
-              displayName: commenterProfile.name,
+              displayName: commenterProfile.nickname,
               avatarUrl: commenterProfile.avatar,
             },
             post: { id: newComment.post_id },
@@ -271,7 +272,7 @@ export class CommentService {
             replyComment: {
               id: newComment.comment_id,
             },
-            message: `${commenterProfile.name || `User ${commenterId}`} replied to your comment.`,
+            message: `${commenterProfile.nickname || `User ${commenterId}`} replied to your comment.`,
             createdAt: new Date().toISOString(),
           };
           notificationPromises.push(
@@ -306,9 +307,9 @@ export class CommentService {
       if (comment.video) {
           enrichedComment.videoUrl = await this.minioClientService.generatePresignedDownloadUrl(comment.video);
       }
-      if (comment.user?.avatar) {
-        if (!enrichedComment.user) enrichedComment.user = {} as Profile; 
-        (enrichedComment.user as any).avatarUrl = await this.minioClientService.generatePresignedDownloadUrl(comment.user.avatar);
+      if (comment.profile?.avatar) {
+        if (!enrichedComment.profile) enrichedComment.profile = {} as Profile; 
+        (enrichedComment.profile as any).avatarUrl = await this.minioClientService.generatePresignedDownloadUrl(comment.profile.avatar);
       }
 
     return enrichedComment;

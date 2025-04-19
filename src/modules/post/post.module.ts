@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { PostService } from './post.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PostUtil } from 'src/modules/post/post.util';
@@ -10,18 +10,19 @@ import { FollowModule } from '../follow/follow.module';
 import { NotificationModule } from '../notification/notification.module';
 import { ProfileModule } from '../profile/profile.module';
 import { Like } from '../like/entity/like.entity';
+import { VideoProcessor } from '../minio-client/video.processor';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Post, Like]),
-    MinioClientModule,
+    forwardRef(() => MinioClientModule),
     RedisCacheModule,
     FollowModule,
     NotificationModule,
     ProfileModule,
   ],
   controllers: [PostController],
-  providers: [PostService, PostUtil],
+  providers: [PostService, PostUtil, VideoProcessor],
   exports: [PostService, PostUtil]
 })
 export class PostModule {}

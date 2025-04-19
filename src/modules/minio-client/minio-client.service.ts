@@ -8,6 +8,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { env } from 'src/config';
 import { Client } from 'minio';
 import * as path from 'path';
+import { Readable } from 'stream';
+import * as mime from 'mime-types';
+import * as fs from 'fs';
 
 const allowedMimeTypes = [
   'image/jpeg',
@@ -48,6 +51,69 @@ export class MinioClientService implements OnModuleInit {
 
   async onModuleInit() {
     await this.ensureBucketExists();
+  }
+
+  async getObjectStream(objectName: string): Promise<Readable> {
+    try {
+      return await this.minioClient.getObject(this.baseBucket, objectName);
+    } catch (error) {
+      throw new InternalServerErrorException(`Failed to fetch object stream for: ${objectName}`);
+    }
+  }
+
+  async putObject(
+    objectName: string,
+    streamOrPath: Readable | string,
+    size?: number,
+   ): Promise<void> {
+    const contentType = mime.lookup(objectName) || 'application/octet-stream';
+    let objectSize = size;
+    let streamToUpload: Readable;
+
+    if (typeof streamOrPath === 'string') {
+      try {
+        if (!fs.existsSync(streamOrPath)) {
+          throw new Error(`File không tồn tại tại đường dẫn: ${streamOrPath}`);
+        }
+        const stats = fs.statSync(streamOrPath);
+        if (objectSize === undefined) {
+          objectSize = stats.size;
+        }
+        streamToUpload = fs.createReadStream(streamOrPath);
+
+        streamToUpload.on('error', (streamReadError) => {
+        });
+
+      } catch (statError: any) {
+          throw new InternalServerErrorException(`Không thể xử lý file nguồn: ${objectName}`, { cause: statError });
+      }
+    } else {
+      streamToUpload = streamOrPath;
+      if (objectSize === undefined) {
+        objectSize = -1; 
+      }
+    }
+    
+    try {
+      if (!this.minioClient || typeof this.minioClient.putObject !== 'function') {
+        throw new Error('MinIO client không hợp lệ hoặc chưa được khởi tạo.');
+      }
+
+      await this.minioClient.putObject(this.baseBucket, objectName, streamToUpload, objectSize, {
+        'Content-Type': contentType,
+      });
+
+
+    } catch (error: any) {
+      throw new InternalServerErrorException(
+        `Failed to upload object to MinIO: ${objectName}. Reason: ${error.message}`,
+        { cause: error } 
+      );
+    } finally {
+      if (typeof streamOrPath === 'string' && streamToUpload && typeof streamToUpload.destroy === 'function') {
+        streamToUpload.destroy();
+      }
+    }
   }
 
   async generatePresignedUploadUrl(
@@ -104,6 +170,24 @@ export class MinioClientService implements OnModuleInit {
       await this.minioClient.removeObject(this.baseBucket, key);
     } catch (error) {
       throw new InternalServerErrorException(`Failed to delete file: ${key}`);
+    }
+  }
+
+  async deleteFolder(prefix: string): Promise<void> {
+    const objectsList: string[] = [];
+  
+    const stream = this.minioClient.listObjects(this.baseBucket, prefix, true);
+  
+    for await (const obj of stream) {
+      objectsList.push(obj.name);
+    }
+  
+    if (objectsList.length === 0) return;
+  
+    try {
+      await this.minioClient.removeObjects(this.baseBucket, objectsList);
+    } catch (error) {
+      throw new InternalServerErrorException(`Failed to delete folder: ${prefix}`);
     }
   }
 

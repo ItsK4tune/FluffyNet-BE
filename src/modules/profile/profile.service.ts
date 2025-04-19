@@ -149,14 +149,19 @@ export class ProfileService {
     const enriched: Profile = { ...profile }; 
 
     if (profile.avatar) {
-      try {
-        enriched.avatar = await this.minioClientService.generatePresignedDownloadUrl(profile.avatar, convertToSeconds(env.minio.time));
-      } catch (error) {
-        console.error(`Failed to get download URL for avatar ${profile.avatar}:`, error);
-        enriched.avatar = null; 
+      if (profile.avatar.startsWith('https://lh3.googleusercontent.com/')) {
+        enriched.avatar = profile.avatar;
+      }
+      else {
+        try {
+          enriched.avatar = await this.minioClientService.generatePresignedDownloadUrl(profile.avatar, convertToSeconds(env.minio.time));
+        } catch (error) {
+          console.error(`Failed to get download URL for avatar ${profile.avatar}:`, error);
+          enriched.avatar = null; 
+        }
       }
     } else {
-        enriched.avatar = null;
+      enriched.avatar = null;
     }
 
     if (profile.background) {
@@ -167,9 +172,8 @@ export class ProfileService {
         enriched.background = null;
       }
     } else {
-        enriched.background = null;
+      enriched.background = null;
     }
-
     return enriched;
   }
 }

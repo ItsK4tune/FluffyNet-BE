@@ -29,10 +29,9 @@ export class PostUtil {
       take: options?.take,
       relations: [
         'user',
-        'user.profile',
         'repostOrigin',
         'repostOrigin.user',
-        'repostOrigin.user.profile',
+        'repostOrigin.repostOrigin'
       ],
       select: {
         post_id: true,
@@ -40,12 +39,18 @@ export class PostUtil {
         body: true,
         image: true,
         video: true,
+        video_thumbnail: true,
+        video_status: true,
         repost_id: true, 
         created_at: true,
         updated_at: true,
         user: { 
           user_id: true, 
-          profile: { user_id: true, name: true, avatar: true }, 
+          nickname: true,
+          avatar: true, 
+          following_count: false,
+          follower_count: false,
+          posts_count: false,
         },
         is_repost_deleted: true,
         repostOrigin: {
@@ -54,12 +59,99 @@ export class PostUtil {
           body: true,
           image: true,
           video: true,
+          video_thumbnail: true,
+          video_status: true,
           repost_id: true,
           created_at: true,
           updated_at: true,
           user: {
-            user_id: true,
-            profile: { user_id: true, name: true, avatar: true },
+            user_id: true, 
+            nickname: true, 
+            avatar: true,
+            following_count: false,
+            follower_count: false,
+            posts_count: false,
+          },
+          is_repost_deleted: true,
+          repostOrigin: {
+            post_id: true,
+          }
+        }
+      }
+    });
+
+    const postIds = posts.map(post => post.post_id);
+
+    const likedPosts = await this.likeRepo.find({
+      where: {
+        user_id: user_id,
+        post_id: In(postIds),
+      },
+      select: ['post_id'],
+    });
+
+    const likedPostIds = new Set(likedPosts.map(lp => lp.post_id));
+
+    return posts.map(post => ({
+      ...post,
+      liked: likedPostIds.has(post.post_id),
+    }));
+  }
+
+  async getPostByUserId(user_id: number, target_id: number, options?: { skip?: number; take?: number; order?: string}): Promise<Post[]> {
+    const posts = await this.repo.find({
+      where: { user_id: target_id },
+      order: { created_at: options?.order as FindOptionsOrderValue }, 
+      skip: options?.skip,
+      take: options?.take,
+      relations: [
+        'user',
+        'repostOrigin',
+        'repostOrigin.user',
+        'repostOrigin.repostOrigin'
+      ],
+      select: {
+        post_id: true,
+        user_id: true, 
+        body: true,
+        image: true,
+        video: true,
+        video_thumbnail: true,
+        video_status: true,
+        repost_id: true, 
+        created_at: true,
+        updated_at: true,
+        user: { 
+          user_id: true, 
+          nickname: true,
+          avatar: true, 
+          following_count: false,
+          follower_count: false,
+          posts_count: false,
+        },
+        is_repost_deleted: true,
+        repostOrigin: {
+          post_id: true,
+          user_id: true,
+          body: true,
+          image: true,
+          video: true,
+          video_thumbnail: true,
+          video_status: true,
+          repost_id: true,
+          created_at: true,
+          updated_at: true,
+          user: {
+            user_id: true, 
+            nickname: true, 
+            avatar: true,
+            following_count: false,
+            follower_count: false,
+            posts_count: false,
+          },
+          is_repost_deleted: true,
+          repostOrigin: {
+            post_id: true,
           }
         }
       }
@@ -92,13 +184,11 @@ export class PostUtil {
       order: { created_at: 'DESC' },
       skip: options?.skip,
       take: options?.take,
-      relations: options?.relations || [
+      relations: [
         'user',
-        'user.profile',
         'repostOrigin',
         'repostOrigin.user',
-        'repostOrigin.user.profile',
-        'likes',
+        'repostOrigin.repostOrigin'
       ],
       select: {
         post_id: true,
@@ -106,12 +196,18 @@ export class PostUtil {
         body: true,
         image: true,
         video: true,
+        video_thumbnail: true,
+        video_status: true,
         repost_id: true, 
         created_at: true,
         updated_at: true,
         user: { 
           user_id: true, 
-          profile: { user_id: true, name: true, avatar: true }, 
+          nickname: true,
+          avatar: true, 
+          following_count: false,
+          follower_count: false,
+          posts_count: false,
         },
         is_repost_deleted: true,
         repostOrigin: {
@@ -120,12 +216,22 @@ export class PostUtil {
           body: true,
           image: true,
           video: true,
+          video_thumbnail: true,
+          video_status: true,
           repost_id: true,
           created_at: true,
           updated_at: true,
           user: {
-            user_id: true,
-            profile: { user_id: true, name: true, avatar: true },
+            user_id: true, 
+            nickname: true, 
+            avatar: true,
+            following_count: false,
+            follower_count: false,
+            posts_count: false,
+          },
+          is_repost_deleted: true,
+          repostOrigin: {
+            post_id: true,
           }
         }
       }
@@ -135,7 +241,6 @@ export class PostUtil {
   async getPostById(post_id: number, relations?: string[]): Promise<Post | null> {
     return this.repo.findOne({
       where: { post_id },
-      relations: relations || ['user', 'user.profile', 'repostOrigin', 'repostOrigin.user', 'repostOrigin.user.profile'],
     });
   }
 
@@ -153,10 +258,9 @@ export class PostUtil {
       take: options?.take,
       relations: [
         'user',
-        'user.profile',
         'repostOrigin',
         'repostOrigin.user',
-        'repostOrigin.user.profile',
+        'repostOrigin.repostOrigin'
       ],
       select: {
         post_id: true,
@@ -164,12 +268,18 @@ export class PostUtil {
         body: true,
         image: true,
         video: true,
+        video_thumbnail: true,
+        video_status: true,
         repost_id: true, 
         created_at: true,
         updated_at: true,
         user: { 
           user_id: true, 
-          profile: { user_id: true, name: true, avatar: true }, 
+          nickname: true,
+          avatar: true, 
+          following_count: false,
+          follower_count: false,
+          posts_count: false,
         },
         is_repost_deleted: true,
         repostOrigin: {
@@ -178,12 +288,22 @@ export class PostUtil {
           body: true,
           image: true,
           video: true,
+          video_thumbnail: true,
+          video_status: true,
           repost_id: true,
           created_at: true,
           updated_at: true,
           user: {
-            user_id: true,
-            profile: { user_id: true, name: true, avatar: true },
+            user_id: true, 
+            nickname: true, 
+            avatar: true,
+            following_count: false,
+            follower_count: false,
+            posts_count: false,
+          },
+          is_repost_deleted: true,
+          repostOrigin: {
+            post_id: true,
           }
         }
       }
@@ -219,10 +339,9 @@ export class PostUtil {
       where: { post_id: savedPost.post_id },
       relations: [
         'user',
-        'user.profile',
         'repostOrigin',
         'repostOrigin.user',
-        'repostOrigin.user.profile',
+        'repostOrigin.repostOrigin'
       ],
       select: {
         post_id: true,
@@ -230,12 +349,18 @@ export class PostUtil {
         body: true,
         image: true,
         video: true,
+        video_thumbnail: true,
+        video_status: true,
         repost_id: true, 
         created_at: true,
         updated_at: true,
         user: { 
           user_id: true, 
-          profile: { user_id: true, name: true, avatar: true }, 
+          nickname: true,
+          avatar: true, 
+          following_count: false,
+          follower_count: false,
+          posts_count: false,
         },
         is_repost_deleted: true,
         repostOrigin: {
@@ -244,12 +369,22 @@ export class PostUtil {
           body: true,
           image: true,
           video: true,
+          video_thumbnail: true,
+          video_status: true,
           repost_id: true,
           created_at: true,
           updated_at: true,
           user: {
-            user_id: true,
-            profile: { user_id: true, name: true, avatar: true },
+            user_id: true, 
+            nickname: true, 
+            avatar: true,
+            following_count: false,
+            follower_count: false,
+            posts_count: false,
+          },
+          is_repost_deleted: true,
+          repostOrigin: {
+            post_id: true,
           }
         }
       }
@@ -280,8 +415,13 @@ export class PostUtil {
     return result.affected > 0;
   }
 
-  async updatePostVideo(post_id: number, videoObjectName: string | null): Promise<boolean> {
-    const result = await this.repo.update({ post_id }, { video: videoObjectName });
+  async updatePostVideo(post_id: number, videoObjectName: string | null, thumbnailObjectName: string | null): Promise<boolean> {
+    const result = await this.repo.update({ post_id }, { video: videoObjectName, video_thumbnail: thumbnailObjectName });
+    return result.affected > 0;
+  }
+
+  async updateStatus(post_id: number, status: string): Promise<boolean> {
+    const result = await this.repo.update({ post_id }, { video_status: status });
     return result.affected > 0;
   }
 

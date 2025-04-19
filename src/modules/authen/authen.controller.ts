@@ -153,8 +153,9 @@ export class AuthenController {
                 user_id: user_id, 
                 role: req.user.role,
                 profile: {
-                    name: profile.name,
+                    nickname: profile.nickname,
                     avatar: profile.avatar,
+                    background: profile.background,
                 }
             }  
         };

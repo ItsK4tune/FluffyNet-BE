@@ -16,7 +16,7 @@ export class Follow {
   @JoinColumn({ name: "follower_id" }) 
   follower: Profile;
 
-  @ManyToOne(() => Profile, (user) => user.following, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Profile, (user) => user.followings, { onDelete: 'CASCADE' })
   @JoinColumn({ name: "following_id" }) 
   following: Profile;
 }

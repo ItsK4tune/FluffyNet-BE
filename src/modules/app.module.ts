@@ -1,4 +1,4 @@
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RedisModule } from '@nestjs-modules/ioredis';
 import dataSource from 'src/libs/typeorm.config';
@@ -20,6 +20,7 @@ import { MessageModule } from './message/message.module';
 import { ChatroomModule } from './chat-room/chatroom.module';
 import { MemberModule } from './chat-member/member.module';
 import { GatewayModule } from './gateway/gateway.module';
+import { BullModule } from '@nestjs/bull';
 
 @Module({
   imports: [
@@ -28,6 +29,20 @@ import { GatewayModule } from './gateway/gateway.module';
     RedisModule.forRoot({
       type: 'single',
       url: env.redis.url,
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => {
+        const redisUrl = configService.get<string>('REDIS_URL'); 
+        if (!redisUrl) {
+          throw new Error('REDIS_URL is not defined in the environment variables');
+        }
+        return {
+          redis: redisUrl,
+          defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } /* ... */ },
+        };
+      },
+      inject: [ConfigService],
     }),
     MongooseModule.forRoot(env.mongodb.url),
     HealthcheckModule,

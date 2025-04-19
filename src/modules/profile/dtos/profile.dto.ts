@@ -1,16 +1,20 @@
-// src/modules/profile/dtos/profile.dto.ts
 import { IsOptional, IsString, IsInt, Min, Max, IsUrl, Length } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class ProfileDto {
   @IsOptional()
   @IsString()
-  @Length(1, 50) 
-  name?: string;
+  @Length(1, 20) 
+  nickname?: string;
 
   @IsOptional()
   @IsString()
-  @Length(0, 255) 
+  @Length(1, 20) 
+  realname?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 250) 
   bio?: string;
 
   @IsOptional()

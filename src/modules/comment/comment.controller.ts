@@ -68,28 +68,28 @@ export class CommentController {
     @Body() uploadPresignDto: CommentUploadPresignDto,
     @Query('post_id', ParseIntPipe) post_id: number
   ): Promise<{ presignedUrl: string; objectName: string }> {
-      const { filename, contentType } = uploadPresignDto;
-      const userId = req.user.user_id;
+    const { filename, contentType } = uploadPresignDto;
+    const userId = req.user.user_id;
 
-      const fileTypeFolder = contentType.startsWith('image/') ? 'images' : 'videos';
-      const prefix = `comments/post_${post_id}/user_${userId}/${fileTypeFolder}/`; 
+    const fileTypeFolder = contentType.startsWith('image/') ? 'images' : 'videos';
+    const prefix = `comments/post_${post_id}/user_${userId}/${fileTypeFolder}/`; 
 
-      try {
-        const result = await this.minioClientService.generatePresignedUploadUrl(
-          filename,
-          contentType,
-          prefix,
-          convertToSeconds(env.minio.time),
-        );
-        return result;
-      } catch (error) {
-        if (error instanceof BadRequestException) throw error;
-        throw new InternalServerErrorException('Could not generate comment upload URL.');
-      }
+    try {
+      const result = await this.minioClientService.generatePresignedUploadUrl(
+        filename,
+        contentType,
+        prefix,
+        convertToSeconds(env.minio.time),
+      );
+      return result;
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException('Could not generate comment upload URL.');
+    }
   }
 
   @ApiOperation({ summary: 'Attach an image or video to an existing comment' })
-  @ApiParam({ name: 'commentId', description: 'ID of the comment to attach file to' })
+  @ApiParam({ name: 'comment_id', description: 'ID of the comment to attach file to' })
   @ApiBody({ type: CommentUploadCompleteDto, description: 'Info about the file uploaded to MinIO (objectName, fileType).' })
   @ApiResponse({ status: 200, description: 'File attached successfully.' }) 
   @ApiResponse({ status: 400, description: 'Invalid input or cannot attach file to a repost.'})
@@ -97,26 +97,28 @@ export class CommentController {
   @ApiResponse({ status: 404, description: 'Comment not found.'})
   @HttpPost(':comment_id/attach-file') 
   async attachFileToComment(
-      @Request() req,
-      @Param('comment_id', ParseIntPipe) commentId: number,
-      @Body() uploadCompleteDto: CommentUploadCompleteDto,
-  ): Promise<{ message: string }> {
+    @Request() req,
+    @Param('comment_id', ParseIntPipe) comment_id: number,
+    @Body() uploadCompleteDto: CommentUploadCompleteDto,
+  ): Promise<{ message: string, comment: CommentEntity }> {
     const userId = req.user.user_id;
     const { objectName, fileType } = uploadCompleteDto;
 
     if (!objectName || !fileType) throw new BadRequestException("Missing objectName or fileType.");
 
     try {
-      const success = await this.commentService.attachFileToComment(userId, commentId, fileType, objectName);
-      if (!success) throw new InternalServerErrorException('Failed to attach file.'); // Lỗi không mong muốn
-      return { message: `${fileType} attached successfully.` };
+      const success = await this.commentService.attachFileToComment(userId, comment_id, fileType, objectName);
+      if (!success) throw new InternalServerErrorException('Failed to attach file.'); 
+
+      const updatedComment = await this.commentService.getCommentById(comment_id)
+      return { message: `${fileType} attached successfully.`, comment: updatedComment };
     } catch (error) {
       throw error; 
     }
   }
 
   @ApiOperation({ summary: `Update the text content (body) of a comment` })
-  @ApiParam({ name: 'commentId', description: 'ID of the comment to update' })
+  @ApiParam({ name: 'comment_id', description: 'ID of the comment to update' })
   @ApiBody({ type: CommentDto, description: 'Only the "body" field is used for update.' })
   @ApiResponse({ status: 200, description: 'Comment updated successfully.' })
   @ApiResponse({ status: 400, description: 'Comment body cannot be empty.'})
@@ -125,14 +127,14 @@ export class CommentController {
   @Patch(':comment_id') 
   async updateCommentText(
     @Request() req,
-    @Param('commentId', ParseIntPipe) commentId: number,
+    @Param('comment_id', ParseIntPipe) comment_id: number,
     @Body() commentDto: CommentDto,
   ): Promise<{ message: string }> { 
     const userId = req.user.user_id;
     const updateData = { body: commentDto.body };
 
     try {
-      const success = await this.commentService.updateComment(userId, commentId, updateData);
+      const success = await this.commentService.updateComment(userId, comment_id, updateData);
       if (!success) throw new InternalServerErrorException('Failed to update comment.');
       return { message: 'Comment updated successfully.' };
     } catch (error) {
@@ -141,20 +143,20 @@ export class CommentController {
   }
 
   @ApiOperation({ summary: `Delete a comment` })
-  @ApiParam({ name: 'commentId', description: 'ID of the comment to delete' })
+  @ApiParam({ name: 'comment_id', description: 'ID of the comment to delete' })
   @ApiResponse({ status: 204, description: 'Comment deleted successfully.' })
   @ApiResponse({ status: 403, description: 'Forbidden (not the comment owner).'})
   @ApiResponse({ status: 404, description: 'Comment not found.'})
   @Delete(':comment_id') 
   async deleteComment(
     @Request() req,
-    @Param('commentId', ParseIntPipe) commentId: number,
+    @Param('comment_id', ParseIntPipe) comment_id: number,
     @Res() res
   ): Promise<void> {
     const userId = req.user.user_id;
     const role = req.user.role
     try {
-      const success = await this.commentService.deleteComment(userId, commentId, role);
+      const success = await this.commentService.deleteComment(userId, comment_id, role);
       if (!success) throw new InternalServerErrorException('Failed to delete comment.');
       res.status(204).send();
     } catch (error) {

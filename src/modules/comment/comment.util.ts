@@ -42,7 +42,7 @@ export class CommentUtil {
   async getCommentById(comment_id: number): Promise<Comment | null> {
     return this.repo.findOne({
       where: { comment_id },
-      relations: ['user', 'user.profile', 'parentComment'], 
+      relations: ['profile', 'parentComment'], 
     });
   }
 

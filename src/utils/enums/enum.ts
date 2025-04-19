@@ -15,3 +15,9 @@ export enum MinioEnum {
   image = 'image',
   video = 'video',
 }
+
+export enum Status {
+  processing = 'processing',
+  done = 'done',
+  failed = 'failed',
+}
