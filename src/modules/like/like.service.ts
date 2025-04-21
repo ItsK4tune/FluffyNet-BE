@@ -72,7 +72,7 @@ export class LikeService {
                             message: `${likerProfile.name || `User ${user_id}`} liked your post.`,
                             createdAt: new Date().toISOString(),
                         };
-                        this.notificationService.createNotification(postOwnerId, notificationType, notificationBody);
+                        await this.notificationService.createNotification(postOwnerId, notificationType, notificationBody);
                     } else {
                         console.error(`Profile not found for liker user_id: ${user_id}`);
                     }

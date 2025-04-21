@@ -14,7 +14,7 @@ export class ProfileService {
     private readonly profileUtil: ProfileUtil,
     private readonly redisCacheService: RedisCacheService,
     private readonly minioClientService: MinioClientService,
-  ) {}
+  ) { }
 
   async getProfile(user_id: number): Promise<Profile | null> {
     const cacheKey = `${RedisEnum.profile}:${user_id}`;
@@ -29,16 +29,18 @@ export class ProfileService {
       throw new NotFoundException('Cache error');
     }
 
-    profile = await this.profileUtil.getProfileByUserId(user_id);
-    if (profile) {
-      try {
-        await this.redisCacheService.set(
-          cacheKey,
-          JSON.stringify(profile),
-          convertToSeconds(env.redis.ttl)
-        );
-      } catch (cacheSetError) {
-        throw new NotFoundException('Cache error');
+    if (!profile) {
+      profile = await this.profileUtil.getProfileByUserId(user_id);
+      if (profile) {
+        try {
+          await this.redisCacheService.set(
+            cacheKey,
+            JSON.stringify(profile),
+            convertToSeconds(env.redis.ttl)
+          );
+        } catch (cacheSetError) {
+          console.warn(`Redis SET error for key ${cacheKey}:`, cacheSetError);
+        }
       }
     }
 
@@ -46,7 +48,7 @@ export class ProfileService {
   }
 
   async editProfileData(
-    requestingUserId: number, 
+    requestingUserId: number,
     profileUserIdToEdit: number,
     role: string,
     editData: ProfileDto,
@@ -69,7 +71,7 @@ export class ProfileService {
     });
 
     try {
-      const updatedProfile = await this.profileUtil.save(userProfile); 
+      const updatedProfile = await this.profileUtil.save(userProfile);
       await this.redisCacheService.del(cacheKey);
       return await this.enrichProfileWithMediaUrls(updatedProfile);
     } catch (dbError) {
@@ -91,9 +93,9 @@ export class ProfileService {
 
     const oldAvatarObjectName = userProfile.avatar;
     if (oldAvatarObjectName === newAvatarObjectName) {
-      return await this.enrichProfileWithMediaUrls(userProfile); 
+      return await this.enrichProfileWithMediaUrls(userProfile);
     }
-    userProfile.avatar = newAvatarObjectName; 
+    userProfile.avatar = newAvatarObjectName;
 
     try {
       const updatedProfile = await this.profileUtil.save(userProfile);
@@ -124,7 +126,7 @@ export class ProfileService {
 
     const oldBackgroundObjectName = userProfile.background;
     if (oldBackgroundObjectName === newBackgroundObjectName) {
-      return await this.enrichProfileWithMediaUrls(userProfile); 
+      return await this.enrichProfileWithMediaUrls(userProfile);
     }
     userProfile.background = newBackgroundObjectName;
 
@@ -146,17 +148,17 @@ export class ProfileService {
   private async enrichProfileWithMediaUrls(profile: Profile | null): Promise<Profile | null> {
     if (!profile) return null;
 
-    const enriched: Profile = { ...profile }; 
+    const enriched: Profile = { ...profile };
 
     if (profile.avatar) {
       try {
         enriched.avatar = await this.minioClientService.generatePresignedDownloadUrl(profile.avatar, convertToSeconds(env.minio.time));
       } catch (error) {
         console.error(`Failed to get download URL for avatar ${profile.avatar}:`, error);
-        enriched.avatar = null; 
+        enriched.avatar = null;
       }
     } else {
-        enriched.avatar = null;
+      enriched.avatar = null;
     }
 
     if (profile.background) {
@@ -167,7 +169,7 @@ export class ProfileService {
         enriched.background = null;
       }
     } else {
-        enriched.background = null;
+      enriched.background = null;
     }
 
     return enriched;
