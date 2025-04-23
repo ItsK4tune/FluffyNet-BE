@@ -7,6 +7,9 @@ export enum RedisEnum {
   commentTree = 'commentTree',
   message = 'message',
   member = 'member',
+  online = 'online',
+  ban = 'ban',
+  suspend = 'suspend',
 }
 
 export enum MinioEnum {
