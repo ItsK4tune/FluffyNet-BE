@@ -1,6 +1,14 @@
 import { Module } from '@nestjs/common';
-import { AdminController, AuthenController, SuperAdminController } from './authen.controller';
-import { AdminAuthenService, AuthenService, SuperAdminAuthenService } from './authen.service';
+import {
+  AdminController,
+  AuthenController,
+  SuperAdminController,
+} from './authen.controller';
+import {
+  AdminAuthenService,
+  AuthenService,
+  SuperAdminAuthenService,
+} from './authen.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Account } from './entities/account.entity';
 import { JwtModule } from '@nestjs/jwt';
@@ -16,6 +24,8 @@ import { RefreshToken } from './entities/refresh.entity';
 import { RefreshUtil } from './refresh.util';
 import { JwtStrategy } from 'src/strategies/jwt.strategy';
 import { RefreshJwtStrategy } from 'src/strategies/refresh-jwt.strategy';
+import { MinioClientModule } from '../minio-client/minio-client.module';
+import { RedisCacheModule } from '../redis-cache/redis-cache.module';
 
 @Module({
   imports: [
@@ -25,6 +35,8 @@ import { RefreshJwtStrategy } from 'src/strategies/refresh-jwt.strategy';
       secret: env.jwt.secret,
       signOptions: { expiresIn: env.jwt.time },
     }),
+    MinioClientModule,
+    RedisCacheModule,
   ],
   controllers: [AuthenController, AdminController, SuperAdminController],
   providers: [

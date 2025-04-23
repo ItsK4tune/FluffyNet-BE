@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Notification, NotificationDocument } from './schema/notification.schema';
-import { NotificationGateway } from './notification.gateway';
+import { NotificationGateway } from '../gateway/notification.gateway';
 
 @Injectable()
 export class NotificationService {

@@ -21,6 +21,9 @@ import { JwtAuthGuard } from 'src/guards/jwt.guard';
 import { RolesGuard } from 'src/guards/roles.guard';
 import { FollowService } from './follow.service';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin', 'user')
+@ApiBearerAuth()
 @ApiTags('Follow')
 @Controller('follow')
 export class FollowController {
@@ -29,26 +32,18 @@ export class FollowController {
     ) {}
 
     @ApiOperation({ summary: `Get status whether user has follow target`, description: `Authenticate, authorize and return user's following status toward target.` })
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'user')
-    @ApiBearerAuth()
     @ApiResponse({ status: 201, description: 'true' })
     @ApiResponse({ status: 201, description: 'false' })
     @ApiResponse({ status: 400, description: 'User not found' })
-    @ApiResponse({ status: 409, description: 'Cannot follow yourself' })
     @Get('follow-status')
     async getStatus(@Request() req: any, @Query('target_id') target_id: number) {
         const user_id: number = req.user.user_id;
         const status = await this.followService.getStatus(user_id, target_id);
-        if (status === 409) throw new ConflictException('Cannot follow yourself');
         if (status === 400) throw new BadRequestException('User not found');
         return { status: status };
     }
 
     @ApiOperation({ summary: `Set follow status from user to target`, description: `Authenticate, authorize and set user's following status toward target.` })
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'user')
-    @ApiBearerAuth()
     @ApiBody({
         schema: {
             type: 'object', 
@@ -72,9 +67,6 @@ export class FollowController {
     }
 
     @ApiOperation({ summary: `Get all target following`, description: `Get target's following list.` })
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'user')
-    @ApiBearerAuth()
     @ApiResponse({ status: 201, description: 'following list' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @Get('following')
@@ -85,9 +77,6 @@ export class FollowController {
     }
 
     @ApiOperation({ summary: `Get all target follower`, description: `Get target's follower list.` })
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'user')
-    @ApiBearerAuth()
     @ApiResponse({ status: 201, description: 'follower list' })
     @ApiResponse({ status: 400, description: 'User not found' })
     @Get('follower')
@@ -98,9 +87,6 @@ export class FollowController {
     }
 
     @ApiOperation({ summary: `Get suggest follower`, description: `Get user's follow suggestion list.` })
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin', 'user')
-    @ApiBearerAuth()
     @ApiResponse({ status: 201, description: 'suggestion list' })
     @Get('follow-suggest')
     async getSuggestionList(@Request() req) {

@@ -154,8 +154,10 @@ export class PostController {
     
     try {
       let convertedHlsObjectName: string = objectName;
+      let thumbnail: string | null = null;
       if (fileType === 'video') {
-        convertedHlsObjectName = `posts/user_${user_id}/hlses/post_${post_id}/index.m3u8`
+        convertedHlsObjectName = `posts/user_${user_id}/hlses/post_${post_id}/index.m3u8`;
+        thumbnail = `posts/user_${user_id}/hlses/post_${post_id}/thumbnail.jpg`;
         
         await this.videoQueue.add(
           'convert-hls', 
@@ -169,7 +171,7 @@ export class PostController {
         );
       }
 
-      const success = await this.postService.attachFileToPost(user_id, post_id, role, fileType, convertedHlsObjectName);
+      const success = await this.postService.attachFileToPost(user_id, post_id, role, fileType, convertedHlsObjectName, thumbnail);
       if (!success) {
         throw new InternalServerErrorException('Failed to update post with attachment.');
       }
@@ -216,7 +218,7 @@ export class PostController {
     try {
       const success = await this.postService.updatePost(user_id, postId, role, updateData);
       if (!success) {
-          throw new InternalServerErrorException('Post update failed for an unknown reason.');
+        throw new InternalServerErrorException('Post update failed for an unknown reason.');
       }
       const updatedPost = await this.postService.findOneById(postId);
       if (!updatedPost) throw new NotFoundException("Post not found after update."); 

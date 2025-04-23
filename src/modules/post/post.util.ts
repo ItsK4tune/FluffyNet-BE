@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Post } from 'src/modules/post/entities/post.entity';
-import { FindOptionsOrderValue, In, Repository } from 'typeorm';
+import { FindOptionsOrderValue, In, Repository, UpdateResult } from 'typeorm';
 import { Like } from '../like/entity/like.entity';
+import { Status } from 'src/utils/enums/enum';
 
 interface CreatePostData {
   body?: string;
@@ -48,6 +49,7 @@ export class PostUtil {
           user_id: true, 
           nickname: true,
           avatar: true, 
+          background: true,
           following_count: false,
           follower_count: false,
           posts_count: false,
@@ -68,6 +70,7 @@ export class PostUtil {
             user_id: true, 
             nickname: true, 
             avatar: true,
+            background: true,
             following_count: false,
             follower_count: false,
             posts_count: false,
@@ -125,6 +128,7 @@ export class PostUtil {
           user_id: true, 
           nickname: true,
           avatar: true, 
+          background: true,
           following_count: false,
           follower_count: false,
           posts_count: false,
@@ -145,6 +149,7 @@ export class PostUtil {
             user_id: true, 
             nickname: true, 
             avatar: true,
+            background: true,
             following_count: false,
             follower_count: false,
             posts_count: false,
@@ -205,6 +210,7 @@ export class PostUtil {
           user_id: true, 
           nickname: true,
           avatar: true, 
+          background: true,
           following_count: false,
           follower_count: false,
           posts_count: false,
@@ -225,6 +231,7 @@ export class PostUtil {
             user_id: true, 
             nickname: true, 
             avatar: true,
+            background: true,
             following_count: false,
             follower_count: false,
             posts_count: false,
@@ -241,6 +248,59 @@ export class PostUtil {
   async getPostById(post_id: number, relations?: string[]): Promise<Post | null> {
     return this.repo.findOne({
       where: { post_id },
+      relations: [
+        'user',
+        'repostOrigin',
+        'repostOrigin.user',
+        'repostOrigin.repostOrigin'
+      ],
+      select: {
+        post_id: true,
+        user_id: true, 
+        body: true,
+        image: true,
+        video: true,
+        video_thumbnail: true,
+        video_status: true,
+        repost_id: true, 
+        created_at: true,
+        updated_at: true,
+        user: { 
+          user_id: true, 
+          nickname: true,
+          avatar: true, 
+          background: true,
+          following_count: false,
+          follower_count: false,
+          posts_count: false,
+        },
+        is_repost_deleted: true,
+        repostOrigin: {
+          post_id: true,
+          user_id: true,
+          body: true,
+          image: true,
+          video: true,
+          video_thumbnail: true,
+          video_status: true,
+          repost_id: true,
+          created_at: true,
+          updated_at: true,
+          user: {
+            user_id: true, 
+            nickname: true, 
+            avatar: true,
+            background: true,
+            following_count: false,
+            follower_count: false,
+            posts_count: false,
+          },
+          is_repost_deleted: true,
+          repostOrigin: {
+            post_id: true,
+          }
+        }
+      }
     });
   }
 
@@ -277,6 +337,7 @@ export class PostUtil {
           user_id: true, 
           nickname: true,
           avatar: true, 
+          background: true,
           following_count: false,
           follower_count: false,
           posts_count: false,
@@ -297,6 +358,7 @@ export class PostUtil {
             user_id: true, 
             nickname: true, 
             avatar: true,
+            background: true,
             following_count: false,
             follower_count: false,
             posts_count: false,
@@ -358,6 +420,7 @@ export class PostUtil {
           user_id: true, 
           nickname: true,
           avatar: true, 
+          background: true,
           following_count: false,
           follower_count: false,
           posts_count: false,
@@ -378,6 +441,7 @@ export class PostUtil {
             user_id: true, 
             nickname: true, 
             avatar: true,
+            background: true,
             following_count: false,
             follower_count: false,
             posts_count: false,
@@ -411,18 +475,57 @@ export class PostUtil {
   }
 
   async updatePostImage(post_id: number, imageObjectName: string | null): Promise<boolean> {
-    const result = await this.repo.update({ post_id }, { image: imageObjectName });
-    return result.affected > 0;
+    try {
+      const updateData: Partial<Post> = {
+        image: imageObjectName,
+        video_status: Status.failed, 
+      };
+
+      const result: UpdateResult = await this.repo
+        .createQueryBuilder()
+        .update(Post)
+        .set(updateData) 
+        .where('post_id = :postId', { postId: post_id })
+        .execute();
+
+      return result.affected > 0;
+    } catch (error) {
+      throw new Error(`Could not update image for post ${post_id}`);
+    }
   }
 
   async updatePostVideo(post_id: number, videoObjectName: string | null, thumbnailObjectName: string | null): Promise<boolean> {
-    const result = await this.repo.update({ post_id }, { video: videoObjectName, video_thumbnail: thumbnailObjectName });
-    return result.affected > 0;
+    try {
+      const updateData: Partial<Post> = {
+        video: videoObjectName,
+        video_thumbnail: thumbnailObjectName,
+      };
+
+      const result: UpdateResult = await this.repo
+        .createQueryBuilder()
+        .update(Post)
+        .set(updateData) 
+        .where('post_id = :postId', { postId: post_id })
+        .execute();
+
+      return result.affected > 0;
+    } catch (error) {
+      throw new Error(`Could not update image for post ${post_id}`);
+    }
   }
 
   async updateStatus(post_id: number, status: string): Promise<boolean> {
-    const result = await this.repo.update({ post_id }, { video_status: status });
-    return result.affected > 0;
+    try {
+      const result: UpdateResult = await this.repo
+        .createQueryBuilder()
+        .update(Post)
+        .set({ video_status: status }) 
+        .where('post_id = :postId', { postId: post_id })
+        .execute(); 
+      return result.affected > 0;
+    } catch (error) {
+      throw new Error(`Could not update video status for post ${post_id}`);
+    }
   }
 
   async save(post: Post) {

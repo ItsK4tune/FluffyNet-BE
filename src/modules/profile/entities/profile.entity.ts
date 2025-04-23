@@ -28,9 +28,9 @@ export class Profile {
   
   @Column({ type: 'text', nullable: true })
   bio: string;
-
+  
   @Column({ nullable: true })
-  age: number;
+  dob: Date;
 
   @Column({ nullable: true })
   gender: string;

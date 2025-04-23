@@ -12,6 +12,7 @@ import { Profile } from '../profile/entities/profile.entity';
 import { RedisCacheModule } from '../redis-cache/redis-cache.module';
 import { NotificationModule } from '../notification/notification.module';
 import { ProfileModule } from '../profile/profile.module';
+import { MinioClientModule } from '../minio-client/minio-client.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ProfileModule } from '../profile/profile.module';
     }),
     RedisCacheModule,
     NotificationModule,
+    forwardRef(() => MinioClientModule),
     forwardRef(() => ProfileModule)
   ],
   controllers: [FollowController],

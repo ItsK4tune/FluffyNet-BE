@@ -30,7 +30,24 @@ export class FollowUtil {
   }
 
   async findFollowingList(target_id: number) {
-    return await this.repo.find({ where: { follower_id: target_id } });
+    return await this.repo.find({ 
+      where: { follower_id: target_id }, 
+      relations: [
+        'following'
+      ],
+      select: {
+        follower_id: true,
+        following: {
+          user_id: true,
+          nickname: true,
+          avatar: true,
+          background: true,
+          following_count: false,
+          follower_count: false,
+          posts_count: false,
+        }
+      }
+    });
   }
 
   async findFollowerList(target_id: number) {

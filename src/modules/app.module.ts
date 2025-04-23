@@ -11,8 +11,6 @@ import { PostModule } from './post/post.module';
 import { CommentModule } from './comment/comment.module';
 import { RedisCacheModule } from './redis-cache/redis-cache.module';
 import { MinioClientModule } from './minio-client/minio-client.module';
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { SecurityMiddleware } from './security';
 import { NotificationModule } from './notification/notification.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { LikeModule } from './like/like.module';
@@ -21,6 +19,8 @@ import { ChatroomModule } from './chat-room/chatroom.module';
 import { MemberModule } from './chat-member/member.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { BullModule } from '@nestjs/bull';
+import { Module } from '@nestjs/common';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
@@ -33,13 +33,18 @@ import { BullModule } from '@nestjs/bull';
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        const redisUrl = configService.get<string>('REDIS_URL'); 
+        const redisUrl = configService.get<string>('REDIS_URL');
         if (!redisUrl) {
-          throw new Error('REDIS_URL is not defined in the environment variables');
+          throw new Error(
+            'REDIS_URL is not defined in the environment variables',
+          );
         }
         return {
           redis: redisUrl,
-          defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 5000 } /* ... */ },
+          defaultJobOptions: {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5000 } /* ... */,
+          },
         };
       },
       inject: [ConfigService],
@@ -59,11 +64,7 @@ import { BullModule } from '@nestjs/bull';
     MinioClientModule,
     NotificationModule,
     LikeModule,
+    TaskModule,
   ],
 })
-// export class AppModule implements NestModule {
-//   configure(consumer: MiddlewareConsumer) {
-//     consumer.apply(SecurityMiddleware).forRoutes('*');
-//   }
-// }
 export class AppModule {}

@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Account } from './entities/account.entity';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -13,6 +19,8 @@ import { RefreshToken } from './entities/refresh.entity';
 import { AdminDTO } from './dtos/admin.dto';
 import { convertToSeconds } from 'src/utils/helpers/convert-time.helper';
 import { ProfileUtil } from '../profile/profile.util';
+import { RedisCacheService } from '../redis-cache/redis-cache.service';
+import { RedisEnum } from 'src/utils/enums/enum';
 
 @Injectable()
 export class AuthenService {
@@ -34,7 +42,11 @@ export class AuthenService {
     await this.accountUtil.save(user);
   }
 
-  async login({ username, email, password }: AuthenDTO): Promise<{ accessToken: string; refreshToken: string }> {
+  async login({
+    username,
+    email,
+    password,
+  }: AuthenDTO): Promise<{ accessToken: string; refreshToken: string }> {
     let user: Account;
 
     if (username) {
@@ -68,13 +80,17 @@ export class AuthenService {
         user_id: user.user_id,
         username: user.username,
         email: user.email,
-        role: user.role, 
+        role: user.role,
       };
 
       const tokens = await this.generateTokens(payload);
       const refreshTokenExpiry = this.getRefreshTokenExpiryDate();
-      await this.storeRefreshToken(tokens.refreshToken, user.user_id, refreshTokenExpiry);
-      
+      await this.storeRefreshToken(
+        tokens.refreshToken,
+        user.user_id,
+        refreshTokenExpiry,
+      );
+
       return tokens;
     }
     return null;
@@ -84,16 +100,24 @@ export class AuthenService {
     return await this.profileUtil.getProfileByUserId(user_id);
   }
 
-  async refreshToken(user_id: number, currentRefreshToken: string): Promise<{ accessToken: string; newRefreshToken?: string }> {
+  async refreshToken(
+    user_id: number,
+    currentRefreshToken: string,
+  ): Promise<{ accessToken: string; newRefreshToken?: string }> {
     const userRefreshTokens = await this.refreshUtil.findToken(user_id);
 
     if (!userRefreshTokens.length) {
-      throw new UnauthorizedException('No valid refresh tokens found for user.');
+      throw new UnauthorizedException(
+        'No valid refresh tokens found for user.',
+      );
     }
 
     let validStoredToken: RefreshToken | null = null;
     for (const storedToken of userRefreshTokens) {
-      if (await bcrypt.compare(currentRefreshToken, storedToken.token) && storedToken.expiresAt > new Date()) {
+      if (
+        (await bcrypt.compare(currentRefreshToken, storedToken.token)) &&
+        storedToken.expiresAt > new Date()
+      ) {
         validStoredToken = storedToken;
         break;
       }
@@ -108,27 +132,36 @@ export class AuthenService {
     await this.refreshUtil.saveToken(validStoredToken);
 
     if (!validStoredToken.user) {
-      throw new InternalServerErrorException('User data missing from refresh token entity.');
+      throw new InternalServerErrorException(
+        'User data missing from refresh token entity.',
+      );
     }
 
     const userPayload = {
       user_id: validStoredToken.user.user_id,
       username: validStoredToken.user.username,
       email: validStoredToken.user.email,
-      role: validStoredToken.user.role, 
+      role: validStoredToken.user.role,
     };
-     
+
     const newTokens = await this.generateTokens(userPayload);
 
     const newExpiry = this.getRefreshTokenExpiryDate();
-    await this.storeRefreshToken(newTokens.refreshToken, validStoredToken.user.user_id, newExpiry);
-    
-    return { accessToken: newTokens.accessToken, newRefreshToken: newTokens.refreshToken };
+    await this.storeRefreshToken(
+      newTokens.refreshToken,
+      validStoredToken.user.user_id,
+      newExpiry,
+    );
+
+    return {
+      accessToken: newTokens.accessToken,
+      newRefreshToken: newTokens.refreshToken,
+    };
   }
 
   async logout(user_id: number, refreshToken: string): Promise<void> {
     if (!refreshToken) {
-      return; 
+      return;
     }
 
     const userActiveRefreshTokens = await this.refreshUtil.findToken(user_id);
@@ -143,10 +176,10 @@ export class AuthenService {
 
     if (tokenToRevoke) {
       tokenToRevoke.isRevoked = true;
-      await this.refreshUtil.saveToken(tokenToRevoke); 
+      await this.refreshUtil.saveToken(tokenToRevoke);
     }
   }
-  
+
   async forgotPassword(email: string): Promise<boolean> {
     const user = await this.accountUtil.findByEmail(email);
 
@@ -156,12 +189,23 @@ export class AuthenService {
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
 
     const resetLink = `${env.fe}/reset-password?token=${token}`;
-    const templatePath = path.join(__dirname, '..', '..', '..', 'src', 'static', 'reset-mail.html');
+    const templatePath = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'src',
+      'static',
+      'reset-mail.html',
+    );
     const htmlTemplate = await fsPromises.readFile(templatePath, 'utf-8');
     let htmlContent = htmlTemplate.replace(/{{resetLink}}/g, resetLink);
     htmlContent = htmlContent.replace(/{{env.mailer.time}}/g, env.mailer.time);
-    htmlContent = htmlContent.replace(/{{year}}/g, new Date().getFullYear().toString());
-    
+    htmlContent = htmlContent.replace(
+      /{{year}}/g,
+      new Date().getFullYear().toString(),
+    );
+
     await this.mailService.sendMail({
       to: email,
       subject: 'Reset password',
@@ -189,19 +233,34 @@ export class AuthenService {
 
   async verifyEmail(user_id: number, email: string): Promise<boolean> {
     const user = await this.accountUtil.findByUserID(user_id);
-
     if (!user) return null;
-    if (user.email != email && user.email) return false;
+
+    const existedBind = await this.accountUtil.findByUsernameOrEmail(
+      null,
+      email,
+    );
+    if (existedBind) return false;
 
     const payload = { user_id, email };
     const token = this.jwtService.sign(payload, { expiresIn: env.mailer.time });
 
     const verifyLink = `${env.fe}/verify?token=${token}`;
-    const templatePath = path.join(__dirname, '..', '..', '..', 'src', 'static', 'verify-mail.html');
+    const templatePath = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'src',
+      'static',
+      'verify-mail.html',
+    );
     const htmlTemplate = await fsPromises.readFile(templatePath, 'utf-8');
     let htmlContent = htmlTemplate.replace(/{{verifyLink}}/g, verifyLink);
     htmlContent = htmlContent.replace(/{{env.mailer.time}}/g, env.mailer.time);
-    htmlContent = htmlContent.replace(/{{year}}/g, new Date().getFullYear().toString());
+    htmlContent = htmlContent.replace(
+      /{{year}}/g,
+      new Date().getFullYear().toString(),
+    );
 
     await this.mailService.sendMail({
       to: email,
@@ -218,7 +277,7 @@ export class AuthenService {
 
       const user = await this.accountUtil.findByUserID(user_id);
       if (!user) return null;
-      
+
       await this.accountUtil.updateVerifyEmail(user, email);
     } catch (error) {
       return false;
@@ -235,43 +294,56 @@ export class AuthenService {
     return true;
   }
 
-  async handleOAuthLogin(user: Account): Promise<{ accessToken: string; refreshToken: string }> {
+  async handleOAuthLogin(
+    user: Account,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     if (!user) {
-      throw new UnauthorizedException("Invalid user account provided for OAuth login.");
+      throw new UnauthorizedException(
+        'Invalid user account provided for OAuth login.',
+      );
     }
 
     const payload = {
       user_id: user.user_id,
       username: user.username,
       email: user.email,
-      role: user.role, 
+      role: user.role,
     };
 
     const tokens = await this.generateTokens(payload);
     const refreshTokenExpiry = this.getRefreshTokenExpiryDate();
-    await this.storeRefreshToken(tokens.refreshToken, user.user_id, refreshTokenExpiry);
+    await this.storeRefreshToken(
+      tokens.refreshToken,
+      user.user_id,
+      refreshTokenExpiry,
+    );
 
-    return tokens; 
+    return tokens;
   }
 
-  async generateTokens(payload: { user_id: number; username: string; email?: string; role: string }) {
+  async generateTokens(payload: {
+    user_id: number;
+    username: string;
+    email?: string;
+    role: string;
+  }) {
     const accessToken = this.jwtService.sign(
-      { 
-        user_id: payload.user_id, 
-        username: payload.username, 
-        email: payload.email, 
-        role: payload.role 
+      {
+        user_id: payload.user_id,
+        username: payload.username,
+        email: payload.email,
+        role: payload.role,
       },
       {
         secret: env.jwt.secret,
         expiresIn: env.jwt.time,
-      }
+      },
     );
 
     const refreshToken = this.jwtService.sign(
-      { 
-        user_id: payload.user_id 
-      }, 
+      {
+        user_id: payload.user_id,
+      },
       {
         secret: env.jwt.refreshSecret,
         expiresIn: env.jwt.refreshTime,
@@ -283,21 +355,17 @@ export class AuthenService {
 
   async storeRefreshToken(token: string, user_id: number, expiryDate: Date) {
     const salt = await bcrypt.genSalt();
-    const hashedToken = await bcrypt.hash(token, salt); 
+    const hashedToken = await bcrypt.hash(token, salt);
 
-    await this.refreshUtil.createToken(
-      user_id,
-      hashedToken,   
-      expiryDate,
-    );
+    await this.refreshUtil.createToken(user_id, hashedToken, expiryDate);
   }
 
   getRefreshTokenExpiryDate(): Date {
-    const expiresIn = env.jwt.refreshTime
+    const expiresIn = env.jwt.refreshTime;
     const now = new Date();
     if (expiresIn.endsWith('d')) {
-        now.setDate(now.getDate() + parseInt(expiresIn.slice(0, -1), 10));
-    } 
+      now.setDate(now.getDate() + parseInt(expiresIn.slice(0, -1), 10));
+    }
     return now;
   }
 
@@ -306,14 +374,14 @@ export class AuthenService {
   }
 }
 
-
 @Injectable()
-export class AdminAuthenService{
+export class AdminAuthenService {
   constructor(
     private readonly accountUtil: AccountUtil,
+    private readonly redis: RedisCacheService,
   ) {}
 
-  async getUser({username, email}: AuthenDTO): Promise<Account> {
+  async getUser({ username, email }: AuthenDTO): Promise<Account> {
     let user: Account;
     if (username) {
       user = await this.accountUtil.findByUsername(username);
@@ -325,54 +393,95 @@ export class AdminAuthenService{
     return user;
   }
 
-  async banUser(user_id: number, role: string, reason: string): Promise<boolean> {
+  async banUser(
+    user_id: number,
+    role: string,
+    reason: string,
+  ): Promise<boolean> {
+    const key = `${RedisEnum.ban}:${user_id}`;
+    const cache = await this.redis.sgetall(key);
+
+    if (cache.includes(user_id.toString())) return false;
+
     const user = await this.accountUtil.findByUserID(user_id);
     if (!user) return null;
     if (user.is_banned) return false;
-    if (user.role == role)  throw new ForbiddenException('Insufficient privileges');
+    if (user.role == role)
+      throw new ForbiddenException('Insufficient privileges');
 
     user.is_banned = true;
-    user.ban_reason = reason
+    user.ban_reason = reason;
     await this.accountUtil.save(user);
+    await this.redis.sadd(RedisEnum.ban, user_id.toString());
+
     return true;
   }
 
   async unbanUser(user_id: number, role: string): Promise<boolean> {
+    const key = `${RedisEnum.ban}:${user_id}`;
+    const cache = await this.redis.sgetall(key);
+
+    if (!cache.includes(user_id.toString())) return false;
+
     const user = await this.accountUtil.findByUserID(user_id);
     if (!user) return null;
     if (!user.is_banned) return false;
-    if (user.role == role)  throw new ForbiddenException('Insufficient privileges');
+    if (user.role == role)
+      throw new ForbiddenException('Insufficient privileges');
 
     user.is_banned = false;
     user.ban_reason = null;
     await this.accountUtil.save(user);
+    await this.redis.srem(RedisEnum.ban, user_id.toString());
     return true;
   }
 
-  async suspendUser(user_id: number, role: string, duration: string, reason: string): Promise<boolean> {
+  async suspendUser(
+    user_id: number,
+    role: string,
+    till: Date,
+    reason: string,
+  ): Promise<boolean> {
+    const key = `${RedisEnum.suspend}:${user_id}`;
+    const cache = await this.redis.sgetall(key);
+
+    if (cache.includes(user_id.toString())) return false;
+
     const user = await this.accountUtil.findByUserID(user_id);
     if (!user) return null;
     if (user.is_suspended) return false;
-    if (user.role == role) throw new ForbiddenException('Insufficient privileges');
+    if (user.role == role)
+      throw new ForbiddenException('Insufficient privileges');
 
     user.is_suspended = true;
     user.suspend_reason = reason;
-    user.suspended_until = new Date();
-    user.suspended_until.setTime(user.suspended_until.getTime() + convertToSeconds(duration) * 1000);
+    user.suspended_until = till;
     await this.accountUtil.save(user);
+    await this.redis.sadd(
+      RedisEnum.suspend,
+      user_id.toString(),
+      Math.floor((till.getTime() - Date.now()) / 1000),
+    );
     return true;
   }
 
   async unsuspendUser(user_id: number, role: string): Promise<boolean> {
+    const key = `${RedisEnum.suspend}:${user_id}`;
+    const cache = await this.redis.sgetall(key);
+
+    if (!cache.includes(user_id.toString())) return false;
+
     const user = await this.accountUtil.findByUserID(user_id);
     if (!user) return null;
     if (!user.is_suspended) return false;
-    if (user.role == role) throw new ForbiddenException('Insufficient privileges');
+    if (user.role == role)
+      throw new ForbiddenException('Insufficient privileges');
 
     user.is_suspended = false;
     user.suspend_reason = null;
     user.suspended_until = null;
     await this.accountUtil.save(user);
+    await this.redis.srem(RedisEnum.suspend, user_id.toString());
     return true;
   }
 
@@ -380,7 +489,8 @@ export class AdminAuthenService{
     const user = await this.accountUtil.findByUserID(user_id);
     if (!user) return null;
     if (user.is_verified) return false;
-    if (user.role == role)  throw new ForbiddenException('Insufficient privileges');
+    if (user.role == role)
+      throw new ForbiddenException('Insufficient privileges');
 
     user.is_verified = true;
     await this.accountUtil.save(user);
@@ -390,7 +500,8 @@ export class AdminAuthenService{
   async deleteUser(user_id: number, role: string): Promise<boolean> {
     const user = await this.accountUtil.findByUserID(user_id);
     if (!user) return null;
-    if (user.role == role)  throw new ForbiddenException('Insufficient privileges');
+    if (user.role == role)
+      throw new ForbiddenException('Insufficient privileges');
 
     await this.accountUtil.delete(user);
     return true;
@@ -399,9 +510,7 @@ export class AdminAuthenService{
 
 @Injectable()
 export class SuperAdminAuthenService {
-  constructor(
-    private readonly accountUtil: AccountUtil,
-  ) {}
+  constructor(private readonly accountUtil: AccountUtil) {}
 
   async createAdmin({ username, password }: AdminDTO): Promise<boolean> {
     const findUser = await this.accountUtil.findByUsername(username);
@@ -417,8 +526,9 @@ export class SuperAdminAuthenService {
   async changeRole(user_id: number, role: string): Promise<boolean> {
     const user = await this.accountUtil.findByUserID(user_id);
     if (!user) return null;
-    if (user.role == 'superadmin') throw new ForbiddenException('Insufficient privileges');
-    
+    if (user.role == 'superadmin')
+      throw new ForbiddenException('Insufficient privileges');
+
     user.role = role;
     await this.accountUtil.save(user);
     return true;

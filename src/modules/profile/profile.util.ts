@@ -13,11 +13,36 @@ export class ProfileUtil {
   async getProfileByUserId(user_id: number) {
     return await this.repo.findOne({
       where: { user_id },
+      relations: ['user'],
+      select: {
+        user_id: true,
+        nickname: true,
+        realname: true,
+        bio: true,
+        dob: true,
+        gender: true,
+        avatar: true,
+        background: true,
+        theme: true,
+        phoneNumber: true,
+        hobby: true,
+        socialLink: true,
+        created_at: true,
+        user: {
+          is_banned: true,
+          ban_reason: true,
+          is_suspended: true,
+          suspended_until: true,
+          suspend_reason: true,
+        },
+      },
     });
   }
 
   async save(userProfile: Profile) {
-    return await this.repo.save(userProfile);
+    const { user, ...profileWithoutUser } = userProfile;
+    await this.repo.save(profileWithoutUser);
+    return await this.getProfileByUserId(userProfile.user_id);
   }
 
   async getAllProfilesExcludingUser(user_id: number): Promise<Profile[]> {

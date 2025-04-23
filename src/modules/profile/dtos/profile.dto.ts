@@ -1,5 +1,5 @@
-import { IsOptional, IsString, IsInt, Min, Max, IsUrl, Length } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsOptional, IsString, IsUrl, Length, IsDate } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class ProfileDto {
   @IsOptional()
@@ -18,11 +18,9 @@ export class ProfileDto {
   bio?: string;
 
   @IsOptional()
-  @Transform(({ value }) => (value !== undefined && value !== null && value !== '' ? parseInt(value, 10) : undefined))
-  @IsInt()
-  @Min(0)
-  @Max(150)
-  age?: number;
+  @Type(() => Date)
+  @IsDate()
+  dob?: Date;
 
   @IsOptional()
   @IsString() 

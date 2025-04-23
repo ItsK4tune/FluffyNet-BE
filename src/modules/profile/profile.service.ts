@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ProfileUtil } from './profile.util';
 import { ProfileDto } from './dtos/profile.dto';
 import { RedisEnum } from 'src/utils/enums/enum';
@@ -35,7 +40,7 @@ export class ProfileService {
         await this.redisCacheService.set(
           cacheKey,
           JSON.stringify(profile),
-          convertToSeconds(env.redis.ttl)
+          convertToSeconds(env.redis.ttl),
         );
       } catch (cacheSetError) {
         throw new NotFoundException('Cache error');
@@ -46,118 +51,145 @@ export class ProfileService {
   }
 
   async editProfileData(
-    requestingUserId: number, 
+    requestingUserId: number,
     profileUserIdToEdit: number,
     role: string,
     editData: ProfileDto,
   ): Promise<Profile> {
     if (role == 'user' && requestingUserId !== profileUserIdToEdit) {
-      throw new ForbiddenException("You are not allowed to edit this profile.");
+      throw new ForbiddenException('You are not allowed to edit this profile.');
     }
-
     const cacheKey = `${RedisEnum.profile}:${profileUserIdToEdit}`;
 
-    let userProfile = await this.profileUtil.getProfileByUserId(profileUserIdToEdit);
+    let userProfile =
+      await this.profileUtil.getProfileByUserId(profileUserIdToEdit);
     if (!userProfile) {
       throw new NotFoundException('Profile not found to edit.');
     }
 
-    Object.keys(editData).forEach(key => {
+    Object.keys(editData).forEach((key) => {
       if (editData[key] !== undefined && key in userProfile) {
         userProfile[key] = editData[key];
       }
     });
 
     try {
-      const updatedProfile = await this.profileUtil.save(userProfile); 
+      const updatedProfile = await this.profileUtil.save(userProfile);
       await this.redisCacheService.del(cacheKey);
       return await this.enrichProfileWithMediaUrls(updatedProfile);
     } catch (dbError) {
-      throw new InternalServerErrorException("Failed to update profile data.");
+      throw new InternalServerErrorException('Failed to update profile data.');
     }
   }
 
-  async updateAvatar(requestingUserId: number, profileUserIdToEdit: number, role: string, newAvatarObjectName: string | null): Promise<Profile> {
+  async updateAvatar(
+    requestingUserId: number,
+    profileUserIdToEdit: number,
+    role: string,
+    newAvatarObjectName: string | null,
+  ): Promise<Profile> {
     if (role == 'user' && requestingUserId !== profileUserIdToEdit) {
       throw new ForbiddenException("You cannot update this user's avatar.");
     }
 
     const cacheKey = `${RedisEnum.profile}:${profileUserIdToEdit}`;
 
-    let userProfile = await this.profileUtil.getProfileByUserId(profileUserIdToEdit);
+    let userProfile =
+      await this.profileUtil.getProfileByUserId(profileUserIdToEdit);
     if (!userProfile) {
       throw new NotFoundException('Profile not found to update avatar.');
     }
 
     const oldAvatarObjectName = userProfile.avatar;
     if (oldAvatarObjectName === newAvatarObjectName) {
-      return await this.enrichProfileWithMediaUrls(userProfile); 
+      return await this.enrichProfileWithMediaUrls(userProfile);
     }
-    userProfile.avatar = newAvatarObjectName; 
+    userProfile.avatar = newAvatarObjectName;
 
     try {
       const updatedProfile = await this.profileUtil.save(userProfile);
 
       if (oldAvatarObjectName && oldAvatarObjectName !== newAvatarObjectName) {
-        await this.minioClientService.deleteFile(oldAvatarObjectName)
+        await this.minioClientService.deleteFile(oldAvatarObjectName);
       }
 
-      await this.redisCacheService.del(cacheKey)
+      await this.redisCacheService.del(cacheKey);
 
       return await this.enrichProfileWithMediaUrls(updatedProfile);
     } catch (dbError) {
-      throw new InternalServerErrorException("Failed to update profile avatar.");
+      throw new InternalServerErrorException(
+        'Failed to update profile avatar.',
+      );
     }
   }
 
-  async updateBackground(requestingUserId: number, profileUserIdToEdit: number, role: string, newBackgroundObjectName: string | null): Promise<Profile> {
+  async updateBackground(
+    requestingUserId: number,
+    profileUserIdToEdit: number,
+    role: string,
+    newBackgroundObjectName: string | null,
+  ): Promise<Profile> {
     if (role == 'user' && requestingUserId !== profileUserIdToEdit) {
       throw new ForbiddenException("You cannot update this user's background.");
     }
 
     const cacheKey = `${RedisEnum.profile}:${profileUserIdToEdit}`;
 
-    let userProfile = await this.profileUtil.getProfileByUserId(profileUserIdToEdit);
+    let userProfile =
+      await this.profileUtil.getProfileByUserId(profileUserIdToEdit);
     if (!userProfile) {
       throw new NotFoundException('Profile not found to update background.');
     }
 
     const oldBackgroundObjectName = userProfile.background;
     if (oldBackgroundObjectName === newBackgroundObjectName) {
-      return await this.enrichProfileWithMediaUrls(userProfile); 
+      return await this.enrichProfileWithMediaUrls(userProfile);
     }
     userProfile.background = newBackgroundObjectName;
 
     try {
       const updatedProfile = await this.profileUtil.save(userProfile);
 
-      if (oldBackgroundObjectName && oldBackgroundObjectName !== newBackgroundObjectName) {
-        await this.minioClientService.deleteFile(oldBackgroundObjectName)
+      if (
+        oldBackgroundObjectName &&
+        oldBackgroundObjectName !== newBackgroundObjectName
+      ) {
+        await this.minioClientService.deleteFile(oldBackgroundObjectName);
       }
 
-      await this.redisCacheService.del(cacheKey)
+      await this.redisCacheService.del(cacheKey);
 
       return await this.enrichProfileWithMediaUrls(updatedProfile);
     } catch (dbError) {
-      throw new InternalServerErrorException("Failed to update profile background.");
+      throw new InternalServerErrorException(
+        'Failed to update profile background.',
+      );
     }
   }
 
-  private async enrichProfileWithMediaUrls(profile: Profile | null): Promise<Profile | null> {
+  private async enrichProfileWithMediaUrls(
+    profile: Profile | null,
+  ): Promise<Profile | null> {
     if (!profile) return null;
 
-    const enriched: Profile = { ...profile }; 
+    const enriched: Profile = { ...profile };
 
     if (profile.avatar) {
       if (profile.avatar.startsWith('https://lh3.googleusercontent.com/')) {
         enriched.avatar = profile.avatar;
-      }
-      else {
+      } else {
         try {
-          enriched.avatar = await this.minioClientService.generatePresignedDownloadUrl(profile.avatar, convertToSeconds(env.minio.time));
+          enriched.avatar =
+            await this.minioClientService.generatePresignedDownloadUrl(
+              profile.avatar,
+              convertToSeconds(env.minio.time),
+            );
         } catch (error) {
-          console.error(`Failed to get download URL for avatar ${profile.avatar}:`, error);
-          enriched.avatar = null; 
+          console.error(
+            `Failed to get download URL for avatar ${profile.avatar}:`,
+            error,
+          );
+          enriched.avatar = null;
         }
       }
     } else {
@@ -166,9 +198,16 @@ export class ProfileService {
 
     if (profile.background) {
       try {
-        enriched.background = await this.minioClientService.generatePresignedDownloadUrl(profile.background, convertToSeconds(env.minio.time));
+        enriched.background =
+          await this.minioClientService.generatePresignedDownloadUrl(
+            profile.background,
+            convertToSeconds(env.minio.time),
+          );
       } catch (error) {
-        console.error(`Failed to get download URL for background ${profile.background}:`, error);
+        console.error(
+          `Failed to get download URL for background ${profile.background}:`,
+          error,
+        );
         enriched.background = null;
       }
     } else {

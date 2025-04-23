@@ -40,7 +40,7 @@ export class PostService {
   async getPostsOfFollowing(user_id: number, { skip, take, order }): Promise<Post[]> {
     const followingList = await this.followService.followingList(user_id);
     if (!followingList || followingList.length === 0) return [];
-    const follows = followingList.map(follow => follow.following_id);
+    const follows = followingList.map(follow => follow.following.user_id);
     const posts = await this.postUtil.getPostsOfFollowing(follows, user_id, { skip, take, order});
     return await Promise.all(posts.map(post => this.enrichPostWithMediaUrls(post)));
   }
@@ -260,99 +260,74 @@ export class PostService {
       return null;
     }
 
-    const enrichedPost: Post = {
-      ...post,
-      image: post.image || null,
-      video: post.video || null,
-      video_thumbnail: post.video_thumbnail || null,
-      repostOrigin: post.repostOrigin ? { ...post.repostOrigin, image: post.repostOrigin.image || null, video: post.repostOrigin.video || null, video_thumbnail: post.repostOrigin.video_thumbnail || null } : null
-    };
+    const enrichedPost: Post = JSON.parse(JSON.stringify(post)); 
 
     const enrichmentPromises: Promise<void>[] = [];
+    const expirySeconds = 1 * 60 * 60;
 
-    if (enrichedPost.image) {
-      const currentImage = enrichedPost.image;
-      enrichmentPromises.push(
-        this.minioClientService.generatePresignedDownloadUrl(currentImage, 60 * 60)
-        .then(url => {
-          enrichedPost.image = url; 
-        })
-        .catch(error => {
-          enrichedPost.image = null;
-        })
-      );
-    }
-
-    if (enrichedPost.video) {
-      const currentVideo = enrichedPost.video;
-      enrichmentPromises.push(
-        this.minioClientService.generatePresignedDownloadUrl(currentVideo, 60 * 60)
-        .then(url => {
-          enrichedPost.video = url;
-        })
-        .catch(error => {
-          enrichedPost.video = null;
-        })
-      );
-    }
-
-    if (enrichedPost.video_thumbnail) {
-      const currentThumbnail = enrichedPost.video_thumbnail;
-      enrichmentPromises.push(
-        this.minioClientService.generatePresignedDownloadUrl(currentThumbnail, 60 * 60)
-        .then(url => {
-          enrichedPost.video_thumbnail = url;
-        })
-        .catch(error => {
-          enrichedPost.video_thumbnail = null;
-        })
-      );
-    }
-
-    if (enrichedPost.repostOrigin) {
-      const origin = enrichedPost.repostOrigin; 
-
-      if (origin.image) {
-        const originImage = origin.image;
-        enrichmentPromises.push(
-          this.minioClientService.generatePresignedDownloadUrl(originImage, 60 * 60)
-          .then(url => {
-            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.image = url;
-          })
-          .catch(error => {
-            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.image = null;
-          })
-        );
+    const addUrlPromise = (
+      objectPath: string | null | undefined,
+      updateFn: (url: string | null) => void 
+    ) => {
+      if (objectPath) { 
+        if (objectPath.includes('https://lh3.googleusercontent.com')){
+          updateFn(objectPath);
+        } else {
+          enrichmentPromises.push(
+            this.minioClientService.generatePresignedDownloadUrl(objectPath, expirySeconds)
+            .then(url => {
+              updateFn(url); 
+            })
+            .catch(error => {
+              updateFn(null); 
+            })
+          );
+        }
+      } else {
+        updateFn(null); 
       }
+    };
 
-      if (origin.video) {
-        const originVideo = origin.video;
-        enrichmentPromises.push(
-          this.minioClientService.generatePresignedDownloadUrl(originVideo, 60 * 60)
-          .then(url => {
-            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video = url;
-          })
-          .catch(error => {
-            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video = null;
-          })
-        );
-      }
+    addUrlPromise(post.image, (url) => { enrichedPost.image = url; });
+    addUrlPromise(post.video, (url) => { enrichedPost.video = url; });
+    addUrlPromise(post.video_thumbnail, (url) => { enrichedPost.video_thumbnail = url; });
 
-      if (origin.video_thumbnail) {
-        const originThumbnail = origin.video_thumbnail;
-        enrichmentPromises.push(
-          this.minioClientService.generatePresignedDownloadUrl(originThumbnail, 60 * 60)
-          .then(url => {
-            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video_thumbnail = url;
-          })
-          .catch(error => {
-            if (enrichedPost.repostOrigin) enrichedPost.repostOrigin.video_thumbnail = null;
-          })
-        );
+    if (post.user) {
+      addUrlPromise(post.user.avatar, (url) => {
+        if (enrichedPost.user) enrichedPost.user.avatar = url;
+      });
+      addUrlPromise(post.user.background, (url) => {
+        if (enrichedPost.user) enrichedPost.user.background = url;
+      });
+    } else {
+      if(enrichedPost.user) {
+        enrichedPost.user.avatar = null;
+        enrichedPost.user.background = null;
       }
     }
 
-    await Promise.allSettled(enrichmentPromises);
-    return enrichedPost;
+     if (post.repostOrigin && enrichedPost.repostOrigin) { 
+      const origin = post.repostOrigin;
+      const enrichedOrigin = enrichedPost.repostOrigin; 
+
+      addUrlPromise(origin.image, (url) => { enrichedOrigin.image = url; });
+      addUrlPromise(origin.video, (url) => { enrichedOrigin.video = url; });
+      addUrlPromise(origin.video_thumbnail, (url) => { enrichedOrigin.video_thumbnail = url; });
+
+      if (origin.user && enrichedOrigin.user) { 
+        addUrlPromise(origin.user.avatar, (url) => { enrichedOrigin.user.avatar = url; });
+        addUrlPromise(origin.user.background, (url) => { enrichedOrigin.user.background = url; });
+      } else {
+        if (enrichedOrigin.user) {
+          enrichedOrigin.user.avatar = null;
+          enrichedOrigin.user.background = null;
+        }
+      }
+    } else {
+      enrichedPost.repostOrigin = null; 
+    }
+
+    const results = await Promise.allSettled(enrichmentPromises);
+    return enrichedPost; 
   }
 }

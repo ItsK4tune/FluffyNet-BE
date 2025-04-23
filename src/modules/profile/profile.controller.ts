@@ -121,12 +121,13 @@ export class ProfileController {
   @ApiResponse({ status: 400, description: 'Missing objectName.'})
   @Post('update-background') 
   async setBackground(
-    @Query('target_id') target_id: number,
+    @Query('target_id', ParseIntPipe) target_id: number,
     @Request() req,
     @Body('objectName') objectName: string | null 
   )  {
     const user_id = req.user.user_id;
     const role = req.user.role;
+    console.log(role, user_id);
     if (typeof objectName === 'undefined') { 
       throw new BadRequestException('Missing objectName in request body.');
     }
@@ -150,7 +151,6 @@ export class ProfileController {
     const { filename, contentType, imageType } = uploadPresignDto;
     const userId = req.user.user_id;
 
-    // const fileExtension = filename.split('.').pop() || '';
     const prefix = `profiles/user_${userId}/${imageType}s/`; 
 
     try {
