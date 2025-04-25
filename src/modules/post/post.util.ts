@@ -8,7 +8,7 @@ import { Status } from 'src/utils/enums/enum';
 interface CreatePostData {
   body?: string;
   image?: string | null;
-  video?: string | null; 
+  video?: string | null;
   repost_id?: number | null;
 }
 
@@ -23,36 +23,46 @@ export class PostUtil {
     @InjectRepository(Like) private readonly likeRepo: Repository<Like>,
   ) {}
 
-  async getAllPosts(user_id: number, options?: { skip?: number; take?: number; order?: string}): Promise<Post[]> {
+  async getAllPosts(
+    user_id: number,
+    options?: { skip?: number; take?: number; order?: string },
+  ): Promise<Post[]> {
     const posts = await this.repo.find({
-      order: { created_at: options?.order as FindOptionsOrderValue }, 
+      order: { created_at: options?.order as FindOptionsOrderValue },
       skip: options?.skip,
       take: options?.take,
       relations: [
         'user',
+        'user.user',
         'repostOrigin',
         'repostOrigin.user',
-        'repostOrigin.repostOrigin'
+        'repostOrigin.user.user',
+        'repostOrigin.repostOrigin',
       ],
       select: {
         post_id: true,
-        user_id: true, 
+        user_id: true,
         body: true,
         image: true,
         video: true,
         video_thumbnail: true,
         video_status: true,
-        repost_id: true, 
+        repost_id: true,
         created_at: true,
         updated_at: true,
-        user: { 
-          user_id: true, 
+        user: {
+          user_id: true,
           nickname: true,
-          avatar: true, 
+          avatar: true,
           background: true,
           following_count: false,
           follower_count: false,
           posts_count: false,
+          user: {
+            is_banned: true,
+            is_suspended: true,
+            is_verified: true,
+          },
         },
         is_repost_deleted: true,
         repostOrigin: {
@@ -67,23 +77,28 @@ export class PostUtil {
           created_at: true,
           updated_at: true,
           user: {
-            user_id: true, 
-            nickname: true, 
+            user_id: true,
+            nickname: true,
             avatar: true,
             background: true,
             following_count: false,
             follower_count: false,
             posts_count: false,
+            user: {
+              is_banned: true,
+              is_suspended: true,
+              is_verified: true,
+            },
           },
           is_repost_deleted: true,
           repostOrigin: {
             post_id: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
-    const postIds = posts.map(post => post.post_id);
+    const postIds = posts.map((post) => post.post_id);
 
     const likedPosts = await this.likeRepo.find({
       where: {
@@ -93,45 +108,56 @@ export class PostUtil {
       select: ['post_id'],
     });
 
-    const likedPostIds = new Set(likedPosts.map(lp => lp.post_id));
+    const likedPostIds = new Set(likedPosts.map((lp) => lp.post_id));
 
-    return posts.map(post => ({
+    return posts.map((post) => ({
       ...post,
       liked: likedPostIds.has(post.post_id),
     }));
   }
 
-  async getPostByUserId(user_id: number, target_id: number, options?: { skip?: number; take?: number; order?: string}): Promise<Post[]> {
+  async getPostByUserId(
+    user_id: number,
+    target_id: number,
+    options?: { skip?: number; take?: number; order?: string },
+  ): Promise<Post[]> {
     const posts = await this.repo.find({
       where: { user_id: target_id },
-      order: { created_at: options?.order as FindOptionsOrderValue }, 
+      order: { created_at: options?.order as FindOptionsOrderValue },
       skip: options?.skip,
       take: options?.take,
       relations: [
         'user',
+        'user.user',
         'repostOrigin',
         'repostOrigin.user',
-        'repostOrigin.repostOrigin'
+        'repostOrigin.user.user',
+        'repostOrigin.repostOrigin',
       ],
       select: {
         post_id: true,
-        user_id: true, 
+        user_id: true,
         body: true,
         image: true,
         video: true,
         video_thumbnail: true,
         video_status: true,
-        repost_id: true, 
+        repost_id: true,
         created_at: true,
         updated_at: true,
-        user: { 
-          user_id: true, 
+        user: {
+          user_id: true,
           nickname: true,
-          avatar: true, 
+          avatar: true,
           background: true,
           following_count: false,
           follower_count: false,
           posts_count: false,
+          user: {
+            is_banned: true,
+            is_suspended: true,
+            is_verified: true,
+          },
         },
         is_repost_deleted: true,
         repostOrigin: {
@@ -146,23 +172,28 @@ export class PostUtil {
           created_at: true,
           updated_at: true,
           user: {
-            user_id: true, 
-            nickname: true, 
+            user_id: true,
+            nickname: true,
             avatar: true,
             background: true,
             following_count: false,
             follower_count: false,
             posts_count: false,
+            user: {
+              is_banned: true,
+              is_suspended: true,
+              is_verified: true,
+            },
           },
           is_repost_deleted: true,
           repostOrigin: {
             post_id: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
-    const postIds = posts.map(post => post.post_id);
+    const postIds = posts.map((post) => post.post_id);
 
     const likedPosts = await this.likeRepo.find({
       where: {
@@ -172,15 +203,18 @@ export class PostUtil {
       select: ['post_id'],
     });
 
-    const likedPostIds = new Set(likedPosts.map(lp => lp.post_id));
+    const likedPostIds = new Set(likedPosts.map((lp) => lp.post_id));
 
-    return posts.map(post => ({
+    return posts.map((post) => ({
       ...post,
       liked: likedPostIds.has(post.post_id),
     }));
   }
 
-  async getPostsByUserIds(user_ids: number[], options?: { skip?: number; take?: number; relations?: string[] }): Promise<Post[]> {
+  async getPostsByUserIds(
+    user_ids: number[],
+    options?: { skip?: number; take?: number; relations?: string[] },
+  ): Promise<Post[]> {
     if (!user_ids || user_ids.length === 0) {
       return [];
     }
@@ -191,29 +225,36 @@ export class PostUtil {
       take: options?.take,
       relations: [
         'user',
+        'user.user',
         'repostOrigin',
         'repostOrigin.user',
-        'repostOrigin.repostOrigin'
+        'repostOrigin.user.user',
+        'repostOrigin.repostOrigin',
       ],
       select: {
         post_id: true,
-        user_id: true, 
+        user_id: true,
         body: true,
         image: true,
         video: true,
         video_thumbnail: true,
         video_status: true,
-        repost_id: true, 
+        repost_id: true,
         created_at: true,
         updated_at: true,
-        user: { 
-          user_id: true, 
+        user: {
+          user_id: true,
           nickname: true,
-          avatar: true, 
+          avatar: true,
           background: true,
           following_count: false,
           follower_count: false,
           posts_count: false,
+          user: {
+            is_banned: true,
+            is_suspended: true,
+            is_verified: true,
+          },
         },
         is_repost_deleted: true,
         repostOrigin: {
@@ -228,51 +269,66 @@ export class PostUtil {
           created_at: true,
           updated_at: true,
           user: {
-            user_id: true, 
-            nickname: true, 
+            user_id: true,
+            nickname: true,
             avatar: true,
             background: true,
             following_count: false,
             follower_count: false,
             posts_count: false,
+            user: {
+              is_banned: true,
+              is_suspended: true,
+              is_verified: true,
+            },
           },
           is_repost_deleted: true,
           repostOrigin: {
             post_id: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
   }
 
-  async getPostById(post_id: number, relations?: string[]): Promise<Post | null> {
+  async getPostById(
+    post_id: number,
+    relations?: string[],
+  ): Promise<Post | null> {
     return this.repo.findOne({
       where: { post_id },
       relations: [
         'user',
+        'user.user',
         'repostOrigin',
         'repostOrigin.user',
-        'repostOrigin.repostOrigin'
+        'repostOrigin.user.user',
+        'repostOrigin.repostOrigin',
       ],
       select: {
         post_id: true,
-        user_id: true, 
+        user_id: true,
         body: true,
         image: true,
         video: true,
         video_thumbnail: true,
         video_status: true,
-        repost_id: true, 
+        repost_id: true,
         created_at: true,
         updated_at: true,
-        user: { 
-          user_id: true, 
+        user: {
+          user_id: true,
           nickname: true,
-          avatar: true, 
+          avatar: true,
           background: true,
           following_count: false,
           follower_count: false,
           posts_count: false,
+          user: {
+            is_banned: true,
+            is_suspended: true,
+            is_verified: true,
+          },
         },
         is_repost_deleted: true,
         repostOrigin: {
@@ -287,20 +343,25 @@ export class PostUtil {
           created_at: true,
           updated_at: true,
           user: {
-            user_id: true, 
-            nickname: true, 
+            user_id: true,
+            nickname: true,
             avatar: true,
             background: true,
             following_count: false,
             follower_count: false,
             posts_count: false,
+            user: {
+              is_banned: true,
+              is_suspended: true,
+              is_verified: true,
+            },
           },
           is_repost_deleted: true,
           repostOrigin: {
             post_id: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
   }
 
@@ -310,37 +371,48 @@ export class PostUtil {
     });
   }
 
-  async getPostsOfFollowing(user_ids: number[], user_id: number, options?: { skip?: number; take?: number; order?: string }): Promise<Post[]> {
+  async getPostsOfFollowing(
+    user_ids: number[],
+    user_id: number,
+    options?: { skip?: number; take?: number; order?: string },
+  ): Promise<Post[]> {
     const posts = await this.repo.find({
       where: { user_id: In(user_ids) },
-      order: { created_at: options?.order as FindOptionsOrderValue }, 
+      order: { created_at: options?.order as FindOptionsOrderValue },
       skip: options?.skip,
       take: options?.take,
       relations: [
         'user',
+        'user.user',
         'repostOrigin',
         'repostOrigin.user',
-        'repostOrigin.repostOrigin'
+        'repostOrigin.user.user',
+        'repostOrigin.repostOrigin',
       ],
       select: {
         post_id: true,
-        user_id: true, 
+        user_id: true,
         body: true,
         image: true,
         video: true,
         video_thumbnail: true,
         video_status: true,
-        repost_id: true, 
+        repost_id: true,
         created_at: true,
         updated_at: true,
-        user: { 
-          user_id: true, 
+        user: {
+          user_id: true,
           nickname: true,
-          avatar: true, 
+          avatar: true,
           background: true,
           following_count: false,
           follower_count: false,
           posts_count: false,
+          user: {
+            is_banned: true,
+            is_suspended: true,
+            is_verified: true,
+          },
         },
         is_repost_deleted: true,
         repostOrigin: {
@@ -355,23 +427,28 @@ export class PostUtil {
           created_at: true,
           updated_at: true,
           user: {
-            user_id: true, 
-            nickname: true, 
+            user_id: true,
+            nickname: true,
             avatar: true,
             background: true,
             following_count: false,
             follower_count: false,
             posts_count: false,
+            user: {
+              is_banned: true,
+              is_suspended: true,
+              is_verified: true,
+            },
           },
           is_repost_deleted: true,
           repostOrigin: {
             post_id: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
-    const postIds = posts.map(post => post.post_id);
+    const postIds = posts.map((post) => post.post_id);
 
     const likedPosts = await this.likeRepo.find({
       where: {
@@ -381,9 +458,9 @@ export class PostUtil {
       select: ['post_id'],
     });
 
-    const likedPostIds = new Set(likedPosts.map(lp => lp.post_id));
+    const likedPostIds = new Set(likedPosts.map((lp) => lp.post_id));
 
-    return posts.map(post => ({
+    return posts.map((post) => ({
       ...post,
       liked: likedPostIds.has(post.post_id),
     }));
@@ -393,7 +470,7 @@ export class PostUtil {
     const newPost = this.repo.create({
       ...data,
       user_id: user_id,
-      ...(data.repost_id ? { repostOrigin: { post_id: data.repost_id } } : {})
+      ...(data.repost_id ? { repostOrigin: { post_id: data.repost_id } } : {}),
     });
     const savedPost = await this.repo.save(newPost);
 
@@ -401,29 +478,36 @@ export class PostUtil {
       where: { post_id: savedPost.post_id },
       relations: [
         'user',
+        'user.user',
         'repostOrigin',
         'repostOrigin.user',
-        'repostOrigin.repostOrigin'
+        'repostOrigin.user.user',
+        'repostOrigin.repostOrigin',
       ],
       select: {
         post_id: true,
-        user_id: true, 
+        user_id: true,
         body: true,
         image: true,
         video: true,
         video_thumbnail: true,
         video_status: true,
-        repost_id: true, 
+        repost_id: true,
         created_at: true,
         updated_at: true,
-        user: { 
-          user_id: true, 
+        user: {
+          user_id: true,
           nickname: true,
-          avatar: true, 
+          avatar: true,
           background: true,
           following_count: false,
           follower_count: false,
           posts_count: false,
+          user: {
+            is_banned: true,
+            is_suspended: true,
+            is_verified: true,
+          },
         },
         is_repost_deleted: true,
         repostOrigin: {
@@ -438,20 +522,25 @@ export class PostUtil {
           created_at: true,
           updated_at: true,
           user: {
-            user_id: true, 
-            nickname: true, 
+            user_id: true,
+            nickname: true,
             avatar: true,
             background: true,
             following_count: false,
             follower_count: false,
             posts_count: false,
+            user: {
+              is_banned: true,
+              is_suspended: true,
+              is_verified: true,
+            },
           },
           is_repost_deleted: true,
           repostOrigin: {
             post_id: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
   }
 
@@ -466,7 +555,7 @@ export class PostUtil {
     }
 
     const result = await this.repo.update({ post_id }, updateData);
-    return result.affected > 0; 
+    return result.affected > 0;
   }
 
   async deletePost(post_id: number): Promise<boolean> {
@@ -474,17 +563,20 @@ export class PostUtil {
     return result.affected > 0;
   }
 
-  async updatePostImage(post_id: number, imageObjectName: string | null): Promise<boolean> {
+  async updatePostImage(
+    post_id: number,
+    imageObjectName: string | null,
+  ): Promise<boolean> {
     try {
       const updateData: Partial<Post> = {
         image: imageObjectName,
-        video_status: Status.failed, 
+        video_status: Status.failed,
       };
 
       const result: UpdateResult = await this.repo
         .createQueryBuilder()
         .update(Post)
-        .set(updateData) 
+        .set(updateData)
         .where('post_id = :postId', { postId: post_id })
         .execute();
 
@@ -494,7 +586,11 @@ export class PostUtil {
     }
   }
 
-  async updatePostVideo(post_id: number, videoObjectName: string | null, thumbnailObjectName: string | null): Promise<boolean> {
+  async updatePostVideo(
+    post_id: number,
+    videoObjectName: string | null,
+    thumbnailObjectName: string | null,
+  ): Promise<boolean> {
     try {
       const updateData: Partial<Post> = {
         video: videoObjectName,
@@ -504,7 +600,7 @@ export class PostUtil {
       const result: UpdateResult = await this.repo
         .createQueryBuilder()
         .update(Post)
-        .set(updateData) 
+        .set(updateData)
         .where('post_id = :postId', { postId: post_id })
         .execute();
 
@@ -519,9 +615,9 @@ export class PostUtil {
       const result: UpdateResult = await this.repo
         .createQueryBuilder()
         .update(Post)
-        .set({ video_status: status }) 
+        .set({ video_status: status })
         .where('post_id = :postId', { postId: post_id })
-        .execute(); 
+        .execute();
       return result.affected > 0;
     } catch (error) {
       throw new Error(`Could not update video status for post ${post_id}`);

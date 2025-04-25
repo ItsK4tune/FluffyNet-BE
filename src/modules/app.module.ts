@@ -21,9 +21,11 @@ import { GatewayModule } from './gateway/gateway.module';
 import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
 import { TaskModule } from './task/task.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ envFilePath: '.env', isGlobal: true }),
     TypeOrmModule.forRoot(dataSource.options),
     RedisModule.forRoot({
@@ -43,7 +45,7 @@ import { TaskModule } from './task/task.module';
           redis: redisUrl,
           defaultJobOptions: {
             attempts: 3,
-            backoff: { type: 'exponential', delay: 5000 } /* ... */,
+            backoff: { type: 'exponential', delay: 5000 },
           },
         };
       },

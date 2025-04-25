@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PostUtil } from 'src/modules/post/post.util';
 import { PostDto } from './dto/post.dto';
 import { Post } from './entities/post.entity';
@@ -29,24 +35,51 @@ export class PostService {
     private readonly profileService: ProfileService,
   ) {}
 
-  async getPostsByUserId(user_id: number, target_id: number, { skip, take, order }): Promise<Post[]> {
-    return Promise.all((await this.postUtil.getPostByUserId(user_id, target_id, { skip, take, order})).map(post => this.enrichPostWithMediaUrls(post)));
+  async getPostsByUserId(
+    user_id: number,
+    target_id: number,
+    { skip, take, order },
+  ): Promise<Post[]> {
+    return Promise.all(
+      (
+        await this.postUtil.getPostByUserId(user_id, target_id, {
+          skip,
+          take,
+          order,
+        })
+      ).map((post) => this.enrichPostWithMediaUrls(post)),
+    );
   }
 
   async getAllPosts(user_id: number, { skip, take, order }): Promise<Post[]> {
-    return Promise.all((await this.postUtil.getAllPosts(user_id, { skip, take, order})).map(post => this.enrichPostWithMediaUrls(post)));
+    return Promise.all(
+      (await this.postUtil.getAllPosts(user_id, { skip, take, order })).map(
+        (post) => this.enrichPostWithMediaUrls(post),
+      ),
+    );
   }
 
-  async getPostsOfFollowing(user_id: number, { skip, take, order }): Promise<Post[]> {
+  async getPostsOfFollowing(
+    user_id: number,
+    { skip, take, order },
+  ): Promise<Post[]> {
     const followingList = await this.followService.followingList(user_id);
     if (!followingList || followingList.length === 0) return [];
-    const follows = followingList.map(follow => follow.following.user_id);
-    const posts = await this.postUtil.getPostsOfFollowing(follows, user_id, { skip, take, order});
-    return await Promise.all(posts.map(post => this.enrichPostWithMediaUrls(post)));
+    const follows = followingList.map((follow) => follow.following.user_id);
+    const posts = await this.postUtil.getPostsOfFollowing(follows, user_id, {
+      skip,
+      take,
+      order,
+    });
+    return await Promise.all(
+      posts.map((post) => this.enrichPostWithMediaUrls(post)),
+    );
   }
 
   async findOneById(post_id: number): Promise<Post> {
-    return await this.enrichPostWithMediaUrls(await this.postUtil.getPostById(post_id));
+    return await this.enrichPostWithMediaUrls(
+      await this.postUtil.getPostById(post_id),
+    );
   }
 
   async createPost(user_id: number, data: PostDto): Promise<Post> {
@@ -60,15 +93,17 @@ export class PostService {
     if (repost_id) {
       repostOrigin = await this.postUtil.getPostById(repost_id);
       if (!repostOrigin) {
-        throw new BadRequestException(`Original post (ID: ${repost_id}) not found for repost.`);
+        throw new BadRequestException(
+          `Original post (ID: ${repost_id}) not found for repost.`,
+        );
       }
     }
 
     try {
       const postData: CreatePostData = {
-        body: body || null, 
+        body: body || null,
         repost_id: repost_id || null,
-        image: null, 
+        image: null,
         video: null,
       };
 
@@ -76,7 +111,12 @@ export class PostService {
 
       if (repost_id) {
         this.enrichPostWithMediaUrls(newPost.repostOrigin);
-        this.sendRepostNotification(user_id, repostOrigin.user_id, newPost.post_id, repostOrigin.post_id)
+        this.sendRepostNotification(
+          user_id,
+          repostOrigin.user_id,
+          newPost.post_id,
+          repostOrigin.post_id,
+        );
       }
 
       this.sendNewPostNotifications(user_id, newPost.post_id);
@@ -87,14 +127,22 @@ export class PostService {
     }
   }
 
-  async updatePost(requestingUserId: number, post_id: number, role: string, data: PostDto): Promise<boolean> {
+  async updatePost(
+    requestingUserId: number,
+    post_id: number,
+    role: string,
+    data: PostDto,
+  ): Promise<boolean> {
     const post = await this.postUtil.getPostById(post_id);
 
     if (!post) {
       throw new NotFoundException(`Post with ID ${post_id} not found.`);
     }
 
-    if (post.user_id !== requestingUserId && !['admin', 'superadmin'].some(r => role.includes(r))) {
+    if (
+      post.user_id !== requestingUserId &&
+      !['admin', 'superadmin'].some((r) => role.includes(r))
+    ) {
       throw new ForbiddenException('You are not allowed to update this post.');
     }
 
@@ -108,14 +156,24 @@ export class PostService {
     }
   }
 
-  async attachFileToPost(requestingUserId: number, post_id: number, role: string, fileType: 'image' | 'video', objectName: string | null, thumbnail: string | null = null): Promise<boolean> {
+  async attachFileToPost(
+    requestingUserId: number,
+    post_id: number,
+    role: string,
+    fileType: 'image' | 'video',
+    objectName: string | null,
+    thumbnail: string | null = null,
+  ): Promise<boolean> {
     const post = await this.postUtil.getPostById(post_id);
 
     if (!post) {
       throw new NotFoundException(`Post with ID ${post_id} not found.`);
     }
 
-    if (post.user_id !== requestingUserId && !['admin', 'superadmin'].some(r => role.includes(r))) {
+    if (
+      post.user_id !== requestingUserId &&
+      !['admin', 'superadmin'].some((r) => role.includes(r))
+    ) {
       throw new ForbiddenException('You are not allowed to modify this post.');
     }
 
@@ -130,18 +188,24 @@ export class PostService {
       if (fileType === 'image') {
         success = await this.postUtil.updatePostImage(post_id, objectName);
       } else {
-        success = await this.postUtil.updatePostVideo(post_id, objectName, thumbnail);
+        success = await this.postUtil.updatePostVideo(
+          post_id,
+          objectName,
+          thumbnail,
+        );
       }
 
       if (success && oldObjectName && oldObjectName !== objectName) {
-        await this.minioClientService.deleteFile(oldObjectName)
+        await this.minioClientService.deleteFile(oldObjectName);
       }
       return success;
     } catch (error) {
       if (objectName && !oldObjectName) {
-        await this.minioClientService.deleteFile(objectName)
+        await this.minioClientService.deleteFile(objectName);
       }
-      throw new InternalServerErrorException(`Failed to attach ${fileType} to post.`);
+      throw new InternalServerErrorException(
+        `Failed to attach ${fileType} to post.`,
+      );
     }
   }
 
@@ -153,7 +217,11 @@ export class PostService {
     }
   }
 
-  async deletePost(requestingUserId: number, post_id: number, role: string): Promise<boolean> {
+  async deletePost(
+    requestingUserId: number,
+    post_id: number,
+    role: string,
+  ): Promise<boolean> {
     const post = await this.postUtil.getPostById(post_id);
     const postRepost = await this.postUtil.getPostsByRepostId(post_id);
 
@@ -161,7 +229,10 @@ export class PostService {
       throw new NotFoundException(`Post with ID ${post_id} not found.`);
     }
 
-    if (post.user_id !== requestingUserId && !['admin', 'superadmin'].some(r => role.includes(r))) {
+    if (
+      post.user_id !== requestingUserId &&
+      !['admin', 'superadmin'].some((r) => role.includes(r))
+    ) {
       throw new ForbiddenException('You are not allowed to delete this post.');
     }
 
@@ -181,7 +252,7 @@ export class PostService {
 
       if (success) {
         if (imageToDelete) {
-          await this.minioClientService.deleteFile(imageToDelete);;
+          await this.minioClientService.deleteFile(imageToDelete);
         }
         if (videoToDelete) {
           await this.minioClientService.deleteFolder(target);
@@ -194,16 +265,23 @@ export class PostService {
     }
   }
 
-  private async sendNewPostNotifications(authorId: number, post_id: number): Promise<void> {
+  private async sendNewPostNotifications(
+    authorId: number,
+    post_id: number,
+  ): Promise<void> {
     try {
       const followers = await this.followService.followerList(authorId);
-      const followerIds = followers.map(f => f.follower_id).filter(id => id !== authorId);
+      const followerIds = followers
+        .map((f) => f.follower_id)
+        .filter((id) => id !== authorId);
 
       if (followerIds.length === 0) {
         return;
       }
 
-      const authorProfile = await this.profileService.getProfile(authorId) as Profile;
+      const authorProfile = (await this.profileService.getProfile(
+        authorId,
+      )) as Profile;
       if (!authorProfile) return;
 
       const notificationType = 'NEW_POST';
@@ -220,8 +298,12 @@ export class PostService {
         createdAt: new Date().toISOString(),
       };
 
-      const notificationPromises = followerIds.map(followerId =>
-        this.notificationService.createNotification(followerId, notificationType, notificationBody)
+      const notificationPromises = followerIds.map((followerId) =>
+        this.notificationService.createNotification(
+          followerId,
+          notificationType,
+          notificationBody,
+        ),
       );
       await Promise.allSettled(notificationPromises);
     } catch (error) {
@@ -229,11 +311,18 @@ export class PostService {
     }
   }
 
-  private async sendRepostNotification(reposterId: number, originalAuthorId: number, newPostId: number, originalPostId: number): Promise<void> {
+  private async sendRepostNotification(
+    reposterId: number,
+    originalAuthorId: number,
+    newPostId: number,
+    originalPostId: number,
+  ): Promise<void> {
     if (reposterId === originalAuthorId) return;
 
     try {
-      const reposterProfile = await this.profileService.getProfile(reposterId) as Profile;
+      const reposterProfile = (await this.profileService.getProfile(
+        reposterId,
+      )) as Profile;
       if (!reposterProfile) return;
 
       const notificationType = 'REPOST';
@@ -249,48 +338,61 @@ export class PostService {
         createdAt: new Date().toISOString(),
       };
 
-      await this.notificationService.createNotification(originalAuthorId, notificationType, notificationBody);
+      await this.notificationService.createNotification(
+        originalAuthorId,
+        notificationType,
+        notificationBody,
+      );
     } catch (error) {
       // TODO: implement retry mechanism
     }
   }
 
-  private async enrichPostWithMediaUrls(post: Post | null): Promise<Post | null> {
+  private async enrichPostWithMediaUrls(
+    post: Post | null,
+  ): Promise<Post | null> {
     if (!post) {
       return null;
     }
 
-    const enrichedPost: Post = JSON.parse(JSON.stringify(post)); 
+    const enrichedPost: Post = JSON.parse(JSON.stringify(post));
 
     const enrichmentPromises: Promise<void>[] = [];
     const expirySeconds = 1 * 60 * 60;
 
     const addUrlPromise = (
       objectPath: string | null | undefined,
-      updateFn: (url: string | null) => void 
+      updateFn: (url: string | null) => void,
     ) => {
-      if (objectPath) { 
-        if (objectPath.includes('https://lh3.googleusercontent.com')){
+      if (objectPath) {
+        if (objectPath.includes('https://lh3.googleusercontent.com')) {
           updateFn(objectPath);
         } else {
           enrichmentPromises.push(
-            this.minioClientService.generatePresignedDownloadUrl(objectPath, expirySeconds)
-            .then(url => {
-              updateFn(url); 
-            })
-            .catch(error => {
-              updateFn(null); 
-            })
+            this.minioClientService
+              .generatePresignedDownloadUrl(objectPath, expirySeconds)
+              .then((url) => {
+                updateFn(url);
+              })
+              .catch((error) => {
+                updateFn(null);
+              }),
           );
         }
       } else {
-        updateFn(null); 
+        updateFn(null);
       }
     };
 
-    addUrlPromise(post.image, (url) => { enrichedPost.image = url; });
-    addUrlPromise(post.video, (url) => { enrichedPost.video = url; });
-    addUrlPromise(post.video_thumbnail, (url) => { enrichedPost.video_thumbnail = url; });
+    addUrlPromise(post.image, (url) => {
+      enrichedPost.image = url;
+    });
+    addUrlPromise(post.video, (url) => {
+      enrichedPost.video = url;
+    });
+    addUrlPromise(post.video_thumbnail, (url) => {
+      enrichedPost.video_thumbnail = url;
+    });
 
     if (post.user) {
       addUrlPromise(post.user.avatar, (url) => {
@@ -300,23 +402,33 @@ export class PostService {
         if (enrichedPost.user) enrichedPost.user.background = url;
       });
     } else {
-      if(enrichedPost.user) {
+      if (enrichedPost.user) {
         enrichedPost.user.avatar = null;
         enrichedPost.user.background = null;
       }
     }
 
-     if (post.repostOrigin && enrichedPost.repostOrigin) { 
+    if (post.repostOrigin && enrichedPost.repostOrigin) {
       const origin = post.repostOrigin;
-      const enrichedOrigin = enrichedPost.repostOrigin; 
+      const enrichedOrigin = enrichedPost.repostOrigin;
 
-      addUrlPromise(origin.image, (url) => { enrichedOrigin.image = url; });
-      addUrlPromise(origin.video, (url) => { enrichedOrigin.video = url; });
-      addUrlPromise(origin.video_thumbnail, (url) => { enrichedOrigin.video_thumbnail = url; });
+      addUrlPromise(origin.image, (url) => {
+        enrichedOrigin.image = url;
+      });
+      addUrlPromise(origin.video, (url) => {
+        enrichedOrigin.video = url;
+      });
+      addUrlPromise(origin.video_thumbnail, (url) => {
+        enrichedOrigin.video_thumbnail = url;
+      });
 
-      if (origin.user && enrichedOrigin.user) { 
-        addUrlPromise(origin.user.avatar, (url) => { enrichedOrigin.user.avatar = url; });
-        addUrlPromise(origin.user.background, (url) => { enrichedOrigin.user.background = url; });
+      if (origin.user && enrichedOrigin.user) {
+        addUrlPromise(origin.user.avatar, (url) => {
+          enrichedOrigin.user.avatar = url;
+        });
+        addUrlPromise(origin.user.background, (url) => {
+          enrichedOrigin.user.background = url;
+        });
       } else {
         if (enrichedOrigin.user) {
           enrichedOrigin.user.avatar = null;
@@ -324,10 +436,10 @@ export class PostService {
         }
       }
     } else {
-      enrichedPost.repostOrigin = null; 
+      enrichedPost.repostOrigin = null;
     }
 
     const results = await Promise.allSettled(enrichmentPromises);
-    return enrichedPost; 
+    return enrichedPost;
   }
 }

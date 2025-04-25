@@ -24,7 +24,9 @@ const allowedMimeTypes = [
 
 const checkValidMineType = (mimeType: string): void => {
   if (!allowedMimeTypes.includes(mimeType.toLowerCase())) {
-    throw new BadRequestException(`Invalid file type: ${mimeType}. Allowed types: ${allowedMimeTypes.join(', ')}`);
+    throw new BadRequestException(
+      `Invalid file type: ${mimeType}. Allowed types: ${allowedMimeTypes.join(', ')}`,
+    );
   }
 };
 
@@ -45,7 +47,9 @@ export class MinioClientService implements OnModuleInit {
         secretKey: env.minio.secretKey,
       });
     } catch (error) {
-      throw new InternalServerErrorException('Failed to initialize Minio Client configuration.');
+      throw new InternalServerErrorException(
+        'Failed to initialize Minio Client configuration.',
+      );
     }
   }
 
@@ -57,7 +61,9 @@ export class MinioClientService implements OnModuleInit {
     try {
       return await this.minioClient.getObject(this.baseBucket, objectName);
     } catch (error) {
-      throw new InternalServerErrorException(`Failed to fetch object stream for: ${objectName}`);
+      throw new InternalServerErrorException(
+        `Failed to fetch object stream for: ${objectName}`,
+      );
     }
   }
 
@@ -65,7 +71,7 @@ export class MinioClientService implements OnModuleInit {
     objectName: string,
     streamOrPath: Readable | string,
     size?: number,
-   ): Promise<void> {
+  ): Promise<void> {
     const contentType = mime.lookup(objectName) || 'application/octet-stream';
     let objectSize = size;
     let streamToUpload: Readable;
@@ -81,36 +87,48 @@ export class MinioClientService implements OnModuleInit {
         }
         streamToUpload = fs.createReadStream(streamOrPath);
 
-        streamToUpload.on('error', (streamReadError) => {
-        });
-
+        streamToUpload.on('error', (streamReadError) => {});
       } catch (statError: any) {
-          throw new InternalServerErrorException(`Không thể xử lý file nguồn: ${objectName}`, { cause: statError });
+        throw new InternalServerErrorException(
+          `Không thể xử lý file nguồn: ${objectName}`,
+          { cause: statError },
+        );
       }
     } else {
       streamToUpload = streamOrPath;
       if (objectSize === undefined) {
-        objectSize = -1; 
+        objectSize = -1;
       }
     }
-    
+
     try {
-      if (!this.minioClient || typeof this.minioClient.putObject !== 'function') {
+      if (
+        !this.minioClient ||
+        typeof this.minioClient.putObject !== 'function'
+      ) {
         throw new Error('MinIO client không hợp lệ hoặc chưa được khởi tạo.');
       }
 
-      await this.minioClient.putObject(this.baseBucket, objectName, streamToUpload, objectSize, {
-        'Content-Type': contentType,
-      });
-
-
+      await this.minioClient.putObject(
+        this.baseBucket,
+        objectName,
+        streamToUpload,
+        objectSize,
+        {
+          'Content-Type': contentType,
+        },
+      );
     } catch (error: any) {
       throw new InternalServerErrorException(
         `Failed to upload object to MinIO: ${objectName}. Reason: ${error.message}`,
-        { cause: error } 
+        { cause: error },
       );
     } finally {
-      if (typeof streamOrPath === 'string' && streamToUpload && typeof streamToUpload.destroy === 'function') {
+      if (
+        typeof streamOrPath === 'string' &&
+        streamToUpload &&
+        typeof streamToUpload.destroy === 'function'
+      ) {
         streamToUpload.destroy();
       }
     }
@@ -119,10 +137,10 @@ export class MinioClientService implements OnModuleInit {
   async generatePresignedUploadUrl(
     originalFilename: string,
     contentType: string,
-    prefix: string = '', 
-    expiry: number = 5 * 60, 
+    prefix: string = '',
+    expiry: number = 5 * 60,
   ): Promise<{ presignedUrl: string; objectName: string }> {
-    checkValidMineType(contentType); 
+    checkValidMineType(contentType);
     try {
       const fileExtension = path.extname(originalFilename);
       const uniqueObjectName = `${prefix}${uuidv4()}${fileExtension}`;
@@ -141,18 +159,18 @@ export class MinioClientService implements OnModuleInit {
 
   async generatePresignedDownloadUrl(
     objectName: string,
-    expiry: number = 60 * 60 
+    expiry: number = 60 * 60,
   ): Promise<string | null> {
     if (!objectName) {
-      return null; 
+      return null;
     }
     try {
       const url = await this.minioClient.presignedGetObject(
         this.baseBucket,
         objectName,
-        expiry
+        expiry,
       );
-      
+
       return url;
     } catch (error) {
       return null;
@@ -164,7 +182,7 @@ export class MinioClientService implements OnModuleInit {
       return;
     }
 
-    const key = objectName; 
+    const key = objectName;
 
     try {
       await this.minioClient.removeObject(this.baseBucket, key);
@@ -175,19 +193,21 @@ export class MinioClientService implements OnModuleInit {
 
   async deleteFolder(prefix: string): Promise<void> {
     const objectsList: string[] = [];
-  
+
     const stream = this.minioClient.listObjects(this.baseBucket, prefix, true);
-  
+
     for await (const obj of stream) {
       objectsList.push(obj.name);
     }
-  
+
     if (objectsList.length === 0) return;
-  
+
     try {
       await this.minioClient.removeObjects(this.baseBucket, objectsList);
     } catch (error) {
-      throw new InternalServerErrorException(`Failed to delete folder: ${prefix}`);
+      throw new InternalServerErrorException(
+        `Failed to delete folder: ${prefix}`,
+      );
     }
   }
 
@@ -195,10 +215,15 @@ export class MinioClientService implements OnModuleInit {
     try {
       const exists = await this.minioClient.bucketExists(this.baseBucket);
       if (!exists) {
-        await this.minioClient.makeBucket(this.baseBucket, env.minio.region || 'asia-southeast1');
+        await this.minioClient.makeBucket(
+          this.baseBucket,
+          env.minio.region || 'asia-southeast1',
+        );
       }
     } catch (error) {
-      throw new InternalServerErrorException(`Failed to ensure MinIO bucket "${this.baseBucket}" exists.`);
+      throw new InternalServerErrorException(
+        `Failed to ensure MinIO bucket "${this.baseBucket}" exists.`,
+      );
     }
   }
 }

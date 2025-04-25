@@ -1,56 +1,94 @@
-import { Process, Processor, OnQueueFailed, OnQueueCompleted } from '@nestjs/bull';
+import {
+  Process,
+  Processor,
+  OnQueueFailed,
+  OnQueueCompleted,
+} from '@nestjs/bull';
 import { Job } from 'bullmq';
 import { ConvertFileService } from './convert-file.service';
 import { PostService } from '../post/post.service';
 import { Status } from 'src/utils/enums/enum';
 import { MinioClientService } from './minio-client.service';
+import { CommentService } from '../comment/comment.service';
+import { Logger } from '@nestjs/common';
 
 interface VideoConversionJobData {
-    category: string;
-    post_id: number;
-    user_id: number;
-    objectName: string; 
+  prefix: string;
+  id: number;
+  objectName: string;
 }
 
 @Processor('video-conversion')
 export class VideoProcessor {
-    constructor(
-        private readonly convertFileService: ConvertFileService,
-        private readonly postService: PostService,
-        private readonly minio: MinioClientService,
-    ) {}
+  private readonly logger = new Logger(VideoProcessor.name);
+  constructor(
+    private readonly convertFileService: ConvertFileService,
+    private readonly postService: PostService,
+    private readonly commentService: CommentService,
+    private readonly minio: MinioClientService,
+  ) {}
 
-    @Process('convert-hls')
-    async handleVideoConversion(job: Job<VideoConversionJobData>): Promise<void> {
-        const { category, post_id, user_id, objectName } = job.data;
-        const jobId = job.id; 
+  @Process('post-convert-hls')
+  async handlePostVideoConversion(
+    job: Job<VideoConversionJobData>,
+  ): Promise<void> {
+    const { prefix, id, objectName } = job.data;
+    this.logger.log(
+      `Starting post video conversion job ${job.id} for post ${id}, object: ${objectName}`,
+    );
+    try {
+      await this.convertFileService.convertMp4ToHls(prefix, objectName);
 
-        try {
-            await this.convertFileService.convertMp4ToHls(
-                category,
-                user_id,
-                post_id,
-                objectName,
-            );
-
-        await this.postService.setStatus(post_id, Status.done);
-
-        } catch (error: any) {
-            throw error;
-        }
+      await this.postService.setStatus(id, Status.done);
+    } catch (error: any) {
+      throw error;
     }
+  }
 
-    @OnQueueCompleted()
-    async onCompleted(job: Job<VideoConversionJobData>) {
-        const { objectName } = job.data;
-        await this.minio.deleteFile(objectName)
-    }
+  @Process('comment-convert-hls')
+  async handleCommentVideoConversion(
+    job: Job<VideoConversionJobData>,
+  ): Promise<void> {
+    const { prefix, id, objectName } = job.data;
 
-    @OnQueueFailed()
-    async onError(job: Job<VideoConversionJobData>, error: Error) {
-        const { category, post_id, user_id } = job.data;
-        await this.postService.setStatus(post_id, Status.failed);
-        const targetObjectName = `posts/user_${user_id}/hlses/post_${post_id}`;
-        await this.minio.deleteFolder(targetObjectName);
+    try {
+      await this.convertFileService.convertMp4ToHls(prefix, objectName);
+      await this.commentService.setStatus(id, Status.done);
+      this.logger.log(
+        `Finished post video conversion job ${job.id} successfully.`,
+      );
+    } catch (error: any) {
+      this.logger.error(
+        `Job ${job.id} (post ${id}) failed during post-convert-hls process: ${error?.message}`,
+        error?.stack,
+      );
+      throw error;
     }
+  }
+
+  @OnQueueCompleted()
+  async onCompleted(job: Job<VideoConversionJobData>) {
+    const { objectName } = job.data;
+    this.logger.log(
+      `Job ${job.id} completed. Deleting original object: ${objectName}`,
+    );
+    try {
+      await this.minio.deleteFile(objectName);
+      this.logger.log(`Successfully deleted original object: ${objectName}`);
+    } catch (deleteError: any) {
+      this.logger.error(
+        `Failed to delete original object ${objectName} after job ${job.id} completed: ${deleteError.message}`,
+        deleteError.stack,
+      );
+    }
+  }
+
+  @OnQueueFailed()
+  async onError(job: Job<VideoConversionJobData>, error: Error) {
+    const { prefix, id } = job.data;
+    if (prefix.startsWith('posts/'))
+      await this.postService.setStatus(id, Status.failed);
+    else await this.commentService.setStatus(id, Status.failed);
+    await this.minio.deleteFolder(prefix);
+  }
 }

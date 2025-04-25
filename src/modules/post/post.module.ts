@@ -10,23 +10,20 @@ import { FollowModule } from '../follow/follow.module';
 import { NotificationModule } from '../notification/notification.module';
 import { ProfileModule } from '../profile/profile.module';
 import { Like } from '../like/entity/like.entity';
-import { VideoProcessor } from '../minio-client/video.processor';
-import { BullModule } from '@nestjs/bull';
+import { CommentModule } from '../comment/comment.module';
 
 @Module({
   imports: [
-    BullModule.registerQueue({
-      name: 'video-conversion', 
-    }),
     TypeOrmModule.forFeature([Post, Like]),
     forwardRef(() => MinioClientModule),
     RedisCacheModule,
     FollowModule,
     NotificationModule,
     forwardRef(() => ProfileModule),
+    forwardRef(() => CommentModule),
   ],
   controllers: [PostController],
-  providers: [PostService, PostUtil, VideoProcessor],
-  exports: [PostService, PostUtil]
+  providers: [PostService, PostUtil],
+  exports: [PostService, PostUtil],
 })
 export class PostModule {}

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CommentController } from './comment.controller';
 import { CommentService } from './comment.service';
@@ -17,14 +17,14 @@ import { ProfileModule } from '../profile/profile.module';
   imports: [
     TypeOrmModule.forFeature([Comment, Post]),
     PassportModule,
-    PostModule,
+    forwardRef(() => PostModule),
     RedisCacheModule,
-    MinioClientModule,
+    forwardRef(() => MinioClientModule),
     NotificationModule,
     ProfileModule,
   ],
   controllers: [CommentController],
   providers: [CommentService, JwtStrategy, CommentUtil],
-  exports: [CommentService]
+  exports: [CommentService],
 })
 export class CommentModule {}

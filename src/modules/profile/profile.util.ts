@@ -34,6 +34,7 @@ export class ProfileUtil {
           is_suspended: true,
           suspended_until: true,
           suspend_reason: true,
+          is_verified: true,
         },
       },
     });

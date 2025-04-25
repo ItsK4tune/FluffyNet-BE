@@ -398,7 +398,7 @@ export class AdminAuthenService {
     role: string,
     reason: string,
   ): Promise<boolean> {
-    const key = `${RedisEnum.ban}:${user_id}`;
+    const key = `${RedisEnum.ban}`;
     const cache = await this.redis.sgetall(key);
 
     if (cache.includes(user_id.toString())) return false;
@@ -412,13 +412,13 @@ export class AdminAuthenService {
     user.is_banned = true;
     user.ban_reason = reason;
     await this.accountUtil.save(user);
-    await this.redis.sadd(RedisEnum.ban, user_id.toString());
+    await this.redis.sadd(key, user_id.toString());
 
     return true;
   }
 
   async unbanUser(user_id: number, role: string): Promise<boolean> {
-    const key = `${RedisEnum.ban}:${user_id}`;
+    const key = `${RedisEnum.ban}`;
     const cache = await this.redis.sgetall(key);
 
     if (!cache.includes(user_id.toString())) return false;
@@ -432,7 +432,7 @@ export class AdminAuthenService {
     user.is_banned = false;
     user.ban_reason = null;
     await this.accountUtil.save(user);
-    await this.redis.srem(RedisEnum.ban, user_id.toString());
+    await this.redis.srem(key, user_id.toString());
     return true;
   }
 
@@ -442,7 +442,7 @@ export class AdminAuthenService {
     till: Date,
     reason: string,
   ): Promise<boolean> {
-    const key = `${RedisEnum.suspend}:${user_id}`;
+    const key = `${RedisEnum.suspend}`;
     const cache = await this.redis.sgetall(key);
 
     if (cache.includes(user_id.toString())) return false;
@@ -457,17 +457,20 @@ export class AdminAuthenService {
     user.suspend_reason = reason;
     user.suspended_until = till;
     await this.accountUtil.save(user);
+    const tillDate = new Date(till);
     await this.redis.sadd(
-      RedisEnum.suspend,
+      key,
       user_id.toString(),
-      Math.floor((till.getTime() - Date.now()) / 1000),
+      Math.floor((tillDate.getTime() - Date.now()) / 1000),
     );
     return true;
   }
 
   async unsuspendUser(user_id: number, role: string): Promise<boolean> {
-    const key = `${RedisEnum.suspend}:${user_id}`;
+    const key = `${RedisEnum.suspend}`;
     const cache = await this.redis.sgetall(key);
+
+    console.log(cache);
 
     if (!cache.includes(user_id.toString())) return false;
 
@@ -481,7 +484,7 @@ export class AdminAuthenService {
     user.suspend_reason = null;
     user.suspended_until = null;
     await this.accountUtil.save(user);
-    await this.redis.srem(RedisEnum.suspend, user_id.toString());
+    await this.redis.srem(key, user_id.toString());
     return true;
   }
 

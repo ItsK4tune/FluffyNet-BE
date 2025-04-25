@@ -9,10 +9,12 @@ import {
   OneToMany,
   JoinColumn,
   Index,
+  RelationCount,
 } from 'typeorm';
 import { Profile } from 'src/modules/profile/entities/profile.entity';
 import { Like } from 'src/modules/like/entity/like.entity';
 import { Post } from 'src/modules/post/entities/post.entity';
+import { Status } from 'src/utils/enums/enum';
 
 @Entity('comment')
 export class Comment {
@@ -38,17 +40,28 @@ export class Comment {
   @Column({ nullable: true })
   video?: string;
 
+  @Column({ nullable: true })
+  video_thumbnail?: string;
+
+  @Column({ default: Status.processing })
+  video_status: string;
+
   @CreateDateColumn()
-  createdAt: Date;
+  created_at: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updated_at: Date;
 
-  @ManyToOne(() => Profile, (profile) => profile.user_id, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Profile, (profile) => profile.user_id, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'user_id' })
   profile: Profile;
 
-  @ManyToOne(() => Comment, (comment) => comment.replies, { nullable: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Comment, (comment) => comment.replies, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'parent_id' })
   parentComment?: Comment;
 
@@ -56,8 +69,11 @@ export class Comment {
   @JoinColumn({ name: 'post_id' })
   post: Post;
 
-  @OneToMany(() => Like, (like) => like.comment_id)
+  @OneToMany(() => Like, (like) => like.comment)
   likes: Like[];
+
+  @RelationCount((comment: Comment) => comment.likes)
+  like_count: number;
 
   @OneToMany(() => Comment, (comment) => comment.parentComment)
   replies: Comment[];
