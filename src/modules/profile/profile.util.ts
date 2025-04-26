@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Profile } from 'src/modules/profile/entities/profile.entity';
+import { ILike } from 'typeorm';
 
 @Injectable()
 export class ProfileUtil {
@@ -54,4 +55,17 @@ export class ProfileUtil {
       .limit(20)
       .getMany();
   }
+  async searchProfilesByRealName(keyword: string): Promise<Profile[]> {
+    return await this.repo.find({
+      where: { realname: ILike(`%${keyword}%`) },
+      select: {
+        user_id: true,
+        realname: true,
+        avatar: true,
+        background: true,
+      },
+      take: 10,
+    });
+  }
+  
 }

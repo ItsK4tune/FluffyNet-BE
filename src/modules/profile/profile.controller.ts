@@ -169,4 +169,19 @@ export class ProfileController {
       throw new InternalServerErrorException('Could not generate profile image upload URL.');
     }
   }
+  @ApiOperation({
+    summary: 'Search user profiles by real name',
+    description: 'Search user profiles by real name using a keyword.',
+  })
+  @ApiResponse({ status: 200, description: 'Profiles matching real name.' })
+  @ApiResponse({ status: 400, description: 'Keyword is required.' })
+  @Get('search')
+  async searchProfiles(@Query('keyword') keyword: string) {
+    if (!keyword || keyword.trim() === '') {
+      throw new BadRequestException('Keyword is required.');
+    }
+  
+    const profiles = await this.profileService.searchProfilesByRealName(keyword);
+    return { profiles };
+  }
 }

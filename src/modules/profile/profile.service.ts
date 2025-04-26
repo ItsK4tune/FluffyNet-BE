@@ -215,4 +215,7 @@ export class ProfileService {
     }
     return enriched;
   }
+  async searchProfilesByRealName(keyword: string) {
+    return await this.profileUtil.searchProfilesByRealName(keyword);
+  }
 }
