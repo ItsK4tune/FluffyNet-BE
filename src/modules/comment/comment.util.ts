@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Comment } from './entities/comment.entity';
 import { In, IsNull, Repository, UpdateResult } from 'typeorm';
+import { Like } from '../like/entity/like.entity';
 
 interface CreateCommentData {
   body?: string;
@@ -18,6 +19,7 @@ interface UpdateCommentData {
 export class CommentUtil {
   constructor(
     @InjectRepository(Comment) private readonly repo: Repository<Comment>,
+    @InjectRepository(Like) private readonly likeRepo: Repository<Like>,
   ) {}
 
   async getRootCommentsByPost(
@@ -136,16 +138,64 @@ export class CommentUtil {
     return await this.repo.save(comment);
   }
 
-  async deleteComment(commentId: number): Promise<boolean> {
-    const result = await this.repo.delete({ comment_id: commentId });
-    return result.affected > 0;
+  async deleteComment(comment_id: number, post_id: number): Promise<number> {
+    const status = await this.repo.delete({ comment_id: comment_id });
+    if (status.affected === 0) {
+      return -1;
+    }
+    const remainingComments = await this.repo.count({
+      where: { post_id },
+    });
+    return remainingComments;
   }
 
-  async getCommentsByPostIdWithRelations(post_id: number): Promise<Comment[]> {
-    return this.repo.find({
+  async getCommentsByPostIdWithRelations(
+    user_id: number,
+    post_id: number,
+  ): Promise<Comment[]> {
+    const comments = await this.repo.find({
       where: { post_id },
       order: { created_at: 'ASC' },
       relations: ['profile'],
+      select: {
+        comment_id: true,
+        user_id: true,
+        post_id: true,
+        parent_id: true,
+        body: true,
+        image: true,
+        video: true,
+        video_thumbnail: true,
+        video_status: true,
+        created_at: true,
+        updated_at: true,
+        profile: {
+          nickname: true,
+          avatar: true,
+          user: {
+            is_banned: true,
+            is_suspended: true,
+            is_verified: true,
+          },
+        },
+      },
     });
+
+    const commentIds = comments.map((comment) => comment.comment_id);
+
+    const likedPosts = await this.likeRepo.find({
+      where: {
+        user_id: user_id,
+        comment_id: In(commentIds),
+      },
+      select: ['comment_id'],
+    });
+
+    const likedCommentIds = new Set(likedPosts.map((lp) => lp.comment_id));
+
+    return comments.map((comment) => ({
+      ...comment,
+      liked: likedCommentIds.has(comment.comment_id),
+    }));
   }
 }

@@ -12,16 +12,19 @@ import { RedisCacheModule } from '../redis-cache/redis-cache.module';
 import { MinioClientModule } from '../minio-client/minio-client.module';
 import { NotificationModule } from '../notification/notification.module';
 import { ProfileModule } from '../profile/profile.module';
+import { LikeModule } from '../like/like.module';
+import { Like } from '../like/entity/like.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Comment, Post]),
+    TypeOrmModule.forFeature([Comment, Post, Like]),
     PassportModule,
     forwardRef(() => PostModule),
     RedisCacheModule,
     forwardRef(() => MinioClientModule),
     NotificationModule,
     ProfileModule,
+    forwardRef(() => LikeModule),
   ],
   controllers: [CommentController],
   providers: [CommentService, JwtStrategy, CommentUtil],

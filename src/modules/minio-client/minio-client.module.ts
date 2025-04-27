@@ -6,6 +6,7 @@ import { CommentModule } from '../comment/comment.module';
 import { QueueService } from './queue.service';
 import { BullModule } from '@nestjs/bull';
 import { VideoProcessor } from './video.processor';
+import { RedisCacheModule } from '../redis-cache/redis-cache.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { VideoProcessor } from './video.processor';
     }),
     forwardRef(() => PostModule),
     forwardRef(() => CommentModule),
+    RedisCacheModule,
   ],
   providers: [
     MinioClientService,

@@ -7,15 +7,17 @@ import {
 import { Job } from 'bullmq';
 import { ConvertFileService } from './convert-file.service';
 import { PostService } from '../post/post.service';
-import { Status } from 'src/utils/enums/enum';
+import { RedisEnum, Status } from 'src/utils/enums/enum';
 import { MinioClientService } from './minio-client.service';
 import { CommentService } from '../comment/comment.service';
 import { Logger } from '@nestjs/common';
+import { RedisCacheService } from '../redis-cache/redis-cache.service';
 
 interface VideoConversionJobData {
   prefix: string;
   id: number;
   objectName: string;
+  post_id?: number | null;
 }
 
 @Processor('video-conversion')
@@ -26,6 +28,7 @@ export class VideoProcessor {
     private readonly postService: PostService,
     private readonly commentService: CommentService,
     private readonly minio: MinioClientService,
+    private readonly redis: RedisCacheService,
   ) {}
 
   @Process('post-convert-hls')
@@ -68,12 +71,16 @@ export class VideoProcessor {
 
   @OnQueueCompleted()
   async onCompleted(job: Job<VideoConversionJobData>) {
-    const { objectName } = job.data;
+    const { prefix, objectName, id, post_id } = job.data;
     this.logger.log(
       `Job ${job.id} completed. Deleting original object: ${objectName}`,
     );
     try {
       await this.minio.deleteFile(objectName);
+      if (prefix.startsWith('comments/')) {
+        this.logger.log(`Deleting comment tree cache for post ${post_id}`);
+        await this.redis.del(`${RedisEnum.commentTree}:${post_id}`);
+      }
       this.logger.log(`Successfully deleted original object: ${objectName}`);
     } catch (deleteError: any) {
       this.logger.error(
@@ -88,7 +95,10 @@ export class VideoProcessor {
     const { prefix, id } = job.data;
     if (prefix.startsWith('posts/'))
       await this.postService.setStatus(id, Status.failed);
-    else await this.commentService.setStatus(id, Status.failed);
+    else {
+      await this.commentService.setStatus(id, Status.failed);
+      await this.redis.del(`${RedisEnum.commentTree}:${id}`);
+    }
     await this.minio.deleteFolder(prefix);
   }
 }

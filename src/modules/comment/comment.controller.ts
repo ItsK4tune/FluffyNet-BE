@@ -11,8 +11,8 @@ import {
   ParseIntPipe,
   InternalServerErrorException,
   BadRequestException,
-  Res,
   Query,
+  Req,
 } from '@nestjs/common';
 import { CommentService } from './comment.service';
 import { CommentDto } from './dtos/comment.dto';
@@ -63,9 +63,14 @@ export class CommentController {
   })
   @Get('/post/:post_id')
   async getCommentsByPost(
+    @Req() req,
     @Param('post_id', ParseIntPipe) post_id: number,
   ): Promise<{ comments: any[] }> {
-    const commentTree = await this.commentService.getCommentsByPost(post_id);
+    const user_id = req.user.user_id;
+    const commentTree = await this.commentService.getCommentsByPost(
+      user_id,
+      post_id,
+    );
     return { comments: commentTree };
   }
 
@@ -200,6 +205,7 @@ export class CommentController {
           `comments/post_${post_id}/user_${user_id}/hlses/comment_${comment_id}/`,
           comment_id,
           objectName,
+          post_id,
         );
       }
 
@@ -262,7 +268,7 @@ export class CommentController {
 
   @ApiOperation({ summary: `Delete a comment` })
   @ApiParam({ name: 'comment_id', description: 'ID of the comment to delete' })
-  @ApiResponse({ status: 204, description: 'Comment deleted successfully.' })
+  @ApiResponse({ status: 200, description: 'Comment deleted successfully.' })
   @ApiResponse({
     status: 403,
     description: 'Forbidden (not the comment owner).',
@@ -272,19 +278,21 @@ export class CommentController {
   async deleteComment(
     @Request() req,
     @Param('comment_id', ParseIntPipe) comment_id: number,
-    @Res() res,
-  ): Promise<void> {
+  ): Promise<{ affected: number }> {
     const userId = req.user.user_id;
     const role = req.user.role;
     try {
-      const success = await this.commentService.deleteComment(
+      const affectedNumber = await this.commentService.deleteComment(
         userId,
         comment_id,
         role,
       );
-      if (!success)
-        throw new InternalServerErrorException('Failed to delete comment.');
-      res.status(204).send();
+      if (affectedNumber === -1) {
+        throw new InternalServerErrorException(
+          'Failed to delete comment in Controller.',
+        );
+      }
+      return { affected: affectedNumber };
     } catch (error) {
       throw error;
     }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module, Post } from '@nestjs/common';
 import { LikeController } from './like.controller';
 import { LikeService } from './like.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -25,8 +25,8 @@ import { CommentModule } from '../comment/comment.module';
     RedisCacheModule,
     NotificationModule,
     ProfileModule,
-    CommentModule,
-    PostModule,
+    forwardRef(() => CommentModule),
+    forwardRef(() => PostModule),
   ],
   controllers: [LikeController],
   providers: [LikeService, LikeUtil],

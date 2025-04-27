@@ -28,6 +28,7 @@ export class QueueService {
     prefix: string,
     id: number,
     objectName: string,
+    post_id?: number | null,
   ): Promise<void> {
     await this.videoQueue.add(
       'comment-convert-hls',
@@ -35,6 +36,7 @@ export class QueueService {
         prefix,
         id,
         objectName,
+        post_id,
       },
       { jobId: `Comment ${Date.now()}` },
     );

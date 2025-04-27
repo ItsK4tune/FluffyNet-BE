@@ -45,10 +45,4 @@ export class Like {
   })
   @JoinColumn({ name: 'comment_id' })
   comment: Comment;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

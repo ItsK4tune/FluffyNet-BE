@@ -3,7 +3,6 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Comment } from './entities/comment.entity';
@@ -34,8 +33,6 @@ interface CommentWithChildren extends Comment {
 
 @Injectable()
 export class CommentService {
-  private readonly logger = new Logger(CommentService.name);
-
   constructor(
     private readonly commentUtil: CommentUtil,
     private readonly redisCacheService: RedisCacheService,
@@ -51,7 +48,10 @@ export class CommentService {
     );
   }
 
-  async getCommentsByPost(post_id: number): Promise<CommentWithChildren[]> {
+  async getCommentsByPost(
+    user_id: number,
+    post_id: number,
+  ): Promise<CommentWithChildren[]> {
     const cacheKey = `${RedisEnum.commentTree}:${post_id}`;
 
     try {
@@ -81,8 +81,10 @@ export class CommentService {
       );
     }
 
-    const allComments =
-      await this.commentUtil.getCommentsByPostIdWithRelations(post_id);
+    const allComments = await this.commentUtil.getCommentsByPostIdWithRelations(
+      user_id,
+      post_id,
+    );
 
     if (!allComments || allComments.length === 0) {
       return [];
@@ -99,21 +101,14 @@ export class CommentService {
 
     if (commentTree.length > 0) {
       try {
-        this.logger.debug(
-          `[getCommentsByPost] Attempting to set cache for key ${cacheKey}. Data size: ${commentTree.length}`,
-        );
         await this.redisCacheService.set(
           cacheKey,
           commentTree,
           convertToSeconds(env.redis.ttl),
         );
-        this.logger.debug(
-          `[getCommentsByPost] Successfully set cache for key ${cacheKey}.`,
-        );
       } catch (cacheSetError) {
-        this.logger.error(
-          `[getCommentsByPost] Failed to write to Redis cache for key ${cacheKey}. Error: ${cacheSetError.message}`,
-          cacheSetError.stack,
+        throw new InternalServerErrorException(
+          `[getCommentsByPost] Failed to set cache for key ${cacheKey}. Error: ${cacheSetError.message}`,
         );
       }
     }
@@ -142,12 +137,7 @@ export class CommentService {
       if (result.status === 'fulfilled') {
         enrichedTree.push(result.value);
       } else {
-        this.logger.error(
-          `[enrichCommentTree] Failed to enrich top-level node at index ${index}. Reason: ${result.reason?.message}`,
-          result.reason?.stack,
-        );
-        // Option: include the original node, or skip it
-        enrichedTree.push(tree[index]); // Include original if enrichment failed
+        enrichedTree.push(tree[index]);
       }
     });
     return enrichedTree;
@@ -160,20 +150,14 @@ export class CommentService {
     try {
       enrichedNode = await this.enrichCommentWithMediaUrls(node);
     } catch (enrichError) {
-      this.logger.error(
-        `[enrichNodeRecursively] Error enriching node (ID: ${node?.comment_id}). Error: ${enrichError.message}`,
-        enrichError.stack,
-      );
-      enrichedNode = { ...node }; // Return original node on error
+      enrichedNode = { ...node };
     }
 
-    // 2. Enrich children recursively, ONLY IF children is an array
     if (
       enrichedNode.children &&
       Array.isArray(enrichedNode.children) &&
       enrichedNode.children.length > 0
     ) {
-      // Use Promise.allSettled for robustness within recursion too
       const childResults = await Promise.allSettled(
         enrichedNode.children.map((child) => this.enrichNodeRecursively(child)),
       );
@@ -182,17 +166,11 @@ export class CommentService {
         if (result.status === 'fulfilled') {
           enrichedChildren.push(result.value);
         } else {
-          this.logger.error(
-            `[enrichNodeRecursively] Failed to enrich child node (Parent ID: ${enrichedNode.comment_id}) at index ${index}. Reason: ${result.reason?.message}`,
-            result.reason?.stack,
-          );
-          // Option: include original child, or skip
-          // enrichedChildren.push(enrichedNode.children[index]);
+          enrichedChildren.push(enrichedNode.children[index]);
         }
       });
       enrichedNode.children = enrichedChildren;
     } else {
-      // Ensure children is always an array, even if null/undefined/empty initially
       enrichedNode.children = [];
     }
 
@@ -263,12 +241,12 @@ export class CommentService {
 
   async updateComment(
     requestingUserId: number,
-    commentId: number,
+    comment_id: number,
     commentDto: CommentDto,
   ): Promise<boolean> {
-    const comment = await this.commentUtil.getCommentById(commentId);
+    const comment = await this.commentUtil.getCommentById(comment_id);
     if (!comment) {
-      throw new NotFoundException(`Comment with ID ${commentId} not found.`);
+      throw new NotFoundException(`Comment with ID ${comment_id} not found.`);
     }
     if (comment.user_id !== requestingUserId) {
       throw new ForbiddenException(
@@ -280,7 +258,7 @@ export class CommentService {
     }
 
     try {
-      const success = await this.commentUtil.updateCommentBody(commentId, {
+      const success = await this.commentUtil.updateCommentBody(comment_id, {
         body: commentDto.body,
       });
 
@@ -290,6 +268,7 @@ export class CommentService {
           .del(cacheKey)
           .catch((e) => console.error('Cache del error:', e));
       }
+
       return success;
     } catch (error) {
       throw new InternalServerErrorException('Failed to update comment.');
@@ -298,15 +277,15 @@ export class CommentService {
 
   async attachFileToComment(
     requestingUserId: number,
-    commentId: number,
+    comment_id: number,
     fileType: 'image' | 'video',
     objectName: string | null,
     thumbnail: string | null,
   ): Promise<boolean> {
-    const comment = await this.commentUtil.getCommentById(commentId);
+    const comment = await this.commentUtil.getCommentById(comment_id);
 
     if (!comment) {
-      throw new NotFoundException(`Comment with ID ${commentId} not found.`);
+      throw new NotFoundException(`Comment with ID ${comment_id} not found.`);
     }
     if (comment.user_id !== requestingUserId) {
       throw new ForbiddenException(
@@ -320,12 +299,12 @@ export class CommentService {
     try {
       if (fileType === 'image') {
         success = await this.commentUtil.updateCommentImage(
-          commentId,
+          comment_id,
           objectName,
         );
       } else {
         success = await this.commentUtil.updateCommentVideo(
-          commentId,
+          comment_id,
           objectName,
           thumbnail,
         );
@@ -364,13 +343,13 @@ export class CommentService {
 
   async deleteComment(
     requestingUserId: number,
-    commentId: number,
+    comment_id: number,
     role: string,
-  ): Promise<boolean> {
-    const comment = await this.commentUtil.getCommentById(commentId);
+  ): Promise<number> {
+    const comment = await this.commentUtil.getCommentById(comment_id);
 
     if (!comment) {
-      throw new NotFoundException(`Comment with ID ${commentId} not found.`);
+      throw new NotFoundException(`Comment with ID ${comment_id} not found.`);
     }
 
     if (
@@ -385,24 +364,31 @@ export class CommentService {
     const imageToDelete = comment.image;
     const videoToDelete = comment.video;
     const post_id = comment.post_id;
+    const target = `posts/user_${comment.user_id}/hlses/post_${post_id}`;
 
     try {
-      const success = await this.commentUtil.deleteComment(commentId);
+      const affectedNumber = await this.commentUtil.deleteComment(
+        comment_id,
+        post_id,
+      );
 
-      if (success) {
+      if (affectedNumber > -1) {
         const cacheKey = `${RedisEnum.commentTree}:${post_id}`;
         await this.redisCacheService.del(cacheKey);
 
-        if (imageToDelete) {
-          await this.minioClientService.deleteFile(imageToDelete);
-        }
-        if (videoToDelete) {
-          await this.minioClientService.deleteFile(videoToDelete);
-        }
+        const fileDeletes = [];
+        if (imageToDelete)
+          fileDeletes.push(this.minioClientService.deleteFile(imageToDelete));
+        if (videoToDelete)
+          fileDeletes.push(this.minioClientService.deleteFolder(target));
+
+        await Promise.all(fileDeletes);
       }
-      return success;
+      return affectedNumber;
     } catch (error) {
-      throw new InternalServerErrorException('Failed to delete comment.');
+      throw new InternalServerErrorException(
+        'Failed to delete comment in Service.',
+      );
     }
   }
 
