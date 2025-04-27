@@ -167,6 +167,13 @@ export class ProfileService {
     }
   }
 
+  async searchProfilesByRealName(keyword: string) {
+    const profiles = await this.profileUtil.searchProfilesByRealName(keyword);
+    return await Promise.all(
+      profiles.map((profile) => this.enrichProfileWithMediaUrls(profile)),
+    );
+  }
+
   private async enrichProfileWithMediaUrls(
     profile: Profile | null,
   ): Promise<Profile | null> {

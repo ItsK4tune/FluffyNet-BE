@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { Profile } from 'src/modules/profile/entities/profile.entity';
 
 @Injectable()
@@ -53,5 +53,22 @@ export class ProfileUtil {
       .orderBy('RAND()')
       .limit(20)
       .getMany();
+  }
+
+  async searchProfilesByRealName(keyword: string): Promise<Profile[]> {
+    return await this.repo.find({
+      where: [
+        { nickname: ILike(`%${keyword}%`) },
+        { realname: ILike(`%${keyword}%`) },
+      ],
+      select: {
+        user_id: true,
+        nickname: true,
+        realname: true,
+        avatar: true,
+        background: true,
+      },
+      take: 10,
+    });
   }
 }

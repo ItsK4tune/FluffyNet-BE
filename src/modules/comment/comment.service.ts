@@ -513,10 +513,15 @@ export class CommentService {
       }
     }
     if (comment.profile?.avatar) {
-      enrichedComment.profile.avatar =
-        await this.minioClientService.generatePresignedDownloadUrl(
-          comment.profile.avatar,
-        );
+      if (
+        comment.profile.avatar.startsWith('https://lh3.googleusercontent.com/')
+      ) {
+        enrichedComment.profile.avatar = comment.profile.avatar;
+      } else
+        enrichedComment.profile.avatar =
+          await this.minioClientService.generatePresignedDownloadUrl(
+            comment.profile.avatar,
+          );
     }
     if (comment.profile?.background) {
       enrichedComment.profile.background =

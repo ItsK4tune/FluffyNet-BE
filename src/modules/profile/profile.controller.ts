@@ -41,7 +41,7 @@ export class ProfileController {
     summary: `Get user's profile`,
     description: `Return user's profile.`,
   })
-  @ApiResponse({ status: 200, description: 'profile' }) 
+  @ApiResponse({ status: 200, description: 'profile' })
   @ApiResponse({ status: 404, description: 'Profile not found' })
   @ApiResponse({ status: 404, description: 'Cache error' })
   @Get(':user_id')
@@ -76,7 +76,10 @@ export class ProfileController {
   @ApiResponse({ status: 200, description: 'profile' })
   @ApiResponse({ status: 500, description: 'Failed to update profile data.' })
   @ApiResponse({ status: 404, description: 'Profile not found to edit.' })
-  @ApiResponse({ status: 403, description: 'You are not allowed to edit this profile.' })
+  @ApiResponse({
+    status: 403,
+    description: 'You are not allowed to edit this profile.',
+  })
   @Patch('edit-profile')
   async editProfile(
     @Request() req,
@@ -85,88 +88,150 @@ export class ProfileController {
   ) {
     const user: number = req.user.user_id;
     const role: string = req.user.role;
-    const profile = await this.profileService.editProfileData(user, target_id, role, body);
+    const profile = await this.profileService.editProfileData(
+      user,
+      target_id,
+      role,
+      body,
+    );
     return { profile: profile };
   }
 
   @ApiOperation({ summary: `Set user's avatar after successful upload` })
-  @ApiBody({ schema: { properties: { objectName: { type: 'string' } }, required: ['objectName'] }})
-  @ApiResponse({ status: 200, description: 'Avatar updated.', })
-  @ApiResponse({ status: 404, description: 'Profile not found.'})
-  @ApiResponse({ status: 400, description: 'Missing objectName.'})
-  @Post('update-avatar') 
+  @ApiBody({
+    schema: {
+      properties: { objectName: { type: 'string' } },
+      required: ['objectName'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Avatar updated.' })
+  @ApiResponse({ status: 404, description: 'Profile not found.' })
+  @ApiResponse({ status: 400, description: 'Missing objectName.' })
+  @Post('update-avatar')
   async setAvatar(
     @Query('target_id') target_id: number,
     @Request() req,
-    @Body('objectName') objectName: string | null 
-  )  {
+    @Body('objectName') objectName: string | null,
+  ) {
     const user_id = req.user.user_id;
     const role = req.user.role;
-    if (typeof objectName === 'undefined') { 
+    if (typeof objectName === 'undefined') {
       throw new BadRequestException('Missing objectName in request body.');
     }
     try {
-      const updatedProfile = await this.profileService.updateAvatar(user_id, target_id, role, objectName);
-      const message = objectName ? 'Avatar updated successfully.' : 'Avatar removed successfully.';
+      const updatedProfile = await this.profileService.updateAvatar(
+        user_id,
+        target_id,
+        role,
+        objectName,
+      );
+      const message = objectName
+        ? 'Avatar updated successfully.'
+        : 'Avatar removed successfully.';
       return { message, profile: updatedProfile };
     } catch (error) {
-      throw error; 
+      throw error;
     }
   }
 
   @ApiOperation({ summary: `Set user's background after successful upload` })
-  @ApiBody({ schema: { properties: { objectName: { type: 'string' } }, required: ['objectName'] }})
-  @ApiResponse({ status: 200, description: 'Background updated.', })
-  @ApiResponse({ status: 404, description: 'Profile not found.'})
-  @ApiResponse({ status: 400, description: 'Missing objectName.'})
-  @Post('update-background') 
+  @ApiBody({
+    schema: {
+      properties: { objectName: { type: 'string' } },
+      required: ['objectName'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Background updated.' })
+  @ApiResponse({ status: 404, description: 'Profile not found.' })
+  @ApiResponse({ status: 400, description: 'Missing objectName.' })
+  @Post('update-background')
   async setBackground(
     @Query('target_id', ParseIntPipe) target_id: number,
     @Request() req,
-    @Body('objectName') objectName: string | null 
-  )  {
+    @Body('objectName') objectName: string | null,
+  ) {
     const user_id = req.user.user_id;
     const role = req.user.role;
     console.log(role, user_id);
-    if (typeof objectName === 'undefined') { 
+    if (typeof objectName === 'undefined') {
       throw new BadRequestException('Missing objectName in request body.');
     }
     try {
-      const updatedProfile = await this.profileService.updateBackground(user_id, target_id, role, objectName);
-      const message = objectName ? 'Background updated successfully.' : 'Background removed successfully.';
+      const updatedProfile = await this.profileService.updateBackground(
+        user_id,
+        target_id,
+        role,
+        objectName,
+      );
+      const message = objectName
+        ? 'Background updated successfully.'
+        : 'Background removed successfully.';
       return { message, profile: updatedProfile };
     } catch (error) {
-      throw error; 
+      throw error;
     }
   }
 
-  @ApiOperation({ summary: 'Get presigned URL for uploading avatar or background' })
-  @ApiResponse({ status: 201, description: 'Presigned URL generated.', schema: { properties: { presignedUrl: { type: 'string' }, objectName: { type: 'string' } } } })
-  @ApiResponse({ status: 400, description: 'Invalid input (e.g., invalid mime type or imageType).'})
+  @ApiOperation({
+    summary: 'Get presigned URL for uploading avatar or background',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Presigned URL generated.',
+    schema: {
+      properties: {
+        presignedUrl: { type: 'string' },
+        objectName: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input (e.g., invalid mime type or imageType).',
+  })
   @Post('generate-upload-url')
   async getPresignedUploadUrl(
     @Request() req,
-    @Body() uploadPresignDto: ProfileUploadPresignDto
+    @Body() uploadPresignDto: ProfileUploadPresignDto,
   ): Promise<{ presignedUrl: string; objectName: string }> {
     const { filename, contentType, imageType } = uploadPresignDto;
     const userId = req.user.user_id;
 
-    const prefix = `profiles/user_${userId}/${imageType}s/`; 
+    const prefix = `profiles/user_${userId}/${imageType}s/`;
 
     try {
       const result = await this.minioClientService.generatePresignedUploadUrl(
         filename,
         contentType,
         prefix,
-        convertToSeconds(env.minio.time)
+        convertToSeconds(env.minio.time),
       );
       return result;
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      console.error("Error generating profile upload URL:", error);
-      throw new InternalServerErrorException('Could not generate profile image upload URL.');
+      console.error('Error generating profile upload URL:', error);
+      throw new InternalServerErrorException(
+        'Could not generate profile image upload URL.',
+      );
     }
+  }
+
+  @ApiOperation({
+    summary: 'Search user profiles by real name',
+    description: 'Search user profiles by real name using a keyword.',
+  })
+  @ApiResponse({ status: 200, description: 'Profiles matching real name.' })
+  @ApiResponse({ status: 400, description: 'Keyword is required.' })
+  @Post('search')
+  async searchProfiles(@Body('keyword') keyword: string) {
+    if (!keyword || keyword.trim() === '') {
+      throw new BadRequestException('Keyword is required.');
+    }
+
+    const profiles =
+      await this.profileService.searchProfilesByRealName(keyword);
+    return { profiles };
   }
 }

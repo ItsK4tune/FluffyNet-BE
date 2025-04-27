@@ -116,7 +116,7 @@ export class AuthenService {
     for (const storedToken of userRefreshTokens) {
       if (
         (await bcrypt.compare(currentRefreshToken, storedToken.token)) &&
-        storedToken.expiresAt > new Date()
+        storedToken.expires_at > new Date()
       ) {
         validStoredToken = storedToken;
         break;
@@ -128,7 +128,7 @@ export class AuthenService {
       throw new UnauthorizedException('Invalid refresh token.');
     }
 
-    validStoredToken.isRevoked = true;
+    validStoredToken.is_revoked = true;
     await this.refreshUtil.saveToken(validStoredToken);
 
     if (!validStoredToken.user) {
@@ -175,7 +175,7 @@ export class AuthenService {
     }
 
     if (tokenToRevoke) {
-      tokenToRevoke.isRevoked = true;
+      tokenToRevoke.is_revoked = true;
       await this.refreshUtil.saveToken(tokenToRevoke);
     }
   }

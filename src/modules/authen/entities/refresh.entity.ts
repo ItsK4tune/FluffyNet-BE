@@ -1,4 +1,11 @@
-import { Entity, Column, ManyToOne, CreateDateColumn, JoinColumn, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  JoinColumn,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Account } from './account.entity';
 
 @Entity('refresh_token')
@@ -9,17 +16,18 @@ export class RefreshToken {
   @Column({ type: 'text' })
   token: string;
 
-  @Column()
-  expiresAt: Date;
-
   @Column({ default: false })
-  isRevoked: boolean;
+  is_revoked: boolean;
 
   @CreateDateColumn()
-  createdAt: Date;
+  created_at: Date;
 
-  @ManyToOne(() => Account, account => account.refreshTokens, { onDelete: 'CASCADE' })
+  @Column()
+  expires_at: Date;
+
+  @ManyToOne(() => Account, (account) => account.refreshTokens, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'user_id' })
   user: Account;
 }
-

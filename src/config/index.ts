@@ -31,8 +31,6 @@ const envSchema = z.object({
   REDIS_URL: z.string(),
   REDIS_TTL: z.string().default('1h'),
 
-  MINIO_END_POINT: z.string().default('localhost'),
-  MINIO_PORT: z.coerce.number().default(9000),
   MINIO_ACCESS_KEY: z.string(),
   MINIO_SECRET_KEY: z.string(),
   MINIO_BUCKET: z.string().default('uploads'),
@@ -56,7 +54,7 @@ export const env = {
   port: envVars.PORT,
   dns: envVars.DNS,
   fe: envVars.FE_DNS,
-  cors:envVars.ALLOWED_ORIGINS,
+  cors: envVars.ALLOWED_ORIGINS,
   jwt: {
     secret: envVars.JWT_SECRET,
     time: envVars.JWT_TIME,
@@ -84,8 +82,6 @@ export const env = {
     ttl: envVars.REDIS_TTL,
   },
   minio: {
-    host: envVars.MINIO_END_POINT,
-    port: envVars.MINIO_PORT,
     accessKey: envVars.MINIO_ACCESS_KEY,
     secretKey: envVars.MINIO_SECRET_KEY,
     bucket: envVars.MINIO_BUCKET,
