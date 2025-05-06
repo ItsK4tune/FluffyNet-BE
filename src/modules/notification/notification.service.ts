@@ -21,4 +21,26 @@ export class NotificationService {
   async getUserNotifications(user_id: number) {
     return this.notificationModel.find({ user_id }).sort({ createdAt: -1 }).exec();
   }
+
+  async getUnreadNotifications(user_id: number) {
+    return this.notificationModel
+      .find({ user_id, opened: false })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  async markAsOpened(notificationId: string) {
+    return this.notificationModel.findByIdAndUpdate(
+      notificationId,
+      { opened: true },
+      { new: true },
+    );
+  }
+
+  async markAllAsOpened(user_id: number) {
+    return this.notificationModel.updateMany(
+      { user_id, opened: false },
+      { $set: { opened: true } },
+    );
+  }
 }

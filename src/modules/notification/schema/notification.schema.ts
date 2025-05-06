@@ -13,6 +13,9 @@ export class Notification {
 
   @Prop({ required: true })
   user_id: number;
+
+  @Prop({ default: false })
+  opened: boolean;
 }
 
 export const NotificationSchema = SchemaFactory.createForClass(Notification);
