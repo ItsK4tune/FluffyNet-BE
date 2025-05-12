@@ -62,7 +62,10 @@ export class FollowService {
 
       // Emit follow event
       this.logger.log(`User ${user_id} followed user ${target_id}`);
-      this.followEventsService.emitFollowEvent(user_id, target_id, true);
+      const isFollowing =
+        (await this.isFollowing(user_id, target_id)) &&
+        (await this.isFollowing(target_id, user_id));
+      this.followEventsService.emitFollowEvent(user_id, target_id, isFollowing);
     }
 
     if (operationSuccess && isNewFollow) {

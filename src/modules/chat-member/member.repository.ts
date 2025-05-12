@@ -1,7 +1,8 @@
 import { InjectRepository } from '@nestjs/typeorm';
-import { Injectable, Logger } from "@nestjs/common";
-import { Repository } from 'typeorm';
+import { Injectable, Logger } from '@nestjs/common';
+import { createQueryBuilder, Repository } from 'typeorm';
 import { Member } from './entities/member.entity';
+import { Profile } from '../profile/entities/profile.entity';
 
 @Injectable()
 export class MemberRepository {
@@ -25,6 +26,10 @@ export class MemberRepository {
   }
 
   async getMemberByIdwProfile(member_id: number) {
-    return this.repo.findOne({ where: { member_id }, relations: ['profile'] });
+    return this.repo
+      .createQueryBuilder('member')
+      .leftJoinAndSelect('member.user', 'user')
+      .where('member.member_id = :member_id', { member_id })
+      .getOne();
   }
 }

@@ -61,7 +61,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleJoinChats(roomIds: number[], userId: number) {
     const socket = this.connectedUsers.get(userId);
     for (const roomId of roomIds) {
-      this.logger.log(`Joining room ${roomId} for user ${userId}`);
       socket.join(`room-${roomId}`);
     }
   }
@@ -119,14 +118,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleSendMessage(messageDto: MessageResponseDto) {
-    this.logger.log('handleSendMessage', JSON.stringify(messageDto));
     this.server
       .to(`room-${messageDto.room_id}`)
       .emit('new-message', messageDto);
   }
 
   async handleUpdateMessage(messageDto: MessageResponseDto) {
-    this.logger.log('handleUpdateMessage', JSON.stringify(messageDto));
     this.server
       .to(`room-${messageDto.room_id}`)
       .emit('update-message', messageDto);

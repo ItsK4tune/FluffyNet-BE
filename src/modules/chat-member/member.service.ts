@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   HttpException,
   Injectable,
@@ -46,18 +47,24 @@ export class MemberService {
         throw new ForbiddenException('This user blocked this room');
 
       if (member.type === 'active')
-        throw new HttpException('Member already exists', 409);
+        throw new ConflictException('Member already exists');
 
       member.type = 'active';
       member = await this.memberRepository.save(member);
 
       await this.redisSet(member);
 
+      member = await this.memberRepository.getMemberByIdwProfile(
+        member.member_id,
+      );
+
       // Convert to DTO before calling gateway
       const memberDto = await MemberResponseDto.fromEntityWithProcessedAvatar(
         member,
         this.minioClientService,
       );
+
+      this.logger.log(JSON.stringify(memberDto));
       await this.chatGateway.handleJoinChat(memberDto);
       return memberDto;
     }
@@ -77,6 +84,7 @@ export class MemberService {
       member,
       this.minioClientService,
     );
+    this.logger.log(JSON.stringify(memberDto));
 
     await this.chatGateway.handleJoinChat(memberDto);
     return memberDto;

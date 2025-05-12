@@ -55,7 +55,6 @@ export class MessageService {
     updateMessageDto: UpdateMessageDto,
     userId: number,
   ) {
-    this.logger.log('123');
     const message = await this.canImpact(id, userId);
 
     if (updateMessageDto.body) message.body = updateMessageDto.body;
