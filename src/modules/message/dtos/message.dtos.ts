@@ -1,25 +1,24 @@
-import { IsInt, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsInt, IsOptional, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class GetMessagesDto {
-  @IsNumber()
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
   roomId: number;
 
   @IsOptional()
   @Type(() => Date)
-  lastMessageCreatedAt?: Date; // Cursor dựa vào timestamp
+  lastMessageCreatedAt?: string; // Cursor dựa vào timestamp
 
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  limit?: number = 20; // Số tin nhắn tối đa mỗi lần gọi API
+  limit?: number; // Số tin nhắn tối đa mỗi lần gọi API
 }
 
 export class CreateMessageDto {
-  @IsNumber()
-  roomId: number;
-
   @IsOptional()
   body?: string;
 

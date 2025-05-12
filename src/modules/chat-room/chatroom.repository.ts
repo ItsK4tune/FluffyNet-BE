@@ -32,7 +32,11 @@ export class ChatRoomRepository {
         'member.user_id = :user_id AND member.type = :type',
         { user_id, type },
       )
-      .leftJoinAndSelect('chat_room.members', 'members')
+      .leftJoinAndSelect(
+        'chat_room.members',
+        'members',
+        "members.type IN ('active', 'pending')",
+      )
       .leftJoinAndSelect('members.user', 'user')
       .getMany();
   }
@@ -41,18 +45,28 @@ export class ChatRoomRepository {
     return this.repo
       .createQueryBuilder('chat_room')
       .where('chat_room.type = :type', { type: 'direct' })
-      .leftJoin('chat_room.members', 'members')
-      .andWhere('members.user_id IN (:ids)', { ids: [user_id1, user_id2] })
-      .groupBy('chat_room.room_id')
-      .having('COUNT(DISTINCT members.user_id) = 2')
+      .innerJoinAndSelect('chat_room.members', 'members')
+      .andWhere((qb) => {
+        const subQuery = qb
+          .subQuery()
+          .select('m.room_id')
+          .from('member', 'm')
+          .where('m.user_id IN (:...ids)', { ids: [user_id1, user_id2] })
+          .groupBy('m.room_id')
+          .having('COUNT(DISTINCT m.user_id) = 2')
+          .andHaving('COUNT(m.member_id) = 2')
+          .getQuery();
+        return 'chat_room.room_id IN ' + subQuery;
+      })
       .getOne();
   }
 
   async findById(room_id: number) {
     return this.repo
-      .createQueryBuilder('room')
-      .leftJoinAndSelect('room.members', 'members')
-      .where('room.room_id = :room_id', { room_id })
+      .createQueryBuilder('chat_room')
+      .where('chat_room.room_id = :room_id', { room_id })
+      .leftJoinAndSelect('chat_room.members', 'members')
+      .leftJoinAndSelect('members.user', 'user')
       .getOne();
   }
 }

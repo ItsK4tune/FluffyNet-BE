@@ -17,9 +17,9 @@ const REFRESH_COOKIE_NAME = 'jid';
 const setMiddleware = (app: NestExpressApplication) => {
   const allowedOriginsEnv = env.cors;
   const allowedOrigins = allowedOriginsEnv
-                         .split(',') 
-                         .map(origin => origin.trim()) 
-                         .filter(origin => origin.length > 0);
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
 
   app.use(cookieParser());
 
@@ -33,25 +33,20 @@ const setMiddleware = (app: NestExpressApplication) => {
       }
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization', 
-      'Accept',
-      'Origin', 
-    ],
-    preflightContinue: false, 
-    optionsSuccessStatus: 204 
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   app.use(helmet());
 
   app.use(
     rateLimit({
-      windowMs: 60 * 1000, 
-      limit: 100, 
+      windowMs: 60 * 1000,
+      limit: 100,
       message: 'Too many requests from this source, please try again later.',
       standardHeaders: 'draft-7',
-	    legacyHeaders: false, 
+      legacyHeaders: false,
 
       keyGenerator: (req: Request): string => {
         const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
@@ -61,7 +56,7 @@ const setMiddleware = (app: NestExpressApplication) => {
           return `ip:${req.ip}`;
         }
       },
-    })
+    }),
   );
 
   app.use(morgan('combined'));
@@ -84,9 +79,9 @@ async function bootstrap() {
   const logger = new Logger('APP');
 
   app.set('trust proxy', 1);
-  
+
   app.setGlobalPrefix('api');
-  
+
   setMiddleware(app);
 
   if (process.env.NODE_ENV !== 'production') {
@@ -106,12 +101,11 @@ async function bootstrap() {
         defaultModelsExpandDepth: -1,
         filter: true,
         url: `/api/swagger-json?v=${Date.now()}`,
-      },  
+      },
       jsonDocumentUrl: 'swagger/json',
     });
   }
 
-  
   await app.listen(env.port, () =>
     logger.warn(`> Listening on port ${env.port}`),
   );

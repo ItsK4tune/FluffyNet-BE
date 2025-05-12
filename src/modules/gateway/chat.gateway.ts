@@ -10,9 +10,9 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards } from '@nestjs/common';
 import { WsJwtGuard } from 'src/guards/websocket.guard';
-import { Message } from '../message/entities/message.entity';
-import { Member } from '../chat-member/entities/member.entity';
-import { ChatRoom } from '../chat-room/entities/room.entity';
+import { MessageResponseDto } from '../message/dtos/message-response.dtos';
+import { MemberResponseDto } from '../chat-member/dtos/member-response.dtos';
+import { ChatRoomResponseDto } from '../chat-room/dtos/room-response.dtos';
 
 @WebSocketGateway({
   cors: {
@@ -28,17 +28,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor() {}
 
-  async handleConnection(client: Socket, roomIds: number[]) {
+  async handleConnection(client: Socket) {
     try {
       const userId = client.handshake.auth.userId;
+
       if (!userId) {
         client.disconnect();
         return;
       }
+      const roomIds = client.handshake.auth.roomIds;
 
       this.connectedUsers.set(Number(userId), client);
 
-      await this.handleJoinChats(roomIds, userId);
+      if (roomIds.length > 0) {
+        await this.handleJoinChats(roomIds, userId);
+      }
     } catch (error) {
       this.logger.error('Error on connection', error);
       client.disconnect();
@@ -56,105 +60,102 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleJoinChats(roomIds: number[], userId: number) {
     const socket = this.connectedUsers.get(userId);
-    for (const roomId of roomIds) socket.join(`room-${roomId}`);
+    for (const roomId of roomIds) {
+      this.logger.log(`Joining room ${roomId} for user ${userId}`);
+      socket.join(`room-${roomId}`);
+    }
   }
 
-  async handleJoinChat(member: Member) {
-    const socket = this.connectedUsers.get(member.user_id);
+  async handleJoinChat(memberDto: MemberResponseDto) {
+    this.server.to(`room-${memberDto.room_id}`).emit('join-room', memberDto);
+
+    const socket = this.connectedUsers.get(memberDto.user_id);
     if (!socket) return;
-
-    socket.join(`room-${member.room_id}`);
+    socket.join(`room-${memberDto.room_id}`);
   }
 
-  async handleUpdateMember(member: Member) {
-    const socket = this.connectedUsers.get(member.user_id);
+  async handleUpdateMember(memberDto: MemberResponseDto) {
+    this.server
+      .to(`room-${memberDto.room_id}`)
+      .emit('update-member', memberDto);
+  }
+
+  async handleLeaveChat(memberDto: MemberResponseDto) {
+    this.server.to(`room-${memberDto.room_id}`).emit('leave-room', memberDto);
+    const socket = this.connectedUsers.get(memberDto.user_id);
+
     if (!socket) return;
-
-    this.server.to(`room-${member.room_id}`).emit('update-member', member);
+    await socket.leave(`room-${memberDto.room_id}`);
   }
 
-  async handleLeaveChat(member: Member) {
-    const socket = this.connectedUsers.get(member.user_id);
-    if (!socket) return;
-
-    await socket.leave(`room-${member.room_id}`);
-    this.server.to(`room-${member.room_id}`).emit('leave-room', member);
-  }
-
-  async handleCreateChat(chatRoom: ChatRoom) {
-    for (const member of chatRoom.members) {
-      const socket = this.connectedUsers.get(member.user_id);
+  async handleCreateChat(
+    chatRoomDto: ChatRoomResponseDto,
+    memberUserIds: number[],
+  ) {
+    for (const userId of memberUserIds) {
+      const socket = this.connectedUsers.get(userId);
       if (!socket) continue;
 
-      socket.join(`room-${chatRoom.room_id}`);
+      socket.join(`room-${chatRoomDto.room_id}`);
     }
-    this.server.to(`room-${chatRoom.room_id}`).emit('new-room', {
-      chatRoom,
+    this.server.to(`room-${chatRoomDto.room_id}`).emit('new-room', {
+      chatRoom: chatRoomDto,
     });
   }
 
-  async handleUpdateChat(chatRoom: ChatRoom) {
-    this.server.to(`room-${chatRoom.room_id}`).emit('update-room', chatRoom);
+  async handleUpdateChat(chatRoomDto: ChatRoomResponseDto) {
+    this.server
+      .to(`room-${chatRoomDto.room_id}`)
+      .emit('update-room', chatRoomDto);
   }
 
-  async handleDeleteChat(userIds: number[], roomId: number) {
+  async handleDeleteChat(roomId: number, memberUserIds: number[]) {
     this.server.to(`room-${roomId}`).emit('delete-room', roomId);
-    for (const userId of userIds) {
+    for (const userId of memberUserIds) {
       const socket = this.connectedUsers.get(userId);
       if (!socket) continue;
       socket.leave(`room-${roomId}`);
     }
   }
 
-  async handleSendMessage(message: Message) {
-    this.server.to(`room-${message.room_id}`).emit('new-message', message);
+  async handleSendMessage(messageDto: MessageResponseDto) {
+    this.logger.log('handleSendMessage', JSON.stringify(messageDto));
+    this.server
+      .to(`room-${messageDto.room_id}`)
+      .emit('new-message', messageDto);
   }
 
-  async handleUpdateMessage(message: Message) {
-    this.server.to(`room-${message.room_id}`).emit('message-updated', message);
+  async handleUpdateMessage(messageDto: MessageResponseDto) {
+    this.logger.log('handleUpdateMessage', JSON.stringify(messageDto));
+    this.server
+      .to(`room-${messageDto.room_id}`)
+      .emit('update-message', messageDto);
   }
 
   async handleDeleteMessage(roomId: number, messageId: number) {
-    this.server.to(`room-${roomId}`).emit('message-deleted', messageId);
+    this.server
+      .to(`room-${roomId}`)
+      .emit('delete-message', { messageId, roomId });
   }
 
-  // // @UseGuards(WsJwtGuard)
-  // @SubscribeMessage('typing')
-  // async handleTyping(
-  //   @MessageBody() data: { roomId: number; isTyping: boolean },
-  //   @ConnectedSocket() client: Socket,
-  // ) {
-  //   const userId = client.handshake.auth.userId;
-  //
-  //   if (!userId) {
-  //     client.disconnect();
-  //     return;
-  //   }
-  //
-  //   this.server.to(`room-${data.roomId}`).emit('typing', {
-  //     roomId: data.roomId,
-  //     userId,
-  //     isTyping: data.isTyping,
-  //   });
-  // }
-  //
-  // // @UseGuards(WsJwtGuard)
-  // @SubscribeMessage('read')
-  // async handleRead(
-  //   @MessageBody() data: { roomId: number; messageId: number },
-  //   @ConnectedSocket() client: Socket,
-  // ) {
-  //   const userId = client.handshake.auth.userId;
-  //
-  //   if (!userId) {
-  //     client.disconnect();
-  //     return;
-  //   }
-  //
-  //   this.server.to(`room-${data.roomId}`).emit('read', {
-  //     roomId: data.roomId,
-  //     userId,
-  //     messageId: data.messageId,
-  //   });
-  // }
+  @UseGuards(WsJwtGuard)
+  @SubscribeMessage('typing')
+  async handleTyping(
+    @MessageBody() data: { roomId: number; isTyping: boolean },
+    @ConnectedSocket() client: Socket,
+  ) {
+    this.logger.log('handleTyping', JSON.stringify(data));
+    const userId = client.handshake.auth.userId;
+
+    if (!userId) {
+      client.disconnect();
+      return;
+    }
+
+    this.server.to(`room-${data.roomId}`).emit('typing', {
+      roomId: data.roomId,
+      userId,
+      isTyping: data.isTyping,
+    });
+  }
 }

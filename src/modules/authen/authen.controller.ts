@@ -37,11 +37,11 @@ import { MinioClientService } from '../minio-client/minio-client.service';
 
 const REFRESH_COOKIE_NAME = 'jid';
 const REFRESH_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,
+  httpOnly: false,
+  secure: false,
   path: '/',
   sameSite: 'strict' as const,
-  domain: '.fluffynet.site',
+  domain: '.localhost',
 };
 
 @ApiTags('Authentication')

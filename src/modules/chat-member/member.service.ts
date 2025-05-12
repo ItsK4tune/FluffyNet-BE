@@ -5,17 +5,17 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { MemberRepository } from './member.repository';
 import { AddMemberDto, MemberUpdateDto } from './dtos/member.dtos';
 import { Member } from './entities/member.entity';
+import { MemberResponseDto } from './dtos/member-response.dtos';
 import { RedisCacheService } from '../redis-cache/redis-cache.service';
 import { RedisEnum } from '../../utils/enums/enum';
 import { convertToSeconds } from '../../utils/helpers/convert-time.helper';
 import { env } from '../../config';
 import { ChatGateway } from '../gateway/chat.gateway';
-import { json } from "express";
+import { MinioClientService } from '../minio-client/minio-client.service';
 
 @Injectable()
 export class MemberService {
@@ -24,6 +24,7 @@ export class MemberService {
     private readonly memberRepository: MemberRepository,
     private readonly redisCacheService: RedisCacheService,
     private readonly chatGateway: ChatGateway,
+    private readonly minioClientService: MinioClientService,
   ) {}
 
   async addMember(
@@ -32,26 +33,33 @@ export class MemberService {
     userRequestId: number,
   ) {
     if (!(await this.isActiveMember(roomId, userRequestId)))
-      throw new UnauthorizedException('You are not an active member');
+      throw new ForbiddenException('You are not an active member');
 
     // Check if member already exists
     let member = await this.getMemberByRoomIdAndUserId(
       roomId,
       addMemberDto.user_id,
     );
+
     if (member) {
       if (member.type === 'blocked')
-        throw new UnauthorizedException('This user blocked this room');
+        throw new ForbiddenException('This user blocked this room');
 
       if (member.type === 'active')
         throw new HttpException('Member already exists', 409);
 
       member.type = 'active';
       member = await this.memberRepository.save(member);
+
       await this.redisSet(member);
 
-      await this.chatGateway.handleJoinChat(member);
-      return member;
+      // Convert to DTO before calling gateway
+      const memberDto = await MemberResponseDto.fromEntityWithProcessedAvatar(
+        member,
+        this.minioClientService,
+      );
+      await this.chatGateway.handleJoinChat(memberDto);
+      return memberDto;
     }
 
     member = Object.assign(new Member(), {
@@ -59,10 +67,19 @@ export class MemberService {
       room_id: roomId,
     });
     member = await this.memberRepository.save(member);
+    member = await this.memberRepository.getMemberByIdwProfile(
+      member.member_id,
+    );
     await this.redisSet(member);
 
-    await this.chatGateway.handleJoinChat(member);
-    return member;
+    // Convert to DTO before calling gateway
+    const memberDto = await MemberResponseDto.fromEntityWithProcessedAvatar(
+      member,
+      this.minioClientService,
+    );
+
+    await this.chatGateway.handleJoinChat(memberDto);
+    return memberDto;
   }
 
   async updateMember(
@@ -77,15 +94,20 @@ export class MemberService {
     if (memberUpdateDto.nickname) member.nickname = memberUpdateDto.nickname;
     if (memberUpdateDto.role) {
       if (!(await this.isAdmin(member.room_id, userRequestId)))
-        throw new UnauthorizedException('Only admin can update role');
+        throw new ForbiddenException('Only admin can update role');
       member.role = memberUpdateDto.role;
     }
 
     member = await this.memberRepository.save(member);
     await this.redisSet(member);
 
-    await this.chatGateway.handleUpdateMember(member);
-    return member;
+    // Convert to DTO before calling gateway
+    const memberDto = await MemberResponseDto.fromEntityWithProcessedAvatar(
+      member,
+      this.minioClientService,
+    );
+    await this.chatGateway.handleUpdateMember(memberDto);
+    return memberDto;
   }
 
   // update type
@@ -96,7 +118,7 @@ export class MemberService {
       throw new NotFoundException('Member not found');
 
     if (member.role === 'admin')
-      throw new UnauthorizedException('Admin cannot be removed');
+      throw new ForbiddenException('Admin cannot be removed');
 
     if (!(await this.isAdmin(member.room_id, userRequestId)))
       throw new ForbiddenException('Only admin can remove member');
@@ -105,7 +127,12 @@ export class MemberService {
     member = await this.memberRepository.save(member);
     await this.redisSet(member);
 
-    await this.chatGateway.handleLeaveChat(member);
+    // Convert to DTO before calling gateway
+    const memberDto = await MemberResponseDto.fromEntityWithProcessedAvatar(
+      member,
+      this.minioClientService,
+    );
+    await this.chatGateway.handleLeaveChat(memberDto);
   }
 
   async leaveRoom(roomId: number, userRequestId: number) {
@@ -114,13 +141,18 @@ export class MemberService {
       throw new NotFoundException('Member not found');
 
     if (member.role === 'admin')
-      throw new UnauthorizedException('Admin cannot leave room');
+      throw new ForbiddenException('Admin cannot leave room');
 
     member.type = 'left';
     member = await this.memberRepository.save(member);
     await this.redisSet(member);
 
-    await this.chatGateway.handleLeaveChat(member);
+    // Convert to DTO before calling gateway
+    const memberDto = await MemberResponseDto.fromEntityWithProcessedAvatar(
+      member,
+      this.minioClientService,
+    );
+    await this.chatGateway.handleLeaveChat(memberDto);
   }
 
   async acceptChat(roomId: number, userId: number) {
@@ -132,7 +164,12 @@ export class MemberService {
     member = await this.memberRepository.save(member);
     await this.redisSet(member);
 
-    await this.chatGateway.handleJoinChat(member);
+    // Convert to DTO before calling gateway
+    const memberDto = await MemberResponseDto.fromEntityWithProcessedAvatar(
+      member,
+      this.minioClientService,
+    );
+    await this.chatGateway.handleJoinChat(memberDto);
   }
 
   // get methods - cache this data
@@ -182,7 +219,7 @@ export class MemberService {
 
   async isActiveMember(roomId: number, userId: number) {
     const member = await this.getMemberByRoomIdAndUserId(roomId, userId);
-    return member && member.type === 'active';
+    return member && (member.type === 'active' || member.type === 'pending');
   }
 
   async redisSet(member: Member) {

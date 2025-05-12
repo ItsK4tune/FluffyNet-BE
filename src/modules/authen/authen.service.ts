@@ -326,7 +326,8 @@ export class AuthenService {
     username: string;
     email?: string;
     role: string;
-  }) {
+  })
+  {
     const accessToken = this.jwtService.sign(
       {
         user_id: payload.user_id,

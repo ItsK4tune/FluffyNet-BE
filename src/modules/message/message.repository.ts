@@ -14,19 +14,20 @@ export class MessageRepository {
 
   async getMessages(
     room_id: number,
-    lastMessageCreateAt: Date,
+    lastMessageCreateAt?: Date,
     limit: number = 20,
-  ) {
-    const whereCondition: any = { room_id };
+  ): Promise<Message[]> {
+    const query = this.repo
+      .createQueryBuilder('message')
+      .where('message.room_id = :room_id', { room_id });
 
-    if (lastMessageCreateAt)
-      whereCondition.created_at = LessThan(lastMessageCreateAt);
+    if (lastMessageCreateAt) {
+      query.andWhere('message.created_at < :lastMessageCreateAt', {
+        lastMessageCreateAt,
+      });
+    }
 
-    return this.repo.find({
-      where: whereCondition,
-      order: { created_at: 'DESC' },
-      take: limit,
-    });
+    return query.orderBy('message.created_at', 'DESC').take(limit).getMany();
   }
 
   async deleteMessage(message_id: number) {

@@ -23,4 +23,8 @@ export class MemberRepository {
     this.logger.log(member_id);
     return this.repo.findOne({ where: { member_id } });
   }
+
+  async getMemberByIdwProfile(member_id: number) {
+    return this.repo.findOne({ where: { member_id }, relations: ['profile'] });
+  }
 }

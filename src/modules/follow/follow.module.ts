@@ -25,7 +25,10 @@ import { MinioClientModule } from '../minio-client/minio-client.module';
     RedisCacheModule,
     NotificationModule,
     forwardRef(() => MinioClientModule),
-    forwardRef(() => ProfileModule)
+    forwardRef(() => ProfileModule),
+    forwardRef(() =>
+      import('../events/events.module').then((m) => m.EventsModule),
+    ),
   ],
   controllers: [FollowController],
   providers: [FollowService, FollowUtil, ProfileUtil],

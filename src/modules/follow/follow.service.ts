@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { FollowUtil } from 'src/modules/follow/follow.util';
 import { ProfileUtil } from 'src/modules/profile/profile.util';
@@ -10,9 +11,11 @@ import { ProfileService } from '../profile/profile.service';
 import { RedisCacheService } from '../redis-cache/redis-cache.service';
 import { RedisEnum } from 'src/utils/enums/enum';
 import { MinioClientService } from '../minio-client/minio-client.service';
+import { FollowEventsService } from '../events/follow-events.service';
 
 @Injectable()
 export class FollowService {
+  private readonly logger = new Logger(FollowService.name);
   constructor(
     private readonly followUtil: FollowUtil,
     private readonly profileUtil: ProfileUtil,
@@ -20,9 +23,13 @@ export class FollowService {
     private readonly profileService: ProfileService,
     private readonly redisCacheService: RedisCacheService,
     private readonly minio: MinioClientService,
+    private readonly followEventsService: FollowEventsService,
   ) {}
 
-  async getStatus(user_id: number, target_id: number): Promise<number | boolean> {
+  async getStatus(
+    user_id: number,
+    target_id: number,
+  ): Promise<number | boolean> {
     const target = await this.profileUtil.getProfileByUserId(target_id);
     if (!target)
       return 400;
@@ -40,13 +47,22 @@ export class FollowService {
     if (isCurrentlyFollowing) {
       operationSuccess = await this.followUtil.deleteFollowing(user_id, target_id);
       isNewFollow = false;
-    } else {
+
+      // Emit unfollow event
+      this.logger.log(`User ${user_id} unfollowed user ${target_id}`);
+      this.followEventsService.emitFollowEvent(user_id, target_id, false);
+    }
+    else {
       const targetProfile = await this.profileUtil.getProfileByUserId(target_id);
       if (!targetProfile) {
         return null; 
       }
       operationSuccess = await this.followUtil.createFollow(user_id, target_id);
       isNewFollow = true;
+
+      // Emit follow event
+      this.logger.log(`User ${user_id} followed user ${target_id}`);
+      this.followEventsService.emitFollowEvent(user_id, target_id, true);
     }
 
     if (operationSuccess && isNewFollow) {
@@ -78,7 +94,7 @@ export class FollowService {
     const selectedFollowings = this.getRandomElements(followingList, topm);
 
     let potentialSuggestions = new Set<number>();
-    
+
     for (const follow of selectedFollowings) {
       const followingsOfm = await this.followUtil.findFollowingList(follow.following_id);
       followingsOfm.forEach(f => potentialSuggestions.add(f.follower_id));
@@ -125,7 +141,7 @@ export class FollowService {
     if (toAdd.length > 0) {
       await this.redisCacheService.saddMultiple(redisKey, toAdd, ttl); 
     }
-  
+
     if (toRemove.length > 0) {
       await this.redisCacheService.sremMultiple(redisKey, toRemove);
     }
@@ -148,7 +164,7 @@ export class FollowService {
         message: `${followerProfile.nickname || `User ${follower_id}`} started following you.`, 
         followedAt: new Date().toISOString(), 
       };
-        
+
       await this.notificationService.createNotification(
         followed_id,      
         notificationType,

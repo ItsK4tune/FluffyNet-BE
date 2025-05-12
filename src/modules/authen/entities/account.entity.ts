@@ -54,6 +54,6 @@ export class Account {
   @OneToOne(() => Profile, (profile) => profile.user, { cascade: true })
   profile: Profile;
 
-  @OneToMany(() => RefreshToken, refreshToken => refreshToken.user)
+  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshTokens: RefreshToken[];
 }

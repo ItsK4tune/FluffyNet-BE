@@ -45,17 +45,13 @@ export class MessageController {
   @ApiOperation({ summary: 'send message' })
   @ApiResponse({ status: 201, description: 'Message created successfully' })
   @ApiResponse({
-    status: 401,
+    status: 403,
     description: 'You are not an active member of this room',
   })
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        roomId: {
-          type: 'number',
-          description: 'ID of the room',
-        },
         body: {
           type: 'string',
           description: 'Message body',
@@ -67,11 +63,15 @@ export class MessageController {
       },
     },
   })
-  @Post('send')
-  async create(@Req() req, @Body() createMessageDto: CreateMessageDto) {
+  @Post('send/:roomId')
+  async create(
+    @Req() req,
+    @Body() createMessageDto: CreateMessageDto,
+    @Param('roomId') roomId: number,
+  ) {
     const user_id = req.user.user_id;
 
-    await this.messageService.createMessage(createMessageDto, user_id);
+    await this.messageService.createMessage(createMessageDto, user_id, roomId);
     return {
       statusCode: 201,
       description: 'Message created successfully',
@@ -105,7 +105,7 @@ export class MessageController {
       req.user.user_id,
     );
     return {
-      statusCode: 201,
+      statusCode: 200,
       description: 'Message updated successfully',
     };
   }
@@ -116,7 +116,7 @@ export class MessageController {
   @ApiResponse({ status: 200, description: 'Message deleted successfully' })
   @ApiResponse({ status: 404, description: 'Message not found' })
   @ApiResponse({
-    status: 401,
+    status: 403,
     description: 'You are not allowed to delete this message',
   })
   @Delete('delete/:id')
@@ -128,9 +128,9 @@ export class MessageController {
     };
   }
 
-  @ApiOperation({ summary: 'Get messages in a room' })
+  @ApiOperation({ summary: 'Get (more) messages in a room' })
   @ApiResponse({
-    status: 201,
+    status: 200,
     description: 'Messages retrieved successfully',
     schema: {
       type: 'object',
@@ -147,20 +147,25 @@ export class MessageController {
       },
     },
   })
-  @ApiResponse({
-    status: 401,
-    description: 'You are not an active member of this conversation',
-  })
+  @ApiResponse({ status: 204, description: 'No more message' })
+  @ApiResponse({ status: 403, description: 'You are not an active member' })
   @Get()
   async getMessagesByRoom(@Query() query: GetMessagesDto, @Req() req) {
     const messages = await this.messageService.getMessages(
       req.user.user_id,
-      query.roomId,
+      Number(query.roomId),
       query.lastMessageCreatedAt,
       query.limit,
     );
+
+    if (messages.length === 0)
+      return {
+        statusCode: 204,
+        description: 'No more message',
+      };
+
     return {
-      statusCode: 201,
+      statusCode: 200,
       description: 'Messages retrieved successfully',
       data: messages,
     };

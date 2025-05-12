@@ -22,6 +22,7 @@ import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
 import { TaskModule } from './task/task.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     NotificationModule,
     LikeModule,
     TaskModule,
+    EventsModule,
   ],
 })
 export class AppModule {}

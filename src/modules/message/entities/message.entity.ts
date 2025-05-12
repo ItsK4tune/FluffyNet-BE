@@ -32,7 +32,9 @@ export class Message {
   @UpdateDateColumn({ type: 'timestamp', nullable: true })
   updated_at: Date;
 
-  @ManyToOne(() => Member, (member) => member.messages)
+  @ManyToOne(() => Member, (member) => member.messages, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'member_id' })
   member: Member;
 

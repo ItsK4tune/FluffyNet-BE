@@ -2,13 +2,15 @@ import {
   Body,
   Controller,
   Delete,
-  Get, Logger,
-  Param, ParseIntPipe,
+  Get,
+  Logger,
+  Param,
+  ParseIntPipe,
   Patch,
   Post,
   Req,
-  UseGuards
-} from "@nestjs/common";
+  UseGuards,
+} from '@nestjs/common';
 import { ChatroomService } from './chatroom.service';
 import {
   ApiBearerAuth,

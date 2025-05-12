@@ -5,8 +5,9 @@ import {
   Param,
   Patch,
   Req,
-  UseGuards, Logger
-} from "@nestjs/common";
+  UseGuards,
+  Logger,
+} from '@nestjs/common';
 import { MemberService } from './member.service';
 import { AddMemberDto, MemberUpdateDto } from './dtos/member.dtos';
 import {
@@ -15,10 +16,8 @@ import {
   ApiResponse,
   ApiTags,
   ApiParam,
-  getSchemaPath,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { Member } from './entities/member.entity';
 import { JwtAuthGuard } from '../../guards/jwt.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/role.decorator';
@@ -135,7 +134,7 @@ export class MemberController {
     await this.memberService.acceptChat(roomId, userId);
     return {
       status: 200,
-      message: 'You have accepted this chat now, you and {user} can ...',
+      message: 'You have accepted this chat now, you can start messaging.',
     };
   }
 }
