@@ -116,6 +116,16 @@ export class ChatroomController {
     };
   }
 
+  @Get(':id')
+  async getChatRoomById(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    const room = await this.chatroomService.getRoomById(id, req.user.user_id);
+    return {
+      statusCode: 201,
+      message: 'Chat room retrieved successfully',
+      room: room,
+    };
+  }
+
   // -> websockets
   @ApiOperation({ summary: 'Update room (rename)' })
   @ApiParam({ name: 'id', description: 'Room ID' })

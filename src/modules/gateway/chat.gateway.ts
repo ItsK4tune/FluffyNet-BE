@@ -66,11 +66,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleJoinChat(memberDto: MemberResponseDto) {
-    this.server.to(`room-${memberDto.room_id}`).emit('join-room', memberDto);
-
     const socket = this.connectedUsers.get(memberDto.user_id);
-    if (!socket) return;
-    socket.join(`room-${memberDto.room_id}`);
+    if (socket) socket.join(`room-${memberDto.room_id}`);
+    this.server.to(`room-${memberDto.room_id}`).emit('join-room', memberDto);
   }
 
   async handleUpdateMember(memberDto: MemberResponseDto) {

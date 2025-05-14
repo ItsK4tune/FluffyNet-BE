@@ -155,6 +155,17 @@ export class ChatroomService {
     );
   }
 
+  async getRoomById(id: number, userId: number) {
+    if (!(await this.memberService.isActiveMember(id, userId)))
+      throw new ForbiddenException('Only active members can get chat');
+    const chatRoom = await this.chatRoomRepository.findById(id);
+    if (!chatRoom) throw new NotFoundException('Chat room not found');
+    return ChatRoomResponseDto.fromEntityWithProcessedAvatars(
+      chatRoom,
+      this.minioClientService,
+    );
+  }
+
   // Helper
   async findDirectChatRoom(userId1: number, userId2: number) {
     return await this.chatRoomRepository.findDirectChatRoom(userId1, userId2);
