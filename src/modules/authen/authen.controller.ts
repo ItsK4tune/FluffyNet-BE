@@ -37,11 +37,11 @@ import { MinioClientService } from '../minio-client/minio-client.service';
 
 const REFRESH_COOKIE_NAME = 'jid';
 const REFRESH_COOKIE_OPTIONS = {
-  httpOnly: false,
-  secure: false,
+  httpOnly: true,
+  secure: true,
   path: '/',
   sameSite: 'strict' as const,
-  domain: '.localhost',
+  domain: '.fluffynet.site',
 };
 
 @ApiTags('Authentication')
@@ -183,7 +183,16 @@ export class AuthenController {
     const user_id = req.user.user_id;
     const profile = await this.authenService.getStatus(user_id);
 
-    console.log();
+    console.log(profile);
+
+    let validAvatar: string = '';
+    if (profile.avatar?.startsWith('https://lh3.googleusercontent.com/')) {
+      validAvatar = profile.avatar;
+    } else {
+      validAvatar = await this.minio.generatePresignedDownloadUrl(
+        profile.avatar,
+      );
+    }
 
     return {
       isAuthenticated: true,
@@ -193,7 +202,7 @@ export class AuthenController {
         email: req.user.email,
         profile: {
           nickname: profile.nickname,
-          avatar: await this.minio.generatePresignedDownloadUrl(profile.avatar),
+          avatar: validAvatar,
           background: await this.minio.generatePresignedDownloadUrl(
             profile.background,
           ),

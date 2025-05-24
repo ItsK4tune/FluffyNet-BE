@@ -1,35 +1,17 @@
-# FROM node:18-alpine As development
+FROM node:24-alpine
 
-# WORKDIR /usr/src/
+WORKDIR /app
 
-# COPY package.json ./
-# COPY yarn.lock ./ 
+RUN apk add --no-cache bash
 
-# RUN yarn
+COPY package.json yarn.lock ./
 
-# COPY . .
+RUN yarn install --frozen-lockfile
 
-# # RUN npm run build
+COPY . .
 
-# # Môi trường production (tùy chọn, để tối ưu image)
-# FROM node:18-alpine As production
+RUN yarn build
 
-# WORKDIR /usr/src/app
+EXPOSE 8080
 
-# COPY package*.json ./
-# # COPY yarn.lock ./ # Nếu dùng Yarn
-
-# # Chỉ cài đặt production dependencies
-# RUN npm ci --only=production
-# # RUN yarn install --production # Nếu dùng Yarn
-
-# # Sao chép artifact từ bước build trước (nếu có)
-# # COPY --from=development /usr/src/app/dist ./dist
-# COPY --from=development /usr/src/app . # Hoặc copy toàn bộ nếu không có build step riêng
-
-# # Expose port mà ứng dụng lắng nghe (phải khớp với PORT trong .env)
-# EXPOSE 8080
-
-# # Lệnh mặc định để chạy ứng dụng khi container khởi động
-# # CMD [ "node", "dist/main.js" ] # Nếu có build step
-# CMD [ "npm", "start" ] # Hoặc lệnh start của bạn
+CMD ["node", "dist/main.js"]

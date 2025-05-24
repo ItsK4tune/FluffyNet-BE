@@ -1,30 +1,72 @@
 version: '3.8'
+
 services:
+  backend:
+    build: .
+    ports:
+      - "${PORT}:${PORT}"
+    env_file:
+      - .env
+    depends_on:
+      - mysql
+      - mongodb
+      - redis
+      - minio
+    networks:
+      - backend-net
+
   mysql:
     image: mysql:latest
-    container_name: mysql_container
+    restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: '' # Set root password
-      MYSQL_DATABASE: SocialNetwork # Automatically create this database
-#      MYSQL_USER: user # Optional: create a user
-#      MYSQL_PASSWORD: userpassword # Optional: user password
+      MYSQL_ROOT_PASSWORD: abc
+      MYSQL_DATABASE: FluffyNet
     ports:
-      - '3306:3306' # Map MySQL port to host
+      - "3306:3306"
     volumes:
-      - mysql_data:/var/lib/mysql # Persist MySQL data
+      - mysql-data:/var/lib/mysql
     networks:
-      - backend
+      - backend-net
+
+  mongodb:
+    image: mongodb/mongodb-community-server:5.0.9-ubi8
+    restart: always
+    environment:
+      MONGODB_INITDB_ROOT_USERNAME: admin
+      MONGODB_INITDB_ROOT_PASSWORD: password
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - backend-net
 
   redis:
-    image: redis:alpine
-    container_name: redis_container
+    image: redis:latest
+    restart: always
     ports:
-      - '6379:6379' # Redis port
+      - "6379:6379"
     networks:
-      - backend
+      - backend-net
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio-data:/data
+    networks:
+      - backend-net
 
 volumes:
-  mysql_data: # Define volume for MySQL
+  mysql-data:
+  mongo-data:
+  minio-data:
 
 networks:
-  backend:
+  backend-net:
